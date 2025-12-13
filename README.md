@@ -60,9 +60,9 @@ _OrderInfo_
 
 **👤 Default Users (Must Exist)**
 
--1] username: cust / password: cust → customer
--2] username: carr / password: carr → carrier
--3] username: own / password: own → owner
+- 1] username: cust / password: cust → customer
+- 2] username: carr / password: carr → carrier
+- 3] username: own / password: own → owner
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
