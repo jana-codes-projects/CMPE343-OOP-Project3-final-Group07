@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox spacing="12" xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml">
+    <Label text="Owner Panel" style="-fx-font-size: 18px; -fx-font-weight: bold;"/>
+    <Label text="Buraya ürün yönetimi + raporları ekleyeceğiz."/>
+</VBox>

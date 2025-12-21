@@ -1,0 +1,147 @@
+.root {
+    -fx-font-family: "Inter", "Segoe UI", "Arial";
+}
+
+.bg-gradient {
+    -fx-background-color: linear-gradient(to bottom right, #0f172a, #111827, #1f2937);
+}
+
+/* Glass Card */
+.card {
+    -fx-background-color: rgba(255, 255, 255, 0.05);
+    -fx-background-radius: 18;
+    -fx-border-radius: 18;
+    -fx-border-color: rgba(255, 255, 255, 0.08);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.25), 20, 0.15, 0, 8);
+}
+
+/* Product Card specific */
+.product-card {
+    -fx-background-color: linear-gradient(to bottom right, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+    -fx-background-radius: 16;
+    -fx-border-radius: 16;
+    -fx-border-color: rgba(255, 255, 255, 0.1);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.2), 15, 0.1, 0, 4);
+    -fx-cursor: hand;
+    -fx-padding: 16;
+    -fx-min-width: 210;
+    -fx-max-width: 210;
+}
+
+.product-card:hover {
+    -fx-background-color: linear-gradient(to bottom right, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.04));
+    -fx-border-color: rgba(99, 102, 241, 0.4);
+    /* Indigo glow */
+    -fx-effect: dropshadow(gaussian, rgba(99, 102, 241, 0.15), 20, 0.2, 0, 8);
+    -fx-scale-x: 1.02;
+    -fx-scale-y: 1.02;
+}
+
+.h1 {
+    -fx-text-fill: white;
+    -fx-font-size: 24px;
+    -fx-font-weight: 800;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 0, 0, 0, 2);
+}
+
+.section-title {
+    -fx-text-fill: #e2e8f0;
+    -fx-font-family: "Segoe UI", sans-serif;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.5), 2, 0, 0, 1);
+}
+
+.field {
+    -fx-background-color: rgba(0, 0, 0, 0.2);
+    -fx-text-fill: white;
+    -fx-prompt-text-fill: rgba(255, 255, 255, 0.3);
+    -fx-background-radius: 8;
+    -fx-border-color: rgba(255, 255, 255, 0.1);
+    -fx-border-radius: 8;
+    -fx-padding: 6 10 6 10;
+}
+
+.field:focused {
+    -fx-border-color: #6366f1;
+    -fx-background-color: rgba(0, 0, 0, 0.3);
+}
+
+.btn-primary {
+    -fx-background-color: linear-gradient(to right, #4f46e5, #4338ca);
+    -fx-text-fill: white;
+    -fx-font-weight: 700;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(79, 70, 229, 0.4), 10, 0.2, 0, 4);
+}
+
+.btn-primary:hover {
+    -fx-background-color: linear-gradient(to right, #6366f1, #4f46e5);
+}
+
+.btn-primary:pressed {
+    -fx-scale-x: 0.98;
+    -fx-scale-y: 0.98;
+}
+
+.btn-outline {
+    -fx-background-color: transparent;
+    -fx-border-color: rgba(255, 255, 255, 0.3);
+    -fx-border-radius: 8;
+    -fx-text-fill: rgba(255, 255, 255, 0.8);
+    -fx-cursor: hand;
+    -fx-padding: 6 12 6 12;
+}
+
+.btn-outline:hover {
+    -fx-border-color: white;
+    -fx-text-fill: white;
+    -fx-background-color: rgba(255, 255, 255, 0.05);
+}
+
+.muted {
+    -fx-text-fill: rgba(148, 163, 184, 1.0);
+    /* Slate-400 */
+    -fx-font-size: 12px;
+}
+
+/* Toast (keep as is but ensure on top) */
+.toast {
+    -fx-text-fill: white;
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-background-radius: 12;
+    -fx-padding: 10 16;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 10, 0, 0, 4);
+}
+
+.toast-success {
+    -fx-background-color: #22c55e;
+}
+
+.toast-error {
+    -fx-background-color: #ef4444;
+}
+
+.toast-info {
+    -fx-background-color: #3b82f6;
+}
+
+/* ScrollPane transparent fix */
+.scroll-pane {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+}
+
+.scroll-pane .viewport {
+    -fx-background-color: transparent;
+}
+
+.scroll-bar:vertical .track {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.scroll-bar:vertical .thumb {
+    -fx-background-color: rgba(255, 255, 255, 0.1);
+    -fx-background-radius: 4;
+}

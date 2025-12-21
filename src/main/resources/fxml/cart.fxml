@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+<?import java.lang.String?>
+
+<VBox spacing="16"
+      styleClass="root"
+      xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.cmpe343.fx.controller.CartController">
+      
+    <padding><Insets top="24" right="24" bottom="24" left="24"/></padding>
+
+    <HBox spacing="12" alignment="CENTER_LEFT">
+        <Button onAction="#handleBack" styleClass="btn-outline">
+            <graphic>
+                <javafx.scene.shape.SVGPath content="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" fill="white"/>
+            </graphic>
+            <tooltip><Tooltip text="Back to Shop"/></tooltip>
+        </Button>
+        <Label text="Your Cart" styleClass="h1"/>
+    </HBox>
+
+    <ScrollPane fitToWidth="true" style="-fx-background: transparent; -fx-background-color: transparent;" VBox.vgrow="ALWAYS">
+        <VBox fx:id="cartItemsContainer" styleClass="cart-list-container"/>
+    </ScrollPane>
+
+    <VBox spacing="12" styleClass="cart-summary-card">
+        <Label text="Delivery Details" styleClass="h2"/>
+        <HBox spacing="12" alignment="CENTER_LEFT">
+             <DatePicker fx:id="deliveryDatePicker" promptText="Delivery Date" style="-fx-base: #1e293b;"/>
+             <TextField fx:id="deliveryTimeField" promptText="HH:mm" styleClass="field" prefWidth="100"/>
+             <Label text="Must be within 48h" styleClass="muted"/>
+        </HBox>
+        
+        <Separator style="-fx-opacity: 0.1;"/>
+
+        <HBox spacing="24" alignment="CENTER_RIGHT">
+            <Label fx:id="totalLabel" text="Total: 0.00 ₺" styleClass="cart-total"/>
+            <Button text="Place Order" onAction="#handlePlaceOrder" styleClass="btn-primary" style="-fx-font-size: 14px; -fx-padding: 10 32 10 32;"/>
+        </HBox>
+    </VBox>
+
+</VBox>

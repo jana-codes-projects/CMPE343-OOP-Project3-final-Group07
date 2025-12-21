@@ -1,0 +1,105 @@
+/* Customer Dashboard Specific Styles */
+
+.header-panel {
+    -fx-background-color: rgba(15, 23, 42, 0.95);
+    -fx-border-color: rgba(255, 255, 255, 0.05);
+    -fx-border-width: 0 0 1 0;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.2), 10, 0, 0, 2);
+}
+
+/* Product Card - Glassmorphism */
+.product-card {
+    -fx-background-color: rgba(30, 41, 59, 0.4);
+    -fx-background-radius: 20;
+    -fx-border-radius: 20;
+    -fx-border-color: rgba(255, 255, 255, 0.05);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.2), 10, 0, 0, 4);
+    -fx-padding: 20;
+    -fx-alignment: center;
+    -fx-cursor: hand;
+    -fx-min-width: 220;
+    -fx-max-width: 220;
+    -fx-transition: all 0.3s ease;
+}
+
+.product-card:hover {
+    -fx-background-color: rgba(30, 41, 59, 0.7);
+    -fx-border-color: rgba(139, 92, 246, 0.5);
+    /* Violet */
+    -fx-effect: dropshadow(gaussian, rgba(139, 92, 246, 0.2), 20, 0.2, 0, 0);
+    -fx-translate-y: -4;
+}
+
+.product-image-placeholder {
+    -fx-background-color: linear-gradient(to bottom right, #334155, #1e293b);
+    -fx-background-radius: 60;
+    -fx-text-fill: #94a3b8;
+    -fx-font-size: 36px;
+    -fx-font-weight: 800;
+    -fx-min-width: 100;
+    -fx-min-height: 100;
+    -fx-alignment: center;
+    -fx-effect: innershadow(gaussian, rgba(0, 0, 0, 0.5), 5, 0, 0, 2);
+}
+
+.product-title {
+    -fx-text-fill: #f1f5f9;
+    -fx-font-size: 16px;
+    -fx-font-weight: 700;
+}
+
+.product-price {
+    -fx-text-fill: #94a3b8;
+    -fx-font-size: 14px;
+}
+
+.stock-tag {
+    -fx-background-radius: 4;
+    -fx-padding: 2 6;
+    -fx-font-size: 11px;
+    -fx-font-weight: 600;
+}
+
+.stock-ok {
+    -fx-text-fill: #4ade80;
+    -fx-background-color: rgba(74, 222, 128, 0.1);
+}
+
+.stock-low {
+    -fx-text-fill: #f87171;
+    -fx-background-color: rgba(248, 113, 113, 0.1);
+}
+
+/* Search Bar */
+.search-container {
+    -fx-background-color: rgba(30, 41, 59, 0.6);
+    -fx-background-radius: 24;
+    -fx-border-radius: 24;
+    -fx-border-color: #334155;
+    -fx-padding: 5 15;
+}
+
+.search-container:focused-within {
+    -fx-border-color: #8b5cf6;
+}
+
+/* Badge */
+.badge {
+    -fx-background-color: #ef4444;
+    -fx-text-fill: white;
+    -fx-font-size: 10px;
+    -fx-font-weight: 800;
+    -fx-background-radius: 12;
+    -fx-padding: 2 6;
+    -fx-effect: dropshadow(gaussian, rgba(239, 68, 68, 0.5), 8, 0, 0, 2);
+}
+
+.section-title {
+    -fx-text-fill: white;
+    -fx-font-size: 22px;
+    -fx-font-weight: 700;
+    -fx-padding: 10 0 10 5;
+    -fx-border-color: #3b82f6;
+    -fx-border-width: 0 0 0 4;
+    /* Left border accent */
+}
