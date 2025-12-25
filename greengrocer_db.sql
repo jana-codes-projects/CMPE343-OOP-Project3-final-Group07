@@ -137,7 +137,10 @@ INSERT INTO users (id, username, password_hash, role, is_active, address, phone,
 (22,'kargo.asli',SHA2('Asli1234',256),'carrier',1,'Depo 4: Topkapı, Zeytinburnu/İstanbul','+90 535 454 54 22','2025-10-08 09:30:00'),
 (23,'kargo.furkan',SHA2('Furkan1234',256),'carrier',1,'Depo 5: Haramidere, Esenyurt/İstanbul','+90 536 565 65 23','2025-10-09 09:40:00'),
 (24,'kargo.naz',SHA2('Naz1234',256),'carrier',1,'Depo 6: Bayrampaşa, İstanbul','+90 537 676 76 24','2025-10-10 09:50:00'),
-(25,'owner.murat',SHA2('Murat1234',256),'owner',1,'Merkez: Hal Müdürlüğü Yakını, Kağıthane/İstanbul','+90 538 787 87 25','2025-09-25 08:00:00');
+(25,'owner.murat',SHA2('Murat1234',256),'owner',1,'Merkez: Hal Müdürlüğü Yakını, Kağıthane/İstanbul','+90 538 787 87 25','2025-09-25 08:00:00'),
+(26,'cust',SHA2('cust',256),'customer',1,'Default Customer Address','+90 555 000 00 01','2025-09-01 00:00:00'),
+(27,'carr',SHA2('carr',256),'carrier',1,'Default Carrier Address','+90 555 000 00 02','2025-09-01 00:00:00'),
+(28,'own',SHA2('own',256),'owner',1,'Default Owner Address','+90 555 000 00 03','2025-09-01 00:00:00');
 
 INSERT INTO products (id, name, type, price, stock_kg, threshold_kg, image_blob, is_active) VALUES
 (1,'Domates','VEG',34.90,120.00,25.00,NULL,1),

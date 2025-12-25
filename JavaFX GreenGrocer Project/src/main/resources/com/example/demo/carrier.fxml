@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml" fx:controller="com.example.demo.controllers.CarrierController">
+   <top>
+      <HBox spacing="10.0" style="-fx-padding: 10;">
+         <Label fx:id="usernameLabel" text="Carrier: " style="-fx-font-weight: bold;"/>
+         <Region HBox.hgrow="ALWAYS"/>
+         <Button fx:id="logoutButton" text="Logout" onAction="#handleLogout"/>
+      </HBox>
+   </top>
+   <center>
+      <TabPane>
+         <tabs>
+            <Tab text="Available Orders">
+               <ScrollPane fitToWidth="true">
+                  <VBox fx:id="availableOrdersContainer" spacing="10.0" style="-fx-padding: 10;">
+                     <!-- Available orders will be loaded dynamically -->
+                  </VBox>
+               </ScrollPane>
+            </Tab>
+            <Tab text="My Orders">
+               <ScrollPane fitToWidth="true">
+                  <VBox fx:id="myOrdersContainer" spacing="10.0" style="-fx-padding: 10;">
+                     <!-- My orders will be loaded dynamically -->
+                  </VBox>
+               </ScrollPane>
+            </Tab>
+            <Tab text="Completed Orders">
+               <ScrollPane fitToWidth="true">
+                  <VBox fx:id="completedOrdersContainer" spacing="10.0" style="-fx-padding: 10;">
+                     <!-- Completed orders will be loaded dynamically -->
+                  </VBox>
+               </ScrollPane>
+            </Tab>
+         </tabs>
+      </TabPane>
+   </center>
+</BorderPane>
+

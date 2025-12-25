@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml" fx:controller="com.example.demo.controllers.CartController">
+   <center>
+      <VBox spacing="15.0">
+         <padding>
+            <Insets bottom="20.0" left="20.0" right="20.0" top="20.0"/>
+         </padding>
+         
+         <Label text="Shopping Cart" style="-fx-font-size: 18px; -fx-font-weight: bold;"/>
+         
+         <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS">
+            <VBox fx:id="cartItemsContainer" spacing="10.0">
+               <!-- Cart items will be loaded dynamically -->
+            </VBox>
+         </ScrollPane>
+         
+         <VBox spacing="5.0">
+            <Label fx:id="subtotalLabel" text="Subtotal: 0.00 TL"/>
+            <Label fx:id="vatLabel" text="VAT (20%): 0.00 TL"/>
+            <Label fx:id="discountLabel" text="Discount: 0.00 TL" visible="false"/>
+            <Label fx:id="totalLabel" text="Total: 0.00 TL" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
+         </VBox>
+         
+         <HBox spacing="10.0">
+            <TextField fx:id="couponField" promptText="Coupon Code" HBox.hgrow="ALWAYS"/>
+            <Button text="Apply Coupon" onAction="#handleApplyCoupon"/>
+         </HBox>
+         
+         <HBox spacing="10.0">
+            <DatePicker fx:id="deliveryDatePicker" promptText="Delivery Date"/>
+            <TextField fx:id="deliveryTimeField" promptText="HH:mm" prefWidth="80"/>
+         </HBox>
+         
+         <HBox spacing="10.0">
+            <Button fx:id="checkoutButton" text="Checkout" onAction="#handleCheckout" defaultButton="true"/>
+            <Button text="Continue Shopping" onAction="#handleContinueShopping"/>
+         </HBox>
+      </VBox>
+   </center>
+</BorderPane>
+
