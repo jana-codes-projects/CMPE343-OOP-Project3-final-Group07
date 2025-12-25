@@ -1,7 +1,6 @@
 package com.example.demo.models;
 
 import javafx.scene.image.Image;
-
 import java.math.BigDecimal;
 
 /**
