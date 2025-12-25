@@ -114,8 +114,8 @@ public class MessageDAO {
      */
     public boolean replyToMessage(int messageId, String reply) {
         // Note: The database schema needs to be updated to include reply fields
-        // For now, this is a placeholder
-        // TODO: Add reply column to messages table
+        // To implement: Add reply_text LONGTEXT and replied_at TIMESTAMP columns to messages table
+        // Then use: UPDATE messages SET reply_text = ?, replied_at = NOW() WHERE id = ?
         return false;
     }
 
@@ -135,7 +135,8 @@ public class MessageDAO {
         
         Timestamp createdAt = rs.getTimestamp("created_at");
         if (createdAt != null) {
-            message.setCreatedAt(createdAt.toLocalDateTime());
+            LocalDateTime createdDateTime = createdAt.toLocalDateTime();
+            message.setCreatedAt(createdDateTime);
         }
         
         return message;

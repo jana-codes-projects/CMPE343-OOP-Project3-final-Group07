@@ -174,13 +174,16 @@ public class CouponDAO {
         String kindStr = rs.getString("kind");
         coupon.setType(Coupon.CouponType.valueOf(kindStr));
         
-        coupon.setValue(rs.getBigDecimal("value"));
-        coupon.setMinCartValue(rs.getBigDecimal("min_cart"));
+        BigDecimal value = rs.getBigDecimal("value");
+        BigDecimal minCart = rs.getBigDecimal("min_cart");
+        coupon.setValue(value);
+        coupon.setMinCartValue(minCart);
         coupon.setActive(rs.getBoolean("is_active"));
         
         Timestamp expiresAt = rs.getTimestamp("expires_at");
         if (expiresAt != null) {
-            coupon.setExpiresAt(expiresAt.toLocalDateTime());
+            LocalDateTime expiresDateTime = expiresAt.toLocalDateTime();
+            coupon.setExpiresAt(expiresDateTime);
         }
         
         return coupon;

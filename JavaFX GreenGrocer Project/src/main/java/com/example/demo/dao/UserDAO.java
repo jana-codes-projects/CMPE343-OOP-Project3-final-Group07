@@ -275,7 +275,8 @@ public class UserDAO {
         
         Timestamp createdAt = rs.getTimestamp("created_at");
         if (createdAt != null) {
-            user.setCreatedAt(createdAt.toLocalDateTime());
+            LocalDateTime createdDateTime = createdAt.toLocalDateTime();
+            user.setCreatedAt(createdDateTime);
         }
         
         return user;

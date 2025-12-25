@@ -3,7 +3,6 @@ package com.example.demo.dao;
 import com.example.demo.db.DatabaseAdapter;
 import com.example.demo.models.Order;
 import com.example.demo.models.OrderItem;
-import com.example.demo.models.OrderStatus;
 
 import java.math.BigDecimal;
 import java.sql.*;
@@ -54,15 +53,19 @@ public class OrderDAO {
                 orderStmt.setString(3, order.getStatus().name());
                 orderStmt.setTimestamp(4, Timestamp.valueOf(order.getOrderTime()));
                 orderStmt.setTimestamp(5, Timestamp.valueOf(order.getRequestedDeliveryTime()));
-                orderStmt.setBigDecimal(6, order.getTotalBeforeTax());
-                orderStmt.setBigDecimal(7, order.getVat());
-                orderStmt.setBigDecimal(8, order.getTotalAfterTax());
+                BigDecimal totalBeforeTax = order.getTotalBeforeTax();
+                BigDecimal vat = order.getVat();
+                BigDecimal totalAfterTax = order.getTotalAfterTax();
+                BigDecimal loyaltyDiscount = order.getLoyaltyDiscount();
+                orderStmt.setBigDecimal(6, totalBeforeTax);
+                orderStmt.setBigDecimal(7, vat);
+                orderStmt.setBigDecimal(8, totalAfterTax);
                 if (order.getCouponId() != null) {
                     orderStmt.setInt(9, order.getCouponId());
                 } else {
                     orderStmt.setNull(9, Types.INTEGER);
                 }
-                orderStmt.setBigDecimal(10, order.getLoyaltyDiscount());
+                orderStmt.setBigDecimal(10, loyaltyDiscount);
                 
                 int rowsAffected = orderStmt.executeUpdate();
                 if (rowsAffected > 0) {
@@ -202,7 +205,7 @@ public class OrderDAO {
      * @param status the order status, or null for all statuses
      * @return list of orders
      */
-    public List<Order> getOrdersByCarrier(int carrierId, OrderStatus status) {
+    public List<Order> getOrdersByCarrier(int carrierId, Order.OrderStatus status) {
         List<Order> orders = new ArrayList<>();
         String sql = "SELECT * FROM orders WHERE carrier_id = ?";
         if (status != null) {
@@ -364,21 +367,24 @@ public class OrderDAO {
             order.setCarrierId(carrierId);
         }
         
-        order.setStatus(OrderStatus.valueOf(rs.getString("status")));
+        order.setStatus(Order.OrderStatus.valueOf(rs.getString("status")));
         
         Timestamp orderTime = rs.getTimestamp("order_time");
         if (orderTime != null) {
-            order.setOrderTime(orderTime.toLocalDateTime());
+            LocalDateTime orderDateTime = orderTime.toLocalDateTime();
+            order.setOrderTime(orderDateTime);
         }
         
         Timestamp reqTime = rs.getTimestamp("requested_delivery_time");
         if (reqTime != null) {
-            order.setRequestedDeliveryTime(reqTime.toLocalDateTime());
+            LocalDateTime reqDateTime = reqTime.toLocalDateTime();
+            order.setRequestedDeliveryTime(reqDateTime);
         }
         
         Timestamp delTime = rs.getTimestamp("delivered_time");
         if (delTime != null) {
-            order.setDeliveredTime(delTime.toLocalDateTime());
+            LocalDateTime delDateTime = delTime.toLocalDateTime();
+            order.setDeliveredTime(delDateTime);
         }
         
         order.setTotalBeforeTax(rs.getBigDecimal("total_before_tax"));

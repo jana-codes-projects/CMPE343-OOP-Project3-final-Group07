@@ -1,9 +1,7 @@
 package com.example.demo.controllers;
 
 import com.example.demo.dao.OrderDAO;
-import com.example.demo.dao.ProductDAO;
 import com.example.demo.models.Order;
-import com.example.demo.models.OrderStatus;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -30,12 +28,10 @@ public class CarrierController extends BaseController {
     @FXML private Button logoutButton;
     
     private OrderDAO orderDAO;
-    private ProductDAO productDAO;
     
     @FXML
     public void initialize() {
         orderDAO = new OrderDAO();
-        productDAO = new ProductDAO();
         loadOrders();
     }
     
@@ -71,7 +67,7 @@ public class CarrierController extends BaseController {
         myOrdersContainer.getChildren().clear();
         if (currentUser == null) return;
         
-        List<Order> orders = orderDAO.getOrdersByCarrier(currentUser.getId(), OrderStatus.ASSIGNED);
+        List<Order> orders = orderDAO.getOrdersByCarrier(currentUser.getId(), Order.OrderStatus.ASSIGNED);
         
         for (Order order : orders) {
             VBox orderBox = createOrderDisplay(order);
@@ -86,7 +82,7 @@ public class CarrierController extends BaseController {
         completedOrdersContainer.getChildren().clear();
         if (currentUser == null) return;
         
-        List<Order> orders = orderDAO.getOrdersByCarrier(currentUser.getId(), OrderStatus.DELIVERED);
+        List<Order> orders = orderDAO.getOrdersByCarrier(currentUser.getId(), Order.OrderStatus.DELIVERED);
         
         for (Order order : orders) {
             VBox orderBox = createOrderDisplay(order);

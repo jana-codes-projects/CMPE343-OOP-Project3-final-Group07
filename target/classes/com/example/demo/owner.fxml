@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml" fx:controller="com.example.demo.controllers.OwnerController">
+   <top>
+      <HBox spacing="10.0" style="-fx-padding: 10;">
+         <Label text="Owner Dashboard" style="-fx-font-weight: bold; -fx-font-size: 16px;"/>
+         <Region HBox.hgrow="ALWAYS"/>
+         <Button fx:id="logoutButton" text="Logout" onAction="#handleLogout"/>
+      </HBox>
+   </top>
+   <center>
+      <TabPane>
+         <tabs>
+            <Tab text="Products">
+               <VBox spacing="10.0" style="-fx-padding: 10;">
+                  <HBox spacing="10.0">
+                     <Button text="Add Product" onAction="#handleAddProduct"/>
+                     <Button text="Refresh" onAction="#handleRefreshProducts"/>
+                  </HBox>
+                  <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS">
+                     <VBox fx:id="productsContainer" spacing="5.0">
+                        <!-- Products will be loaded dynamically -->
+                     </VBox>
+                  </ScrollPane>
+               </VBox>
+            </Tab>
+            <Tab text="Carriers">
+               <VBox spacing="10.0" style="-fx-padding: 10;">
+                  <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS">
+                     <VBox fx:id="carriersContainer" spacing="5.0">
+                        <!-- Carriers will be loaded dynamically -->
+                     </VBox>
+                  </ScrollPane>
+               </VBox>
+            </Tab>
+            <Tab text="Orders">
+               <ScrollPane fitToWidth="true">
+                  <VBox fx:id="ordersContainer" spacing="5.0" style="-fx-padding: 10;">
+                     <!-- Orders will be loaded dynamically -->
+                  </VBox>
+               </ScrollPane>
+            </Tab>
+            <Tab text="Messages">
+               <ScrollPane fitToWidth="true">
+                  <VBox fx:id="messagesContainer" spacing="5.0" style="-fx-padding: 10;">
+                     <!-- Messages will be loaded dynamically -->
+                  </VBox>
+               </ScrollPane>
+            </Tab>
+            <Tab text="Reports">
+               <VBox spacing="10.0" style="-fx-padding: 10;">
+                  <Label text="Reports - Charts by product/time/revenue" style="-fx-font-size: 14px;"/>
+                  <Button text="Generate Report" onAction="#handleGenerateReport"/>
+               </VBox>
+            </Tab>
+         </tabs>
+      </TabPane>
+   </center>
+</BorderPane>
+

@@ -1,6 +1,6 @@
 module com.example.demo {
-    requires javafx.controls;
-    requires javafx.fxml;
+    requires transitive javafx.controls;
+    requires transitive javafx.fxml;
     requires javafx.web;
 
     requires org.controlsfx.controls;
@@ -10,7 +10,7 @@ module com.example.demo {
     requires org.kordamp.bootstrapfx.core;
     requires eu.hansolo.tilesfx;
     requires com.almasb.fxgl.all;
-    requires java.sql;
+    requires transitive java.sql;
     requires org.apache.pdfbox;
 
     opens com.example.demo to javafx.fxml;

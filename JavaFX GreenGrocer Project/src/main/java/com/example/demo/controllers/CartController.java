@@ -4,8 +4,6 @@ import com.example.demo.dao.*;
 import com.example.demo.models.*;
 import com.example.demo.services.InvoiceService;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;

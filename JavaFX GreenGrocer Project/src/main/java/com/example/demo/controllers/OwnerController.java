@@ -9,6 +9,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
@@ -32,14 +33,12 @@ public class OwnerController extends BaseController {
     private ProductDAO productDAO;
     private UserDAO userDAO;
     private OrderDAO orderDAO;
-    private MessageDAO messageDAO;
     
     @FXML
     public void initialize() {
         productDAO = new ProductDAO();
         userDAO = new UserDAO();
         orderDAO = new OrderDAO();
-        messageDAO = new MessageDAO();
         loadAllData();
     }
     

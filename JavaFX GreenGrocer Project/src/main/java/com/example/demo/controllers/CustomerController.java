@@ -13,9 +13,7 @@ import javafx.stage.Stage;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Controller for the Customer UI.
@@ -30,15 +28,14 @@ public class CustomerController extends BaseController {
     @FXML private VBox vegetablesContainer;
     @FXML private VBox fruitsContainer;
     @FXML private Button cartButton;
+    @FXML private Button logoutButton;
     
     private ProductDAO productDAO;
-    private OrderDAO orderDAO;
     private List<CartItem> cart;
     
     @FXML
     public void initialize() {
         productDAO = new ProductDAO();
-        orderDAO = new OrderDAO();
         cart = new ArrayList<>();
         loadProducts();
     }
@@ -61,32 +58,37 @@ public class CustomerController extends BaseController {
         List<Product> products = productDAO.getAvailableProducts(type);
         
         for (Product product : products) {
-            HBox productRow = new HBox(10);
-            productRow.setStyle("-fx-padding: 5; -fx-border-color: lightgray; -fx-border-width: 1;");
-            
-            Label nameLabel = new Label(product.getName());
-            nameLabel.setPrefWidth(150);
-            
-            Label priceLabel = new Label(formatPrice(product.getEffectivePrice()));
-            priceLabel.setPrefWidth(100);
-            if (product.isLowStock()) {
-                priceLabel.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
-            }
-            
-            Label stockLabel = new Label("Stock: " + product.getStockKg() + " kg");
-            stockLabel.setPrefWidth(100);
-            
-            TextField quantityField = new TextField();
-            quantityField.setPromptText("kg");
-            quantityField.setPrefWidth(80);
-            
-            Button addButton = new Button("Add to Cart");
-            Product finalProduct = product; // final variable for lambda
-            addButton.setOnAction(e -> handleAddToCart(finalProduct, quantityField));
-            
-            productRow.getChildren().addAll(nameLabel, priceLabel, stockLabel, quantityField, addButton);
+            HBox productRow = createProductRow(product);
             container.getChildren().add(productRow);
         }
+    }
+    
+    private HBox createProductRow(Product product) {
+        HBox productRow = new HBox(10);
+        productRow.setStyle("-fx-padding: 5; -fx-border-color: lightgray; -fx-border-width: 1;");
+        
+        Label nameLabel = new Label(product.getName());
+        nameLabel.setPrefWidth(150);
+        
+        Label priceLabel = new Label(formatPrice(product.getEffectivePrice()));
+        priceLabel.setPrefWidth(100);
+        if (product.isLowStock()) {
+            priceLabel.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
+        }
+        
+        Label stockLabel = new Label("Stock: " + product.getStockKg() + " kg");
+        stockLabel.setPrefWidth(100);
+        
+        TextField quantityField = new TextField();
+        quantityField.setPromptText("kg");
+        quantityField.setPrefWidth(80);
+        
+        Button addButton = new Button("Add to Cart");
+        Product finalProduct = product; // final variable for lambda
+        addButton.setOnAction(e -> handleAddToCart(finalProduct, quantityField));
+        
+        productRow.getChildren().addAll(nameLabel, priceLabel, stockLabel, quantityField, addButton);
+        return productRow;
     }
     
     @FXML
@@ -157,15 +159,19 @@ public class CustomerController extends BaseController {
         }
         
         List<Product> results = productDAO.searchProducts(keyword);
-        // Filter and display results
-        vegetablesContainer.getChildren().clear();
-        fruitsContainer.getChildren().clear();
         
-        for (Product product : results) {
-            if (product.getStockKg().compareTo(BigDecimal.ZERO) <= 0) continue;
-            
-            VBox container = product.getType() == Product.ProductType.VEG ? vegetablesContainer : fruitsContainer;
-            // Add product display (similar to loadProductsByType)
+        if (results.isEmpty()) {
+            loadProducts(); // If no results, show all products
+        } else {
+            // Display filtered search results
+            vegetablesContainer.getChildren().clear();
+            fruitsContainer.getChildren().clear();
+            for (Product product : results) {
+                if (product.getStockKg().compareTo(BigDecimal.ZERO) <= 0) continue;
+                VBox container = product.getType() == Product.ProductType.VEG ? vegetablesContainer : fruitsContainer;
+                HBox productRow = createProductRow(product);
+                container.getChildren().add(productRow);
+            }
         }
     }
     

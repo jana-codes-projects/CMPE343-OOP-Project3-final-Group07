@@ -156,7 +156,8 @@ public class RatingDAO {
         
         Timestamp createdAt = rs.getTimestamp("created_at");
         if (createdAt != null) {
-            rating.setCreatedAt(createdAt.toLocalDateTime());
+            LocalDateTime createdDateTime = createdAt.toLocalDateTime();
+            rating.setCreatedAt(createdDateTime);
         }
         
         return rating;
