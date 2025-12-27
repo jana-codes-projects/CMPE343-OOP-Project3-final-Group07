@@ -1,3 +1,5 @@
+/*
+
 package com.example.demo;
 
 import javafx.application.Application;
@@ -17,3 +19,5 @@ public class HelloApplication extends Application {
         stage.show();
     }
 }
+
+ */

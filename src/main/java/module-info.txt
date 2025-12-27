@@ -11,6 +11,12 @@ module com.example.demo {
     requires eu.hansolo.tilesfx;
     requires com.almasb.fxgl.all;
 
+    requires java.sql;
+
     opens com.example.demo to javafx.fxml;
+
+    opens com.example.demo.models to javafx.base;
+
     exports com.example.demo;
+    exports com.example.demo.models;
 }

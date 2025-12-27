@@ -1,0 +1,11 @@
+main\java\com\example\demo\database\DatabaseManager.class
+main\java\com\example\demo\models\CartItem.class
+main\java\com\example\demo\models\Product.class
+main\java\com\example\demo\services\ValidationService.class
+main\java\com\example\demo\services\OrderService.class
+main\java\com\example\demo\db\DBConnection.class
+main\java\com\example\demo\dao\UserDAO.class
+main\java\com\example\demo\models\User.class
+main\java\com\example\demo\dao\ProductDAO.class
+main\java\com\example\demo\dao\OrderDAO.class
+main\java\com\example\demo\DBTest.class
