@@ -13,7 +13,8 @@ import java.sql.SQLException;
  */
 public class DatabaseAdapter {
     private static final String DB_URL = "jdbc:mysql://localhost:3306/greengrocer_db";
-    private static final String DB_USER = "myuser@localhost";
+    // Database connection credentials as specified in project requirements
+    private static final String DB_USER = "myuser";
     private static final String DB_PASSWORD = "1234";
     
     private static DatabaseAdapter instance;

@@ -29,18 +29,50 @@
          <TabPane fx:id="productTabs">
             <tabs>
                <Tab text="Vegetables">
-                  <ScrollPane fitToWidth="true">
-                     <VBox fx:id="vegetablesContainer" spacing="10.0" style="-fx-padding: 10;">
-                        <!-- Vegetables will be loaded dynamically -->
-                     </VBox>
-                  </ScrollPane>
+                  <VBox spacing="10.0" style="-fx-padding: 10;">
+                     <SplitPane dividerPositions="0.4" VBox.vgrow="ALWAYS">
+                        <VBox>
+                           <Label text="Product List" style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-padding: 5;"/>
+                           <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS">
+                              <VBox fx:id="vegetablesListContainer" spacing="3.0" style="-fx-padding: 5;">
+                                 <!-- Vegetable list items will be loaded dynamically -->
+                              </VBox>
+                           </ScrollPane>
+                        </VBox>
+                        <VBox>
+                           <Label text="Product Details" style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-padding: 5;"/>
+                           <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS">
+                              <VBox fx:id="vegetablesDetailContainer" spacing="10.0" style="-fx-padding: 10;">
+                                 <Label text="Select a product from the list to view details and add to cart" 
+                                        style="-fx-font-size: 14px; -fx-text-fill: gray; -fx-padding: 20;"/>
+                              </VBox>
+                           </ScrollPane>
+                        </VBox>
+                     </SplitPane>
+                  </VBox>
                </Tab>
                <Tab text="Fruits">
-                  <ScrollPane fitToWidth="true">
-                     <VBox fx:id="fruitsContainer" spacing="10.0" style="-fx-padding: 10;">
-                        <!-- Fruits will be loaded dynamically -->
-                     </VBox>
-                  </ScrollPane>
+                  <VBox spacing="10.0" style="-fx-padding: 10;">
+                     <SplitPane dividerPositions="0.4" VBox.vgrow="ALWAYS">
+                        <VBox>
+                           <Label text="Product List" style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-padding: 5;"/>
+                           <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS">
+                              <VBox fx:id="fruitsListContainer" spacing="3.0" style="-fx-padding: 5;">
+                                 <!-- Fruit list items will be loaded dynamically -->
+                              </VBox>
+                           </ScrollPane>
+                        </VBox>
+                        <VBox>
+                           <Label text="Product Details" style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-padding: 5;"/>
+                           <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS">
+                              <VBox fx:id="fruitsDetailContainer" spacing="10.0" style="-fx-padding: 10;">
+                                 <Label text="Select a product from the list to view details and add to cart" 
+                                        style="-fx-font-size: 14px; -fx-text-fill: gray; -fx-padding: 20;"/>
+                              </VBox>
+                           </ScrollPane>
+                        </VBox>
+                     </SplitPane>
+                  </VBox>
                </Tab>
             </tabs>
          </TabPane>

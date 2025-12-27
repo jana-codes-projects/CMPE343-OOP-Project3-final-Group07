@@ -19,7 +19,8 @@ public class PasswordHasher {
     public static String hashPassword(String password) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] hashBytes = md.digest(password.getBytes());
+            // Use UTF-8 encoding to match MySQL SHA2() function behavior
+            byte[] hashBytes = md.digest(password.getBytes(java.nio.charset.StandardCharsets.UTF_8));
             return bytesToHex(hashBytes);
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException("SHA-256 algorithm not found", e);
@@ -48,8 +49,13 @@ public class PasswordHasher {
      * @return true if the password matches the hash
      */
     public static boolean verifyPassword(String password, String hash) {
+        if (password == null || hash == null) {
+            return false;
+        }
         String hashedPassword = hashPassword(password);
-        return hashedPassword.equalsIgnoreCase(hash);
+        // Trim both hashes and compare case-insensitively
+        // MySQL SHA2() returns uppercase hex, Java returns lowercase
+        return hashedPassword.trim().equalsIgnoreCase(hash.trim());
     }
 }
 

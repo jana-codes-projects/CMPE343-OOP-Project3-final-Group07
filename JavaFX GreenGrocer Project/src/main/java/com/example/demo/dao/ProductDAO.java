@@ -237,6 +237,29 @@ public class ProductDAO {
         }
         return false;
     }
+    
+    /**
+     * Restores product stock (adds quantity back to stock).
+     * Used when items are removed from cart or order is cancelled.
+     * 
+     * @param productId the product ID
+     * @param quantityKg the quantity to add back to stock
+     * @return true if update is successful
+     */
+    public boolean restoreStock(int productId, BigDecimal quantityKg) {
+        String sql = "UPDATE products SET stock_kg = stock_kg + ? WHERE id = ?";
+        try (Connection conn = dbAdapter.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            
+            stmt.setBigDecimal(1, quantityKg);
+            stmt.setInt(2, productId);
+            
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
 
     /**
      * Maps a ResultSet row to a Product object.

@@ -9,6 +9,7 @@
       <HBox spacing="10.0" style="-fx-padding: 10;">
          <Label fx:id="usernameLabel" text="Carrier: " style="-fx-font-weight: bold;"/>
          <Region HBox.hgrow="ALWAYS"/>
+         <Button text="Refresh" onAction="#handleRefresh"/>
          <Button fx:id="logoutButton" text="Logout" onAction="#handleLogout"/>
       </HBox>
    </top>
@@ -16,25 +17,73 @@
       <TabPane>
          <tabs>
             <Tab text="Available Orders">
-               <ScrollPane fitToWidth="true">
-                  <VBox fx:id="availableOrdersContainer" spacing="10.0" style="-fx-padding: 10;">
-                     <!-- Available orders will be loaded dynamically -->
-                  </VBox>
-               </ScrollPane>
+               <VBox spacing="10.0" style="-fx-padding: 10;">
+                  <SplitPane dividerPositions="0.4" VBox.vgrow="ALWAYS">
+                     <VBox>
+                        <Label text="Order List" style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-padding: 5;"/>
+                        <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS">
+                           <VBox fx:id="availableOrdersListContainer" spacing="3.0" style="-fx-padding: 5;">
+                              <!-- Available order list items will be loaded dynamically -->
+                           </VBox>
+                        </ScrollPane>
+                     </VBox>
+                     <VBox>
+                        <Label text="Order Details" style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-padding: 5;"/>
+                        <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS">
+                           <VBox fx:id="availableOrderDetailContainer" spacing="10.0" style="-fx-padding: 10;">
+                              <Label text="Select an order from the list to view details" 
+                                     style="-fx-font-size: 14px; -fx-text-fill: gray; -fx-padding: 20;"/>
+                           </VBox>
+                        </ScrollPane>
+                     </VBox>
+                  </SplitPane>
+               </VBox>
             </Tab>
             <Tab text="My Orders">
-               <ScrollPane fitToWidth="true">
-                  <VBox fx:id="myOrdersContainer" spacing="10.0" style="-fx-padding: 10;">
-                     <!-- My orders will be loaded dynamically -->
-                  </VBox>
-               </ScrollPane>
+               <VBox spacing="10.0" style="-fx-padding: 10;">
+                  <SplitPane dividerPositions="0.4" VBox.vgrow="ALWAYS">
+                     <VBox>
+                        <Label text="Order List" style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-padding: 5;"/>
+                        <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS">
+                           <VBox fx:id="myOrdersListContainer" spacing="3.0" style="-fx-padding: 5;">
+                              <!-- My order list items will be loaded dynamically -->
+                           </VBox>
+                        </ScrollPane>
+                     </VBox>
+                     <VBox>
+                        <Label text="Order Details" style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-padding: 5;"/>
+                        <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS">
+                           <VBox fx:id="myOrderDetailContainer" spacing="10.0" style="-fx-padding: 10;">
+                              <Label text="Select an order from the list to view details" 
+                                     style="-fx-font-size: 14px; -fx-text-fill: gray; -fx-padding: 20;"/>
+                           </VBox>
+                        </ScrollPane>
+                     </VBox>
+                  </SplitPane>
+               </VBox>
             </Tab>
             <Tab text="Completed Orders">
-               <ScrollPane fitToWidth="true">
-                  <VBox fx:id="completedOrdersContainer" spacing="10.0" style="-fx-padding: 10;">
-                     <!-- Completed orders will be loaded dynamically -->
-                  </VBox>
-               </ScrollPane>
+               <VBox spacing="10.0" style="-fx-padding: 10;">
+                  <SplitPane dividerPositions="0.4" VBox.vgrow="ALWAYS">
+                     <VBox>
+                        <Label text="Order List" style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-padding: 5;"/>
+                        <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS">
+                           <VBox fx:id="completedOrdersListContainer" spacing="3.0" style="-fx-padding: 5;">
+                              <!-- Completed order list items will be loaded dynamically -->
+                           </VBox>
+                        </ScrollPane>
+                     </VBox>
+                     <VBox>
+                        <Label text="Order Details" style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-padding: 5;"/>
+                        <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS">
+                           <VBox fx:id="completedOrderDetailContainer" spacing="10.0" style="-fx-padding: 10;">
+                              <Label text="Select an order from the list to view details" 
+                                     style="-fx-font-size: 14px; -fx-text-fill: gray; -fx-padding: 20;"/>
+                           </VBox>
+                        </ScrollPane>
+                     </VBox>
+                  </SplitPane>
+               </VBox>
             </Tab>
          </tabs>
       </TabPane>

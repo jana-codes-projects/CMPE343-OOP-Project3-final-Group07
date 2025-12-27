@@ -21,35 +21,103 @@
                      <Button text="Add Product" onAction="#handleAddProduct"/>
                      <Button text="Refresh" onAction="#handleRefreshProducts"/>
                   </HBox>
-                  <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS">
-                     <VBox fx:id="productsContainer" spacing="5.0">
-                        <!-- Products will be loaded dynamically -->
+                  <SplitPane dividerPositions="0.4" VBox.vgrow="ALWAYS">
+                     <VBox>
+                        <Label text="Product List" style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-padding: 5;"/>
+                        <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS">
+                           <VBox fx:id="productsListContainer" spacing="3.0" style="-fx-padding: 5;">
+                              <!-- Product list items will be loaded dynamically -->
+                           </VBox>
+                        </ScrollPane>
                      </VBox>
-                  </ScrollPane>
+                     <VBox>
+                        <Label text="Product Details" style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-padding: 5;"/>
+                        <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS">
+                           <VBox fx:id="productDetailContainer" spacing="10.0" style="-fx-padding: 10;">
+                              <Label text="Select a product from the list to view/edit details" 
+                                     style="-fx-font-size: 14px; -fx-text-fill: gray; -fx-padding: 20;"/>
+                           </VBox>
+                        </ScrollPane>
+                     </VBox>
+                  </SplitPane>
                </VBox>
             </Tab>
             <Tab text="Carriers">
                <VBox spacing="10.0" style="-fx-padding: 10;">
-                  <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS">
-                     <VBox fx:id="carriersContainer" spacing="5.0">
-                        <!-- Carriers will be loaded dynamically -->
+                  <SplitPane dividerPositions="0.35" VBox.vgrow="ALWAYS">
+                     <VBox>
+                        <Label text="Carrier List" style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-padding: 5;"/>
+                        <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS">
+                           <VBox fx:id="carriersListContainer" spacing="3.0" style="-fx-padding: 5;">
+                              <!-- Carrier list items will be loaded dynamically -->
+                           </VBox>
+                        </ScrollPane>
                      </VBox>
-                  </ScrollPane>
+                     <VBox>
+                        <Label text="Carrier Details" style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-padding: 5;"/>
+                        <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS">
+                           <VBox fx:id="carrierDetailContainer" spacing="10.0" style="-fx-padding: 10;">
+                              <Label text="Select a carrier from the list to view details" 
+                                     style="-fx-font-size: 14px; -fx-text-fill: gray; -fx-padding: 20;"/>
+                           </VBox>
+                        </ScrollPane>
+                     </VBox>
+                  </SplitPane>
                </VBox>
             </Tab>
             <Tab text="Orders">
-               <ScrollPane fitToWidth="true">
-                  <VBox fx:id="ordersContainer" spacing="5.0" style="-fx-padding: 10;">
-                     <!-- Orders will be loaded dynamically -->
-                  </VBox>
-               </ScrollPane>
+               <VBox spacing="10.0" style="-fx-padding: 10;">
+                  <HBox spacing="10.0">
+                     <Label fx:id="ordersCountLabel" text="All Orders" style="-fx-font-weight: bold; -fx-font-size: 16px;"/>
+                     <Region HBox.hgrow="ALWAYS"/>
+                     <Button text="Refresh" onAction="#handleRefreshOrders"/>
+                  </HBox>
+                  <SplitPane dividerPositions="0.4" VBox.vgrow="ALWAYS">
+                     <VBox>
+                        <Label text="Order List" style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-padding: 5;"/>
+                        <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED">
+                           <VBox fx:id="ordersListContainer" spacing="3.0" style="-fx-padding: 5;">
+                              <!-- Order list items will be loaded dynamically -->
+                           </VBox>
+                        </ScrollPane>
+                     </VBox>
+                     <VBox>
+                        <Label text="Order Details" style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-padding: 5;"/>
+                        <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED">
+                           <VBox fx:id="orderDetailContainer" spacing="10.0" style="-fx-padding: 10;">
+                              <Label text="Select an order from the list to view details" 
+                                     style="-fx-font-size: 14px; -fx-text-fill: gray; -fx-padding: 20;"/>
+                           </VBox>
+                        </ScrollPane>
+                     </VBox>
+                  </SplitPane>
+               </VBox>
             </Tab>
             <Tab text="Messages">
-               <ScrollPane fitToWidth="true">
-                  <VBox fx:id="messagesContainer" spacing="5.0" style="-fx-padding: 10;">
-                     <!-- Messages will be loaded dynamically -->
-                  </VBox>
-               </ScrollPane>
+               <VBox spacing="10.0" style="-fx-padding: 10;">
+                  <HBox spacing="10.0">
+                     <Button text="Refresh" onAction="#handleRefreshMessages"/>
+                  </HBox>
+                  <SplitPane dividerPositions="0.35" VBox.vgrow="ALWAYS">
+                     <VBox>
+                        <Label text="Message List" style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-padding: 5;"/>
+                        <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS">
+                           <VBox fx:id="messagesListContainer" spacing="3.0" style="-fx-padding: 5;">
+                              <!-- Message list items will be loaded dynamically -->
+                           </VBox>
+                        </ScrollPane>
+                     </VBox>
+                     <VBox>
+                        <Label text="Message Details" style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-padding: 5;"/>
+                        <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS">
+                           <VBox fx:id="messageDetailContainer" spacing="10.0" style="-fx-padding: 10;">
+                              <Label text="Select a message from the list to view details" 
+                                     style="-fx-font-size: 14px; -fx-text-fill: gray; -fx-padding: 20;"/>
+                           </VBox>
+                        </ScrollPane>
+                     </VBox>
+                  </SplitPane>
+               </VBox>
             </Tab>
             <Tab text="Reports">
                <VBox spacing="10.0" style="-fx-padding: 10;">

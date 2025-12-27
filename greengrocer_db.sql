@@ -29,7 +29,7 @@ CREATE TABLE products (
   price         DECIMAL(10,2) NOT NULL,
   stock_kg      DECIMAL(10,2) NOT NULL,
   threshold_kg  DECIMAL(10,2) NOT NULL,
-  image_blob    LONGBLOB,
+  image_blob    LONGBLOB COMMENT 'Product image stored as Binary Large Object (BLOB)',
   is_active     TINYINT(1) NOT NULL DEFAULT 1,
   created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
@@ -81,8 +81,10 @@ CREATE TABLE messages (
   id          INT AUTO_INCREMENT PRIMARY KEY,
   customer_id INT NOT NULL,
   owner_id    INT NOT NULL,
-  text_clob   LONGTEXT NOT NULL,
+  text_clob   LONGTEXT NOT NULL COMMENT 'Message text stored as Character Large Object (CLOB)',
   created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  reply_text  LONGTEXT NULL COMMENT 'Reply text stored as Character Large Object (CLOB)',
+  replied_at  TIMESTAMP NULL,
   CONSTRAINT fk_msg_customer FOREIGN KEY (customer_id) REFERENCES users(id),
   CONSTRAINT fk_msg_owner    FOREIGN KEY (owner_id)    REFERENCES users(id)
 ) ENGINE=InnoDB;
@@ -102,9 +104,11 @@ CREATE TABLE ratings (
 ) ENGINE=InnoDB;
 
 CREATE TABLE invoices (
-  order_id   INT PRIMARY KEY,
-  pdf_blob   LONGBLOB NOT NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  order_id      INT PRIMARY KEY,
+  pdf_blob      LONGBLOB NOT NULL COMMENT 'PDF invoice stored as Binary Large Object (BLOB)',
+  invoice_text  LONGTEXT NULL COMMENT 'Invoice/transaction log text stored as Character Large Object (CLOB)',
+  transaction_log LONGTEXT NULL COMMENT 'Transaction log details stored as Character Large Object (CLOB)',
+  created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_inv_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 

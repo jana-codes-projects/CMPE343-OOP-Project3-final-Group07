@@ -8,9 +8,21 @@ mysql -u myuser -p1234 < greengrocer_db.sql
 ```
 
 ### 2. Build & Run
+
+**Option A: Using Maven (if installed):**
+```bash
+mvn clean compile javafx:run
+```
+
+**Option B: Using Maven Wrapper (no installation needed):**
 ```bash
 .\mvnw.cmd clean compile javafx:run
 ```
+
+**Option C: In IntelliJ IDEA:**
+1. Open Maven tool window (right sidebar)
+2. Expand: `demo` → `Plugins` → `javafx`
+3. Double-click `javafx:run`
 
 ### 3. Test Login
 Use these credentials to test each role:

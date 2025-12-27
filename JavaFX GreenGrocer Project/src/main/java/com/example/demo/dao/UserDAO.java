@@ -44,11 +44,17 @@ public class UserDAO {
             
             if (rs.next()) {
                 String storedHash = rs.getString("password_hash");
-                if (PasswordHasher.verifyPassword(password, storedHash)) {
-                    return mapResultSetToUser(rs);
+                // Trim whitespace since password_hash is CHAR(64) and might have padding
+                if (storedHash != null) {
+                    storedHash = storedHash.trim();
+                    // MySQL SHA2() returns uppercase hex, ensure consistent comparison
+                    if (PasswordHasher.verifyPassword(password, storedHash)) {
+                        return mapResultSetToUser(rs);
+                    }
                 }
             }
         } catch (SQLException e) {
+            System.err.println("Database error during authentication: " + e.getMessage());
             e.printStackTrace();
         }
         return null;

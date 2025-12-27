@@ -37,13 +37,15 @@ public class CartController extends BaseController {
     private List<CartItem> cart;
     private int customerId;
     private Coupon appliedCoupon;
-    private BigDecimal loyaltyDiscount;
+    private BigDecimal loyaltyDiscount = BigDecimal.ZERO;
     
     private OrderDAO orderDAO;
     private CouponDAO couponDAO;
     private UserDAO userDAO;
     private InvoiceService invoiceService;
     private InvoiceDAO invoiceDAO;
+    private ProductDAO productDAO;
+    private Runnable onCartChangeCallback;
     
     @FXML
     public void initialize() {
@@ -52,6 +54,7 @@ public class CartController extends BaseController {
         userDAO = new UserDAO();
         invoiceService = new InvoiceService();
         invoiceDAO = new InvoiceDAO();
+        productDAO = new ProductDAO();
         
         deliveryDatePicker.setValue(LocalDate.now().plusDays(1));
         deliveryTimeField.setText("10:00");
@@ -62,36 +65,59 @@ public class CartController extends BaseController {
         updateCartDisplay();
     }
     
+    public void setOnCartChangeCallback(Runnable callback) {
+        this.onCartChangeCallback = callback;
+    }
+    
     public void setCustomerId(int customerId) {
         this.customerId = customerId;
         // Calculate loyalty discount
-        Customer customer = userDAO.getCustomerById(customerId);
-        if (customer != null) {
-            BigDecimal cartTotal = calculateSubtotal();
-            loyaltyDiscount = BigDecimal.valueOf(customer.calculateLoyaltyDiscount(cartTotal.doubleValue()));
+        if (cart != null && !cart.isEmpty()) {
+            Customer customer = userDAO.getCustomerById(customerId);
+            if (customer != null) {
+                BigDecimal cartTotal = calculateSubtotal();
+                if (cartTotal != null) {
+                    loyaltyDiscount = BigDecimal.valueOf(customer.calculateLoyaltyDiscount(cartTotal.doubleValue()));
+                } else {
+                    loyaltyDiscount = BigDecimal.ZERO;
+                }
+            } else {
+                loyaltyDiscount = BigDecimal.ZERO;
+            }
+            updateTotals();
         } else {
             loyaltyDiscount = BigDecimal.ZERO;
         }
-        updateTotals();
     }
     
     private void updateCartDisplay() {
         cartItemsContainer.getChildren().clear();
         
+        if (cart == null || cart.isEmpty()) {
+            return;
+        }
+        
         for (CartItem item : cart) {
+            if (item == null || item.getProduct() == null) {
+                continue; // Skip invalid items
+            }
+            
             HBox itemRow = new HBox(10);
             itemRow.setStyle("-fx-padding: 5;");
             
             Label nameLabel = new Label(item.getProduct().getName());
             nameLabel.setPrefWidth(200);
             
-            Label quantityLabel = new Label(item.getQuantityKg() + " kg");
+            BigDecimal quantity = item.getQuantityKg();
+            Label quantityLabel = new Label((quantity != null ? quantity : BigDecimal.ZERO) + " kg");
             quantityLabel.setPrefWidth(100);
             
-            Label priceLabel = new Label(formatPrice(item.getUnitPrice()));
+            BigDecimal unitPrice = item.getUnitPrice();
+            Label priceLabel = new Label(formatPrice(unitPrice != null ? unitPrice : BigDecimal.ZERO));
             priceLabel.setPrefWidth(100);
             
-            Label totalLabel = new Label(formatPrice(item.getLineTotal()));
+            BigDecimal lineTotal = item.getLineTotal();
+            Label totalLabel = new Label(formatPrice(lineTotal != null ? lineTotal : BigDecimal.ZERO));
             totalLabel.setPrefWidth(100);
             
             Button removeButton = new Button("Remove");
@@ -105,9 +131,22 @@ public class CartController extends BaseController {
     }
     
     private void updateTotals() {
+        if (cart == null || cart.isEmpty()) {
+            subtotalLabel.setText("Subtotal: 0.00 TL");
+            vatLabel.setText("VAT (20%): 0.00 TL");
+            discountLabel.setText("Discount: 0.00 TL");
+            discountLabel.setVisible(false);
+            totalLabel.setText("Total: 0.00 TL");
+            return;
+        }
+        
         BigDecimal subtotal = calculateSubtotal();
+        if (subtotal == null) {
+            subtotal = BigDecimal.ZERO;
+        }
+        
         BigDecimal vat = subtotal.multiply(Order.getVatRate());
-        BigDecimal discount = loyaltyDiscount;
+        BigDecimal discount = (loyaltyDiscount != null) ? loyaltyDiscount : BigDecimal.ZERO;
         
         if (appliedCoupon != null) {
             discount = discount.add(appliedCoupon.calculateDiscount(subtotal.add(vat)));
@@ -126,15 +165,32 @@ public class CartController extends BaseController {
     }
     
     private BigDecimal calculateSubtotal() {
+        if (cart == null || cart.isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+        
         return cart.stream()
-                .map(CartItem::getLineTotal)
+                .map(item -> {
+                    BigDecimal lineTotal = item.getLineTotal();
+                    return (lineTotal != null) ? lineTotal : BigDecimal.ZERO;
+                })
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
     
     @FXML
     private void handleRemoveItem(CartItem item) {
+        // Restore stock when removing from cart
+        if (item != null && item.getProduct() != null) {
+            productDAO.restoreStock(item.getProduct().getId(), item.getQuantityKg());
+        }
+        
         cart.remove(item);
         updateCartDisplay();
+        
+        // Notify CustomerController to refresh product display
+        if (onCartChangeCallback != null) {
+            onCartChangeCallback.run();
+        }
     }
     
     @FXML
@@ -225,11 +281,20 @@ public class CartController extends BaseController {
             Order createdOrder = orderDAO.createOrder(order);
             if (createdOrder != null) {
                 // Generate and save invoice
-                byte[] invoicePDF = invoiceService.generateInvoicePDF(createdOrder);
-                invoiceDAO.saveInvoice(createdOrder.getId(), invoicePDF);
+                try {
+                    byte[] invoicePDF = invoiceService.generateInvoicePDF(createdOrder);
+                    invoiceDAO.saveInvoice(createdOrder.getId(), invoicePDF);
+                } catch (Exception ex) {
+                    System.err.println("Failed to generate invoice: " + ex.getMessage());
+                    ex.printStackTrace();
+                    // Continue even if invoice generation fails
+                }
                 
                 showAlert(Alert.AlertType.INFORMATION, "Order Placed", 
                         "Your order has been placed successfully! Order ID: " + createdOrder.getId());
+                
+                // Clear cart after successful checkout (stock already decremented, no need to restore)
+                cart.clear();
                 
                 // Close cart window
                 ((Stage) checkoutButton.getScene().getWindow()).close();
@@ -244,10 +309,17 @@ public class CartController extends BaseController {
     
     @FXML
     private void handleContinueShopping() {
+        // Notify CustomerController to refresh product display before closing
+        if (onCartChangeCallback != null) {
+            onCartChangeCallback.run();
+        }
         ((Stage) checkoutButton.getScene().getWindow()).close();
     }
     
     private String formatPrice(BigDecimal price) {
+        if (price == null) {
+            return "0.00 TL";
+        }
         return String.format("%.2f TL", price.doubleValue());
     }
     
