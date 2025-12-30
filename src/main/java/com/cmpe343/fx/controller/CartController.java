@@ -12,6 +12,7 @@ import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
@@ -92,9 +93,33 @@ public class CartController {
         row.getStyleClass().add("cart-item");
         row.setAlignment(Pos.CENTER_LEFT);
 
-        // 1. Image Placeholder
-        Label img = new Label(item.getProduct().getName().substring(0, 1).toUpperCase());
-        img.getStyleClass().add("cart-item-image");
+        // 1. Image
+        Node imageNode;
+        if (item.getProduct().getImagePath() != null && !item.getProduct().getImagePath().isEmpty()) {
+            try {
+                String path = "/images/products/" + item.getProduct().getImagePath();
+                javafx.scene.image.ImageView iv = new javafx.scene.image.ImageView(
+                        new javafx.scene.image.Image(getClass().getResourceAsStream(path)));
+                iv.setFitWidth(50);
+                iv.setFitHeight(50);
+                iv.setPreserveRatio(true);
+                imageNode = iv;
+            } catch (Exception e) {
+                Label img = new Label(item.getProduct().getName().substring(0, 1).toUpperCase());
+                img.getStyleClass().add("cart-item-image");
+                imageNode = img;
+            }
+        } else {
+            Label img = new Label(item.getProduct().getName().substring(0, 1).toUpperCase());
+            img.getStyleClass().add("cart-item-image");
+            imageNode = img;
+        }
+
+        // Wrap in VBox for alignment if needed, or just add directly
+        // The original was just a Label. Let's wrap in a StackPane or VBox if we want
+        // to keep style class on wrapper
+        StackPane imgContainer = new StackPane(imageNode);
+        imgContainer.getStyleClass().add("cart-item-image-container"); // New class if needed, or just let it be
 
         // 2. Info
         VBox info = new VBox(4);
@@ -134,7 +159,7 @@ public class CartController {
                     ToastService.Position.BOTTOM_CENTER, Duration.seconds(1));
         });
 
-        row.getChildren().addAll(img, info, spacer, priceBox, removeBtn);
+        row.getChildren().addAll(imgContainer, info, spacer, priceBox, removeBtn);
         return row;
     }
 

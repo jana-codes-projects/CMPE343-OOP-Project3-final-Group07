@@ -79,9 +79,9 @@ public class CustomerController {
 
         for (Product p : filteredProducts) {
             Node card = createProductCard(p);
-            if ("Vegetable".equalsIgnoreCase(p.getType())) {
+            if (p.getType() == Product.ProductType.VEGETABLE) {
                 vegetablesGrid.getChildren().add(card);
-            } else if ("Fruit".equalsIgnoreCase(p.getType())) {
+            } else if (p.getType() == Product.ProductType.FRUIT) {
                 fruitsGrid.getChildren().add(card);
             } else {
                 // Default fallback
@@ -94,9 +94,33 @@ public class CustomerController {
         VBox card = new VBox(12);
         card.getStyleClass().add("product-card");
 
-        // Image Placeholder
-        Label img = new Label(p.getName().substring(0, 1).toUpperCase());
-        img.getStyleClass().add("product-image-placeholder");
+        // Image
+        Node imageNode;
+        if (p.getImagePath() != null && !p.getImagePath().isEmpty()) {
+            try {
+                String path = "/images/products/" + p.getImagePath();
+                javafx.scene.image.ImageView iv = new javafx.scene.image.ImageView(
+                        new javafx.scene.image.Image(getClass().getResourceAsStream(path)));
+                iv.setFitWidth(80);
+                iv.setFitHeight(80);
+                iv.setPreserveRatio(true);
+                imageNode = iv;
+            } catch (Exception e) {
+                // Fallback
+                Label img = new Label(p.getName().substring(0, 1).toUpperCase());
+                img.getStyleClass().add("product-image-placeholder");
+                imageNode = img;
+            }
+        } else {
+            Label img = new Label(p.getName().substring(0, 1).toUpperCase());
+            img.getStyleClass().add("product-image-placeholder");
+            imageNode = img;
+        }
+
+        // Wrapper for image to ensure centering and styling
+        VBox imgContainer = new VBox(imageNode);
+        imgContainer.setAlignment(Pos.CENTER);
+        imgContainer.getStyleClass().add("product-image-container");
 
         // Info
         Label nameLbl = new Label(p.getName());
@@ -123,7 +147,7 @@ public class CustomerController {
         HBox actions = new HBox(8, kgInput, addBtn);
         actions.setAlignment(Pos.CENTER);
 
-        card.getChildren().addAll(img, nameLbl, priceLbl, stockLbl, actions);
+        card.getChildren().addAll(imgContainer, nameLbl, priceLbl, stockLbl, actions);
         return card;
     }
 

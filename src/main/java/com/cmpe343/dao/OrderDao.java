@@ -27,26 +27,26 @@ public class OrderDao {
         Timestamp requestedTs = Timestamp.valueOf(requestedDelivery);
 
         String insertOrder = """
-            INSERT INTO orders
-              (customer_id, carrier_id, status, order_time, requested_delivery_time, delivered_time,
-               total_before_tax, vat, total_after_tax, coupon_id, loyalty_discount)
-            VALUES
-              (?, NULL, 'CREATED', ?, ?, NULL,
-               ?, ?, ?, NULL, 0)
-        """;
+                    INSERT INTO orders
+                      (customer_id, carrier_id, status, order_time, requested_delivery_time, delivered_time,
+                       total_before_tax, vat, total_after_tax, coupon_id, loyalty_discount)
+                    VALUES
+                      (?, NULL, 'CREATED', ?, ?, NULL,
+                       ?, ?, ?, NULL, 0)
+                """;
 
         // ✅ SENİN TABLOYA GÖRE:
         // kg ve unit_price_applied
         String insertItem = """
-            INSERT INTO order_items (order_id, product_id, kg, unit_price_applied, line_total)
-            VALUES (?, ?, ?, ?, ?)
-        """;
+                    INSERT INTO order_items (order_id, product_id, kg, unit_price_applied, line_total)
+                    VALUES (?, ?, ?, ?, ?)
+                """;
 
         String updateStock = """
-            UPDATE products
-            SET stock_kg = stock_kg - ?
-            WHERE id = ? AND stock_kg >= ?
-        """;
+                    UPDATE products
+                    SET stock_kg = stock_kg - ?
+                    WHERE id = ? AND stock_kg >= ?
+                """;
 
         try (Connection c = Db.getConnection()) {
             c.setAutoCommit(false);
@@ -104,6 +104,58 @@ public class OrderDao {
         } catch (Exception e) {
             throw new RuntimeException("Order oluşturulamadı: " + e.getMessage(), e);
         }
+    }
+
+    public List<com.cmpe343.model.Order> getAllOrders() {
+        List<com.cmpe343.model.Order> list = new java.util.ArrayList<>();
+        String sql = "SELECT * FROM orders ORDER BY order_time DESC";
+
+        try (Connection c = Db.getConnection();
+                Statement st = c.createStatement();
+                ResultSet rs = st.executeQuery(sql)) {
+
+            while (rs.next()) {
+                list.add(mapOrder(rs));
+            }
+
+        } catch (Exception e) {
+            System.err.println("Error fetching orders: " + e.getMessage());
+        }
+        return list;
+    }
+
+    private com.cmpe343.model.Order mapOrder(ResultSet rs) throws SQLException {
+        int id = rs.getInt("id");
+        int customerId = rs.getInt("customer_id");
+        int carrierId = rs.getInt("carrier_id");
+        if (rs.wasNull())
+            carrierId = 0; // or null logic
+        String statusStr = rs.getString("status");
+        com.cmpe343.model.Order.OrderStatus status = com.cmpe343.model.Order.OrderStatus.CREATED;
+        try {
+            status = com.cmpe343.model.Order.OrderStatus.valueOf(statusStr);
+        } catch (Exception e) {
+        }
+
+        LocalDateTime orderTime = rs.getTimestamp("order_time").toLocalDateTime();
+        LocalDateTime requested = rs.getTimestamp("requested_delivery_time") != null
+                ? rs.getTimestamp("requested_delivery_time").toLocalDateTime()
+                : null;
+        LocalDateTime delivered = rs.getTimestamp("delivered_time") != null
+                ? rs.getTimestamp("delivered_time").toLocalDateTime()
+                : null;
+
+        return new com.cmpe343.model.Order(
+                id,
+                customerId,
+                carrierId == 0 ? null : carrierId,
+                status,
+                orderTime,
+                requested,
+                delivered,
+                rs.getDouble("total_before_tax"),
+                rs.getDouble("vat"),
+                rs.getDouble("total_after_tax"));
     }
 
     private static double round2(double v) {

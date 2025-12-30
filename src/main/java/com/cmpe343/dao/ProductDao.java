@@ -15,14 +15,14 @@ public class ProductDao {
         List<Product> list = new ArrayList<>();
 
         String sql = """
-            SELECT id, name, type, price, stock_kg, threshold_kg
-            FROM products
-            ORDER BY name
-        """;
+                    SELECT id, name, type, price, stock_kg, threshold_kg, image_path
+                    FROM products
+                    ORDER BY name
+                """;
 
         try (Connection c = Db.getConnection();
-             Statement st = c.createStatement();
-             ResultSet rs = st.executeQuery(sql)) {
+                Statement st = c.createStatement();
+                ResultSet rs = st.executeQuery(sql)) {
 
             while (rs.next()) {
                 list.add(new Product(
@@ -31,8 +31,8 @@ public class ProductDao {
                         rs.getString("type"),
                         rs.getDouble("price"),
                         rs.getDouble("stock_kg"),
-                        rs.getDouble("threshold_kg")
-                ));
+                        rs.getDouble("threshold_kg"),
+                        rs.getString("image_path")));
             }
 
             return list;

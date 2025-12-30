@@ -108,7 +108,7 @@ public class CartDao {
     public CartLoadResult getCartItemsWithStockCheck(int userId) {
         CartLoadResult result = new CartLoadResult();
         String sql = """
-                    SELECT ci.product_id, ci.quantity_kg, p.name, p.type, p.price, p.stock_kg
+                    SELECT ci.product_id, ci.quantity_kg, p.name, p.type, p.price, p.stock_kg, p.image_path
                     FROM cart_items ci
                     JOIN products p ON ci.product_id = p.id
                     WHERE ci.user_id = ?
@@ -130,6 +130,7 @@ public class CartDao {
                     String pName = rs.getString("name");
                     String pType = rs.getString("type");
                     double pPrice = rs.getDouble("price");
+                    String pImagePath = rs.getString("image_path");
 
                     // STOCK CHECK
                     if (stockKg <= 0) {
@@ -156,7 +157,8 @@ public class CartDao {
                     }
 
                     // Build Product & CartItem
-                    Product p = new Product(pId, pName, pType, pPrice, stockKg);
+                    // Using 0 for threshold as it's not needed for cart display usually
+                    Product p = new Product(pId, pName, pType, pPrice, stockKg, 0, pImagePath);
                     CartItem item = new CartItem(p, cartKg);
                     result.items.add(item);
                 }

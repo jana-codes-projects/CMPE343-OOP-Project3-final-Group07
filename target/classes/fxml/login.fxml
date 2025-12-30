@@ -20,7 +20,7 @@
 
         <VBox spacing="6" alignment="CENTER_LEFT">
             <Label text="Welcome back" styleClass="h1"/>
-            <Label text="Sign in to continue to Gr7Project3" styleClass="sub"/>
+            <Label text="Sign in to continue to GreenGrocer" styleClass="sub"/>
         </VBox>
 
         <VBox spacing="10">
