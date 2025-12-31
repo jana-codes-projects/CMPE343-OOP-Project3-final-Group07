@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+<?import java.lang.String?>
+
+<VBox spacing="0"
+      styleClass="root"
+      xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.cmpe343.fx.controller.CustomerController">
+      
+
+    <!-- HEADER -->
+    <HBox spacing="20" alignment="CENTER_LEFT" styleClass="header-panel" style="-fx-padding: 18 24;">
+        <Label text="Group7 GreenGrocer" styleClass="h1"/>
+        
+        <Region HBox.hgrow="ALWAYS"/>
+        
+        <!-- Search -->
+        <HBox alignment="CENTER_LEFT" styleClass="search-container">
+            <StackPane style="-fx-padding: 0 8 0 0;">
+                <javafx.scene.shape.SVGPath content="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" 
+                                            fill="#94a3b8" scaleX="1.2" scaleY="1.2"/>
+            </StackPane>
+            <TextField fx:id="searchField" promptText="Search fresh products..." 
+                       style="-fx-background-color: transparent; -fx-border-width: 0; -fx-text-fill: white; -fx-pref-width: 250;"/>
+        </HBox>
+
+        <Region prefWidth="32"/>
+
+        <!-- Navigation Buttons -->
+        <HBox spacing="8" alignment="CENTER">
+            <Button text="Orders" onAction="#handleViewOrders" styleClass="btn-outline" style="-fx-font-size: 12px;"/>
+            <Button text="Messages" onAction="#handleViewMessages" styleClass="btn-outline" style="-fx-font-size: 12px;"/>
+        </HBox>
+
+        <Region prefWidth="16"/>
+
+        <!-- User Info -->
+        <HBox alignment="CENTER" spacing="12">
+            <Label fx:id="usernameLabel" text="User" styleClass="sub" style="-fx-font-weight: 700; -fx-text-fill: white;"/>
+            <Button text="Log Out" onAction="#handleLogout" styleClass="btn-outline" style="-fx-font-size: 12px;"/>
+        </HBox>
+
+        <!-- Cart Button Wrapper -->
+        <StackPane onMouseClicked="#handleOpenCart" style="-fx-cursor: hand;">
+             <Button style="-fx-background-color: rgba(255,255,255,0.1); -fx-background-radius: 50; -fx-min-width: 42; -fx-min-height: 42;"
+                     mouseTransparent="true">
+                 <graphic>
+                     <javafx.scene.shape.SVGPath content="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.54-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z" 
+                                                 fill="white" scaleX="1.3" scaleY="1.3"/>
+                 </graphic>
+             </Button>
+             
+             <!-- Badge -->
+             <Label fx:id="cartCountBadge" text="0" visible="false" styleClass="badge" mouseTransparent="true"
+                    StackPane.alignment="TOP_RIGHT">
+                 <StackPane.margin><Insets top="0" right="0"/></StackPane.margin>
+             </Label>
+        </StackPane>
+    </HBox>
+
+    <!-- CONTENT -->
+    <ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-background: transparent;" VBox.vgrow="ALWAYS">
+        <VBox spacing="32" style="-fx-padding: 32;">
+            
+            <!-- Vegetables -->
+            <VBox spacing="16">
+                 <HBox spacing="12" alignment="CENTER_LEFT" onMouseClicked="#toggleVegetables" style="-fx-cursor: hand;">
+                     <Label text="▼" fx:id="vegetablesToggle" style="-fx-text-fill: #10b981; -fx-font-size: 14px;"/>
+                     <Label text="Vegetables" styleClass="section-title"/>
+                 </HBox>
+                 <FlowPane fx:id="vegetablesGrid" hgap="24" vgap="24" prefWrapLength="1000"/>
+            </VBox>
+
+            <!-- Fruits -->
+            <VBox spacing="16">
+                 <HBox spacing="12" alignment="CENTER_LEFT" onMouseClicked="#toggleFruits" style="-fx-cursor: hand;">
+                     <Label text="▼" fx:id="fruitsToggle" style="-fx-text-fill: #10b981; -fx-font-size: 14px;"/>
+                     <Label text="Fruits" styleClass="section-title" style="-fx-border-color: #10b981;"/>
+                 </HBox>
+                 <FlowPane fx:id="fruitsGrid" hgap="24" vgap="24" prefWrapLength="1000"/>
+            </VBox>
+            
+        </VBox>
+    </ScrollPane>
+</VBox>
