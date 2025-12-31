@@ -44,7 +44,7 @@ The application should launch and show the Login window!
 ### Step 2: Build the Project
 
 In the Maven tool window:
-1. Expand: `demo` → `Lifecycle`
+1. Expand: `main` → `Lifecycle`
 2. Double-click on **`clean`** (this cleans old build files)
 3. Wait for it to finish
 4. Double-click on **`compile`** (this compiles your code)
@@ -53,7 +53,7 @@ In the Maven tool window:
 ### Step 3: Run the Application
 
 In the Maven tool window:
-1. Expand: `demo` → `Plugins` → `javafx`
+1. Expand: `main` → `Plugins` → `javafx`
 2. Double-click on **`javafx:run`**
 3. The application should launch! 🎉
 
@@ -133,7 +133,7 @@ You should see a **Login** window. Use these credentials to test:
 
 **In IntelliJ:**
 1. Open Maven tool window (right side)
-2. `demo` → `Plugins` → `javafx` → double-click `javafx:run`
+2. `main` → `Plugins` → `javafx` → double-click `javafx:run`
 
 **In Terminal:**
 1. Navigate to project folder

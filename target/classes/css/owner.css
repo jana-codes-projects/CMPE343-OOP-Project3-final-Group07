@@ -1,0 +1,144 @@
+/* Owner Dashboard Specific Styles */
+.root {
+    -fx-base: #0f172a;
+    -fx-background: #0f172a;
+}
+
+/* Tab Pane Styling */
+.tab-pane .tab-header-area .tab-header-background {
+    -fx-background-color: #0f172a;
+}
+
+.tab-pane .tab {
+    -fx-background-color: transparent;
+    -fx-text-fill: #94a3b8;
+    -fx-font-weight: 600;
+    -fx-padding: 10 20;
+    -fx-background-insets: 0;
+    -fx-border-width: 0 0 2 0;
+    -fx-border-color: transparent;
+}
+
+.tab-pane .tab:selected {
+    -fx-text-fill: #6366f1;
+    /* Indigo 500 */
+    -fx-border-color: #6366f1;
+}
+
+.tab-pane .tab:hover {
+    -fx-text-fill: #e2e8f0;
+    -fx-background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* SplitPane */
+.split-pane {
+    -fx-background-color: transparent;
+}
+
+.split-pane>.split-pane-divider {
+    -fx-background-color: #1e293b;
+    -fx-padding: 0 1;
+}
+
+/* Lists */
+.list-container {
+    -fx-background-color: transparent;
+    -fx-spacing: 4;
+}
+
+.list-item {
+    -fx-background-color: rgba(30, 41, 59, 0.4);
+    -fx-padding: 12 16;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: rgba(255, 255, 255, 0.05);
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.1), 2, 0, 0, 1);
+    -fx-transition: all 0.2s ease;
+}
+
+.list-item:hover {
+    -fx-background-color: rgba(30, 41, 59, 0.8);
+    -fx-border-color: #6366f1;
+    -fx-translate-x: 2;
+}
+
+.list-item:selected {
+    -fx-background-color: rgba(99, 102, 241, 0.15);
+    /* Indigo tint */
+    -fx-border-color: #6366f1;
+}
+
+/* Detail Cards */
+.detail-card {
+    -fx-background-color: rgba(30, 41, 59, 0.6);
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+    -fx-border-color: rgba(255, 255, 255, 0.05);
+    -fx-padding: 24;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.2), 10, 0, 0, 4);
+}
+
+.detail-header {
+    -fx-font-size: 18px;
+    -fx-font-weight: 700;
+    -fx-text-fill: white;
+}
+
+.detail-label {
+    -fx-text-fill: #94a3b8;
+    /* Slate 400 */
+    -fx-font-size: 13px;
+}
+
+.detail-value {
+    -fx-text-fill: #e2e8f0;
+    /* Slate 200 */
+    -fx-font-size: 14px;
+    -fx-font-weight: 500;
+}
+
+/* Badges */
+.badge {
+    -fx-padding: 4 8;
+    -fx-background-radius: 6;
+    -fx-font-size: 11px;
+    -fx-font-weight: 700;
+}
+
+.badge-success {
+    -fx-background-color: rgba(16, 185, 129, 0.15);
+    -fx-text-fill: #34d399;
+    /* Emerald 400 */
+}
+
+.badge-warning {
+    -fx-background-color: rgba(245, 158, 11, 0.15);
+    -fx-text-fill: #fbbf24;
+    /* Amber 400 */
+}
+
+.badge-danger {
+    -fx-background-color: rgba(239, 68, 68, 0.15);
+    -fx-text-fill: #f87171;
+    /* Red 400 */
+}
+
+.badge-info {
+    -fx-background-color: rgba(59, 130, 246, 0.15);
+    -fx-text-fill: #60a5fa;
+    /* Blue 400 */
+}
+
+/* Dialogs - attempting to style JavaFX dialogs */
+.dialog-pane {
+    -fx-background-color: #0f172a;
+}
+
+.dialog-pane .label {
+    -fx-text-fill: white;
+}
+
+.dialog-pane .header-panel {
+    -fx-background-color: #0f172a;
+}
