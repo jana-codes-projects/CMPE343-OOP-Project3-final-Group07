@@ -13,12 +13,14 @@ public class Product {
     private double stockKg;
     private double thresholdKg;
     private boolean active = true; // Added for OwnerController compatibility
+    private double basePrice;
 
     public Product(int id, String name, ProductType type,
             double price, double stockKg, double thresholdKg) {
         this.id = id;
         this.name = name;
         this.type = type;
+        this.basePrice = price;
         this.price = price;
         this.stockKg = stockKg;
         this.thresholdKg = thresholdKg;
@@ -90,7 +92,15 @@ public class Product {
     }
 
     public double getPrice() {
-        return price;
+        // Eğer stok belirlenen eşiğin (threshold) altındaysa %20 zam yap
+        if (isLowStock()) {
+            return basePrice * 1.20;
+        }
+        return basePrice;
+    }
+
+    public double getBasePrice() {
+        return basePrice;
     }
 
     public double getStockKg() {

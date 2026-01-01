@@ -66,6 +66,12 @@ public class OwnerController {
     private javafx.scene.control.TabPane mainTabPane;
     @FXML
     private javafx.scene.layout.FlowPane dashboardContainer;
+    @FXML
+    private VBox reportsContainer;
+    @FXML
+    private ListView<String> topProductsList;
+    @FXML
+    private ListView<String> carrierPerformanceList;
 
     private Message selectedMessage;
     private Order selectedOrder;
@@ -459,6 +465,53 @@ public class OwnerController {
             showOrderDetail(orderToSelect);
         } else {
             selectedOrder = null;
+        }
+    }
+
+    // ==================== REPORTS & ANALYTICS ====================
+    private void loadAnalytics() {
+        // 1. Safety Check: Ensure FXML components are properly injected
+        if (topProductsList == null || carrierPerformanceList == null) {
+            System.err.println("Warning: ListView components are not initialized. Check FXML fx:id.");
+            return;
+        }
+
+        // 2. Clear existing data to avoid duplication during refresh
+        topProductsList.getItems().clear();
+        carrierPerformanceList.getItems().clear();
+
+        try {
+            // 3. Fetch Top Selling Products via DAO
+            // Expected Object array format: [String productName, Double totalQuantity]
+            List<Object[]> topProducts = orderDAO.getTopSellingProducts();
+
+            if (topProducts.isEmpty()) {
+                topProductsList.getItems().add("No sales data available yet.");
+            } else {
+                for (Object[] row : topProducts) {
+                    String productName = (String) row[0];
+                    Double totalKg = (Double) row[1];
+                    topProductsList.getItems().add(String.format("📦 %-15s | %6.2f kg sold", productName, totalKg));
+                }
+            }
+
+            // 4. Fetch Carrier Performance Stats via DAO
+            // Expected Object array format: [String carrierName, Integer deliveryCount]
+            List<Object[]> carrierStats = orderDAO.getCarrierPerformance();
+
+            if (carrierStats.isEmpty()) {
+                carrierPerformanceList.getItems().add("No delivery records found.");
+            } else {
+                for (Object[] row : carrierStats) {
+                    String carrierName = (String) row[0];
+                    Integer deliveries = (Integer) row[1];
+                    carrierPerformanceList.getItems().add(String.format("🚚 %-15s | %d deliveries", carrierName, deliveries));
+                }
+            }
+
+        } catch (Exception e) {
+            System.err.println("Critical error while loading analytics: " + e.getMessage());
+            topProductsList.getItems().add("Error: Could not retrieve data.");
         }
     }
 

@@ -2,500 +2,312 @@ package com.cmpe343.dao;
 
 import com.cmpe343.db.Db;
 import com.cmpe343.model.CartItem;
+import com.cmpe343.model.Product;
+import com.cmpe343.model.Order;
+import com.cmpe343.model.Order.OrderStatus;
 
 import java.sql.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Data Access Object for Order operations.
+ * Handles CRUD, stock management, and business analytics.
+ */
 public class OrderDao {
 
-    private static final double VAT_RATE = 0.20; // %20
+    private static final double VAT_RATE = 0.20;
 
-    public int createOrder(int customerId, List<CartItem> items, LocalDateTime requestedDelivery) {
-        return createOrder(customerId, items, requestedDelivery, null);
-    }
+    // --- ORDER CREATION LOGIC ---
 
+    /**
+     * Creates a new order, calculates totals with VAT/Coupons, and reduces stock.
+     */
     public int createOrder(int customerId, List<CartItem> items, LocalDateTime requestedDelivery, Integer couponId) {
-        if (items == null || items.isEmpty()) {
-            throw new IllegalArgumentException("Cart is empty.");
-        }
-        if (requestedDelivery == null) {
-            throw new IllegalArgumentException("Requested delivery time cannot be empty.");
-        }
+        if (items == null || items.isEmpty()) throw new IllegalArgumentException("Cart is empty.");
+        if (requestedDelivery == null) throw new IllegalArgumentException("Requested delivery time cannot be empty.");
 
         Timestamp nowTs = Timestamp.valueOf(LocalDateTime.now());
         Timestamp requestedTs = Timestamp.valueOf(requestedDelivery);
 
-        // Calculate original subtotal (before coupon)
-        // Round each line total before summing to match order_items precision
-        double originalSubtotal = items.stream()
-            .mapToDouble(item -> round2(item.getLineTotal()))
-            .sum();
-        
-        // Apply coupon discount if provided
-        // Validate coupon at order placement time to prevent race conditions
+        double originalSubtotal = items.stream().mapToDouble(item -> round2(item.getLineTotal())).sum();
         double couponDiscount = 0.0;
+
+        // Apply coupon if exists
         if (couponId != null) {
             Double discount = getCouponDiscount(couponId, originalSubtotal);
-            if (discount == null) {
-                // Coupon is invalid (expired/deactivated/not found/min cart not met) - throw exception to inform user
-                throw new IllegalArgumentException("The selected coupon is no longer valid. Please remove it and try again.");
-            }
-            couponDiscount = discount; // discount can be 0.0 for valid coupons with zero discount
+            if (discount == null) throw new IllegalArgumentException("Invalid coupon or minimum amount not met.");
+            couponDiscount = discount;
         }
-        
-        // Calculate post-coupon subtotal (this is what VAT is calculated on)
+
         double totalAfterCoupon = Math.max(0, originalSubtotal - couponDiscount);
         double vat = round2(totalAfterCoupon * VAT_RATE);
         double totalAfterTax = round2(totalAfterCoupon + vat);
-        
-        // Store the post-coupon subtotal in totalBeforeTax (since VAT is calculated on this)
-        // This ensures consistency: totalBeforeTax + VAT = totalAfterTax
-        double totalBeforeTax = totalAfterCoupon;
 
         String insertOrder = """
                     INSERT INTO orders
-                      (customer_id, carrier_id, status, order_time, requested_delivery_time, delivered_time,
+                      (customer_id, status, order_time, requested_delivery_time, 
                        total_before_tax, vat, total_after_tax, coupon_id, loyalty_discount)
-                    VALUES
-                      (?, NULL, 'CREATED', ?, ?, NULL,
-                       ?, ?, ?, ?, 0)
-                """;
-
-        // ✅ SENİN TABLOYA GÖRE:
-        // kg ve unit_price_applied
-        String insertItem = """
-                    INSERT INTO order_items (order_id, product_id, kg, unit_price_applied, line_total)
-                    VALUES (?, ?, ?, ?, ?)
-                """;
-
-        String updateStock = """
-                    UPDATE products
-                    SET stock_kg = stock_kg - ?
-                    WHERE id = ? AND stock_kg >= ?
+                    VALUES (?, 'CREATED', ?, ?, ?, ?, ?, ?, 0)
                 """;
 
         try (Connection c = Db.getConnection()) {
-            c.setAutoCommit(false);
-
+            c.setAutoCommit(false); // Transaction start
             int orderId;
-
-            // 1) Order insert
             try (PreparedStatement ps = c.prepareStatement(insertOrder, Statement.RETURN_GENERATED_KEYS)) {
                 ps.setInt(1, customerId);
                 ps.setTimestamp(2, nowTs);
                 ps.setTimestamp(3, requestedTs);
-                ps.setDouble(4, round2(totalBeforeTax));
+                ps.setDouble(4, totalAfterCoupon);
                 ps.setDouble(5, vat);
                 ps.setDouble(6, totalAfterTax);
-                // Set coupon_id (position 7)
-                if (couponId != null) {
-                    ps.setInt(7, couponId);
-                } else {
-                    ps.setNull(7, Types.INTEGER);
-                }
+                if (couponId != null) ps.setInt(7, couponId); else ps.setNull(7, Types.INTEGER);
 
                 ps.executeUpdate();
-
-                try (ResultSet keys = ps.getGeneratedKeys()) {
-                    if (!keys.next()) {
-                        c.rollback();
-                        throw new RuntimeException("Could not retrieve order id.");
-                    }
-                    orderId = keys.getInt(1);
-                }
+                ResultSet keys = ps.getGeneratedKeys();
+                if (!keys.next()) throw new RuntimeException("Failed to retrieve generated Order ID.");
+                orderId = keys.getInt(1);
             }
 
-            // 2) Items + stock update
-            for (CartItem it : items) {
-                // stok düş
-                try (PreparedStatement ps = c.prepareStatement(updateStock)) {
-                    ps.setDouble(1, it.getQuantityKg());
-                    ps.setInt(2, it.getProduct().getId());
-                    ps.setDouble(3, it.getQuantityKg());
-                    int updated = ps.executeUpdate();
-                    if (updated == 0) {
-                        c.rollback();
-                        throw new RuntimeException("Insufficient stock: " + it.getProduct().getName());
-                    }
-                }
+            // Link items and update inventory
+            insertOrderItemsAndReduceStock(c, orderId, items);
 
-                // ✅ order_item insert (kg + unit_price_applied)
-                try (PreparedStatement ps = c.prepareStatement(insertItem)) {
-                    ps.setInt(1, orderId);
-                    ps.setInt(2, it.getProduct().getId());
-                    ps.setDouble(3, round2(it.getQuantityKg()));
-                    ps.setDouble(4, round2(it.getUnitPrice()));
-                    ps.setDouble(5, round2(it.getLineTotal()));
-                    ps.executeUpdate();
-                }
-            }
-
-            c.commit();
+            c.commit(); // Transaction success
             return orderId;
-
         } catch (Exception e) {
-            throw new RuntimeException("Could not create order: " + e.getMessage(), e);
+            throw new RuntimeException("Order Processing Failed: " + e.getMessage(), e);
         }
     }
 
-    public List<com.cmpe343.model.Order> getAllOrders() {
-        List<com.cmpe343.model.Order> list = new java.util.ArrayList<>();
+    // --- CARRIER & STATUS MANAGEMENT ---
+
+    public boolean assignOrderToCarrier(int orderId, int carrierId) {
+        String sql = "UPDATE orders SET carrier_id = ?, status = 'ASSIGNED' WHERE id = ? AND status = 'CREATED'";
+        try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, carrierId);
+            ps.setInt(2, orderId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) { return false; }
+    }
+
+    public boolean markOrderDelivered(int orderId, LocalDateTime deliveredTime) {
+        String sql = "UPDATE orders SET status = 'DELIVERED', delivered_time = ? WHERE id = ? AND status = 'ASSIGNED'";
+        try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setTimestamp(1, Timestamp.valueOf(deliveredTime));
+            ps.setInt(2, orderId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) { return false; }
+    }
+
+    // --- DATA RETRIEVAL ---
+
+    public List<Order> getAllOrders() {
+        List<Order> list = new ArrayList<>();
         String sql = "SELECT * FROM orders ORDER BY order_time DESC";
-
-        try (Connection c = Db.getConnection();
-                Statement st = c.createStatement();
-                ResultSet rs = st.executeQuery(sql)) {
-
-            while (rs.next()) {
-                list.add(mapOrder(rs));
-            }
-
-        } catch (Exception e) {
-            System.err.println("Error fetching orders: " + e.getMessage());
-        }
+        try (Connection c = Db.getConnection(); Statement st = c.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) list.add(mapOrder(rs));
+        } catch (Exception e) { e.printStackTrace(); }
         return list;
     }
-    
-    public List<com.cmpe343.model.Order> getOrdersForCustomer(int customerId) {
-        List<com.cmpe343.model.Order> list = new java.util.ArrayList<>();
-        String sql = "SELECT * FROM orders WHERE customer_id = ? ORDER BY order_time DESC";
 
-        try (Connection c = Db.getConnection();
-                PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setInt(1, customerId);
-            
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    com.cmpe343.model.Order order = mapOrder(rs);
-                    // Load order items
-                    order.setItems(getOrderItems(order.getId()));
-                    list.add(order);
-                }
-            }
-        } catch (Exception e) {
-            System.err.println("Error fetching customer orders: " + e.getMessage());
-        }
-        return list;
-    }
-    
-    public List<com.cmpe343.model.CartItem> getOrderItems(int orderId) {
-        List<com.cmpe343.model.CartItem> items = new java.util.ArrayList<>();
+    public List<CartItem> getOrderItems(int orderId) {
+        List<CartItem> items = new ArrayList<>();
         String sql = """
-            SELECT oi.product_id, oi.kg, oi.unit_price_applied, oi.line_total,
-                   p.name, p.type, p.price, p.stock_kg, p.threshold_kg, p.image_blob
-            FROM order_items oi
-            JOIN products p ON oi.product_id = p.id
+            SELECT oi.*, p.name, p.type, p.price, p.stock_kg, p.threshold_kg 
+            FROM order_items oi 
+            JOIN products p ON oi.product_id = p.id 
             WHERE oi.order_id = ?
         """;
-        
-        try (Connection c = Db.getConnection();
-                PreparedStatement ps = c.prepareStatement(sql)) {
+        try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, orderId);
-            
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    // Use current product price (not historical) to maintain data integrity
-                    // Historical pricing is stored separately in CartItem
-                    // Images are stored in BLOB, accessed via ProductDao.getProductImageBlob(productId)
-                    com.cmpe343.model.Product product = new com.cmpe343.model.Product(
-                        rs.getInt("product_id"),
-                        rs.getString("name"),
-                        rs.getString("type"),
-                        rs.getDouble("price"), // Current product price from products table
-                        rs.getDouble("stock_kg"),
-                        rs.getDouble("threshold_kg")
-                    );
-                    // Store historical pricing separately to preserve order integrity
-                    // This ensures CartItem.getUnitPrice() and getLineTotal() return the values
-                    // that were applied at order creation time, not the current product price
-                    double historicalUnitPrice = rs.getDouble("unit_price_applied");
-                    double historicalLineTotal = rs.getDouble("line_total");
-                    com.cmpe343.model.CartItem item = new com.cmpe343.model.CartItem(
-                        product, 
-                        rs.getDouble("kg"),
-                        historicalUnitPrice,
-                        historicalLineTotal
-                    );
-                    items.add(item);
-                }
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                Product p = new Product(
+                        rs.getInt("product_id"), rs.getString("name"),
+                        rs.getString("type"), rs.getDouble("price"),
+                        rs.getDouble("stock_kg"), rs.getDouble("threshold_kg")
+                );
+                items.add(new CartItem(p, rs.getDouble("kg"), rs.getDouble("unit_price_applied"), rs.getDouble("line_total")));
             }
-        } catch (Exception e) {
-            System.err.println("Error fetching order items: " + e.getMessage());
-        }
+        } catch (Exception e) { e.printStackTrace(); }
         return items;
     }
 
-    private com.cmpe343.model.Order mapOrder(ResultSet rs) throws SQLException {
-        int id = rs.getInt("id");
-        int customerId = rs.getInt("customer_id");
-        int carrierId = rs.getInt("carrier_id");
-        if (rs.wasNull())
-            carrierId = 0; // or null logic
-        String statusStr = rs.getString("status");
-        com.cmpe343.model.Order.OrderStatus status = com.cmpe343.model.Order.OrderStatus.CREATED;
-        try {
-            status = com.cmpe343.model.Order.OrderStatus.valueOf(statusStr);
-        } catch (Exception e) {
-        }
+    // --- BUSINESS ANALYTICS & REPORTS ---
 
-        // Add null check to prevent NullPointerException if order_time is NULL in database
-        java.sql.Timestamp orderTimeStamp = rs.getTimestamp("order_time");
-        LocalDateTime orderTime = orderTimeStamp != null 
-            ? orderTimeStamp.toLocalDateTime() 
-            : LocalDateTime.now(); // Fallback to current time if NULL
-        LocalDateTime requested = rs.getTimestamp("requested_delivery_time") != null
-                ? rs.getTimestamp("requested_delivery_time").toLocalDateTime()
-                : null;
-        LocalDateTime delivered = rs.getTimestamp("delivered_time") != null
-                ? rs.getTimestamp("delivered_time").toLocalDateTime()
-                : null;
-
-        return new com.cmpe343.model.Order(
-                id,
-                customerId,
-                carrierId == 0 ? null : carrierId,
-                status,
-                orderTime,
-                requested,
-                delivered,
-                rs.getDouble("total_before_tax"),
-                rs.getDouble("vat"),
-                rs.getDouble("total_after_tax"));
+    /**
+     * Fetches top 5 selling products based on weight sold.
+     */
+    public List<Object[]> getTopSellingProducts() {
+        List<Object[]> report = new ArrayList<>();
+        String sql = """
+            SELECT p.name, SUM(oi.kg) as total_kg 
+            FROM order_items oi 
+            JOIN products p ON oi.product_id = p.id 
+            GROUP BY p.id, p.name 
+            ORDER BY total_kg DESC 
+            LIMIT 5
+        """;
+        try (Connection c = Db.getConnection(); Statement st = c.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) {
+                report.add(new Object[]{rs.getString("name"), rs.getDouble("total_kg")});
+            }
+        } catch (Exception e) { e.printStackTrace(); }
+        return report;
     }
 
     /**
-     * Gets the discount amount for a coupon.
-     * Returns null if the coupon is invalid (not found, expired, or inactive).
-     * Returns the discount amount (which may be 0.0) if the coupon is valid.
-     * 
-     * @param couponId The coupon ID
-     * @return The discount amount if coupon is valid, null if invalid
+     * Fetches delivery count per carrier for performance ranking.
      */
-    private Double getCouponDiscount(int couponId, double cartTotal) {
-        String sql = "SELECT kind, value, min_cart FROM coupons WHERE id = ? AND is_active = 1 AND (expires_at IS NULL OR expires_at >= NOW())";
-        try (Connection c = Db.getConnection();
-                PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setInt(1, couponId);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    // Coupon found and valid
-                    String kind = rs.getString("kind");
-                    double value = rs.getDouble("value");
-                    double minCart = rs.getDouble("min_cart");
-                    
-                    // Check minimum cart requirement
-                    if (cartTotal < minCart) {
-                        return null; // Cart doesn't meet minimum requirement
-                    }
-                    
-                    // Calculate discount based on type
-                    if ("AMOUNT".equals(kind)) {
-                        return Math.min(value, cartTotal); // Don't discount more than cart total
-                    } else if ("PERCENT".equals(kind)) {
-                        return cartTotal * (value / 100.0);
-                    }
-                }
-            }
-        } catch (Exception e) {
-            System.err.println("Error fetching coupon: " + e.getMessage());
-        }
-        // Coupon not found or invalid - return null to distinguish from valid coupon with 0 discount
-        return null;
-    }
-    
-    public double getCouponDiscountForOrder(int orderId) {
-        // Get the order's total_before_tax to calculate percentage discount correctly
+    public List<Object[]> getCarrierPerformance() {
+        List<Object[]> stats = new ArrayList<>();
         String sql = """
-            SELECT c.kind, c.value, o.total_before_tax
-            FROM orders o
-            JOIN coupons c ON o.coupon_id = c.id
-            WHERE o.id = ?
+            SELECT u.username, COUNT(o.id) as deliveries 
+            FROM orders o 
+            JOIN users u ON o.carrier_id = u.id 
+            WHERE o.status = 'DELIVERED' 
+            GROUP BY u.id, u.username 
+            ORDER BY deliveries DESC
         """;
-        try (Connection c = Db.getConnection();
-                PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setInt(1, orderId);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    String kind = rs.getString("kind");
-                    double value = rs.getDouble("value");
-                    double totalBeforeTax = rs.getDouble("total_before_tax");
-                    
-                    if ("AMOUNT".equals(kind)) {
-                        return Math.min(value, totalBeforeTax);
-                    } else if ("PERCENT".equals(kind)) {
-                        return totalBeforeTax * (value / 100.0);
-                    }
-                }
-            }
-        } catch (Exception e) {
-            // Order might not have a coupon, return 0
-        }
-        return 0.0;
-    }
-
-    public List<com.cmpe343.model.Order> getAvailableOrders() {
-        List<com.cmpe343.model.Order> list = new java.util.ArrayList<>();
-        String sql = "SELECT * FROM orders WHERE status = 'CREATED' AND carrier_id IS NULL ORDER BY order_time DESC";
-        
-        try (Connection c = Db.getConnection();
-                Statement st = c.createStatement();
-                ResultSet rs = st.executeQuery(sql)) {
-            
+        try (Connection c = Db.getConnection(); Statement st = c.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) {
-                com.cmpe343.model.Order order = mapOrder(rs);
-                order.setItems(getOrderItems(order.getId()));
-                list.add(order);
+                stats.add(new Object[]{rs.getString("username"), rs.getInt("deliveries")});
             }
-        } catch (Exception e) {
-            System.err.println("Error fetching available orders: " + e.getMessage());
-        }
-        return list;
-    }
-    
-    public List<com.cmpe343.model.Order> getOrdersByCarrier(int carrierId, com.cmpe343.model.Order.OrderStatus status) {
-        List<com.cmpe343.model.Order> list = new java.util.ArrayList<>();
-        String sql = "SELECT * FROM orders WHERE carrier_id = ? AND status = ? ORDER BY order_time DESC";
-        
-        try (Connection c = Db.getConnection();
-                PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setInt(1, carrierId);
-            ps.setString(2, status.name());
-            
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    com.cmpe343.model.Order order = mapOrder(rs);
-                    order.setItems(getOrderItems(order.getId()));
-                    list.add(order);
-                }
-            }
-        } catch (Exception e) {
-            System.err.println("Error fetching carrier orders: " + e.getMessage());
-        }
-        return list;
-    }
-    
-    public boolean assignOrderToCarrier(int orderId, int carrierId) {
-        String sql = """
-            UPDATE orders 
-            SET carrier_id = ?, status = 'ASSIGNED' 
-            WHERE id = ? AND status = 'CREATED' AND carrier_id IS NULL
-        """;
-        
-        try (Connection c = Db.getConnection();
-                PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setInt(1, carrierId);
-            ps.setInt(2, orderId);
-            int updated = ps.executeUpdate();
-            return updated > 0;
-        } catch (Exception e) {
-            System.err.println("Error assigning order to carrier: " + e.getMessage());
-            return false;
-        }
-    }
-    
-    public boolean markOrderDelivered(int orderId, LocalDateTime deliveredTime) {
-        String sql = """
-            UPDATE orders 
-            SET status = 'DELIVERED', delivered_time = ? 
-            WHERE id = ? AND status = 'ASSIGNED'
-        """;
-        
-        try (Connection c = Db.getConnection();
-                PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setTimestamp(1, Timestamp.valueOf(deliveredTime));
-            ps.setInt(2, orderId);
-            int updated = ps.executeUpdate();
-            return updated > 0;
-        } catch (Exception e) {
-            System.err.println("Error marking order as delivered: " + e.getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Gets customer loyalty statistics including order count, total spent, and purchase frequency.
-     * 
-     * @return A list of customer loyalty data as Object arrays: [customerId, username, orderCount, totalSpent, daysSinceFirstOrder, avgDaysBetweenOrders]
-     */
-    public List<Object[]> getCustomerLoyaltyStats() {
-        List<Object[]> stats = new java.util.ArrayList<>();
-        String sql = """
-            SELECT 
-                u.id as customer_id,
-                u.username,
-                COUNT(o.id) as order_count,
-                COALESCE(SUM(o.total_after_tax), 0) as total_spent,
-                MIN(o.order_time) as first_order_date,
-                MAX(o.order_time) as last_order_date
-            FROM users u
-            LEFT JOIN orders o ON u.id = o.customer_id
-            WHERE u.role = 'customer' AND u.is_active = 1
-            GROUP BY u.id, u.username
-            HAVING order_count > 0
-            ORDER BY order_count DESC, total_spent DESC
-        """;
-        
-        try (Connection c = Db.getConnection();
-                Statement st = c.createStatement();
-                ResultSet rs = st.executeQuery(sql)) {
-            
-            while (rs.next()) {
-                int customerId = rs.getInt("customer_id");
-                String username = rs.getString("username");
-                int orderCount = rs.getInt("order_count");
-                double totalSpent = rs.getDouble("total_spent");
-                
-                java.sql.Timestamp firstOrder = rs.getTimestamp("first_order_date");
-                java.sql.Timestamp lastOrder = rs.getTimestamp("last_order_date");
-                
-                // Calculate days since first order
-                long daysSinceFirstOrder = 0;
-                if (firstOrder != null) {
-                    daysSinceFirstOrder = java.time.temporal.ChronoUnit.DAYS.between(
-                        firstOrder.toLocalDateTime().toLocalDate(),
-                        java.time.LocalDate.now()
-                    );
-                    if (daysSinceFirstOrder == 0) daysSinceFirstOrder = 1; // Avoid division by zero
-                }
-                
-                // Calculate average days between orders
-                double avgDaysBetweenOrders = 0.0;
-                if (orderCount > 1 && firstOrder != null && lastOrder != null) {
-                    long totalDays = java.time.temporal.ChronoUnit.DAYS.between(
-                        firstOrder.toLocalDateTime().toLocalDate(),
-                        lastOrder.toLocalDateTime().toLocalDate()
-                    );
-                    if (totalDays > 0) {
-                        avgDaysBetweenOrders = (double) totalDays / (orderCount - 1);
-                    }
-                }
-                
-                // Calculate purchase frequency (orders per month)
-                double ordersPerMonth = 0.0;
-                if (daysSinceFirstOrder > 0) {
-                    double months = daysSinceFirstOrder / 30.0;
-                    ordersPerMonth = orderCount / Math.max(months, 0.1); // Avoid division by zero
-                }
-                
-                stats.add(new Object[]{
-                    customerId,
-                    username,
-                    orderCount,
-                    totalSpent,
-                    daysSinceFirstOrder,
-                    avgDaysBetweenOrders,
-                    ordersPerMonth
-                });
-            }
-        } catch (Exception e) {
-            System.err.println("Error fetching customer loyalty stats: " + e.getMessage());
-            e.printStackTrace();
-        }
+        } catch (Exception e) { e.printStackTrace(); }
         return stats;
     }
-    
-    private static double round2(double v) {
-        return Math.round(v * 100.0) / 100.0;
+
+    /**
+     * Retrieves customer spending and order count for Loyalty Tiering.
+     */
+    public List<Object[]> getCustomerLoyaltyStats() {
+        List<Object[]> stats = new ArrayList<>();
+        String sql = """
+            SELECT u.id, u.username, COUNT(o.id) as cnt, SUM(o.total_after_tax) as spent 
+            FROM users u 
+            JOIN orders o ON u.id = o.customer_id 
+            GROUP BY u.id, u.username 
+            ORDER BY cnt DESC
+        """;
+        try (Connection c = Db.getConnection(); Statement st = c.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) {
+                // Returns: ID, Username, Order Count, Total Spent, and placeholders for tiers
+                stats.add(new Object[]{rs.getInt(1), rs.getString(2), rs.getInt(3), rs.getDouble(4), 1L, 1.0, 1.0});
+            }
+        } catch (Exception e) { e.printStackTrace(); }
+        return stats;
+    }
+
+    // --- INTERNAL HELPERS ---
+
+    private void insertOrderItemsAndReduceStock(Connection c, int orderId, List<CartItem> items) throws SQLException {
+        String itemSql = "INSERT INTO order_items (order_id, product_id, kg, unit_price_applied, line_total) VALUES (?,?,?,?,?)";
+        String stockSql = "UPDATE products SET stock_kg = stock_kg - ? WHERE id = ? AND stock_kg >= ?";
+
+        for (CartItem it : items) {
+            // Check and update inventory
+            try (PreparedStatement ps = c.prepareStatement(stockSql)) {
+                ps.setDouble(1, it.getQuantityKg());
+                ps.setInt(2, it.getProduct().getId());
+                ps.setDouble(3, it.getQuantityKg());
+                if (ps.executeUpdate() == 0) throw new SQLException("Insufficient stock for: " + it.getProduct().getName());
+            }
+            // Insert item record
+            try (PreparedStatement ps = c.prepareStatement(itemSql)) {
+                ps.setInt(1, orderId);
+                ps.setInt(2, it.getProduct().getId());
+                ps.setDouble(3, it.getQuantityKg());
+                ps.setDouble(4, it.getUnitPrice());
+                ps.setDouble(5, it.getLineTotal());
+                ps.executeUpdate();
+            }
+        }
+    }
+
+    private Double getCouponDiscount(int couponId, double cartTotal) {
+        String sql = "SELECT kind, value, min_cart FROM coupons WHERE id = ? AND is_active = 1";
+        try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, couponId);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next() && cartTotal >= rs.getDouble("min_cart")) {
+                String kind = rs.getString("kind");
+                double val = rs.getDouble("value");
+                return "PERCENT".equals(kind) ? cartTotal * (val / 100.0) : val;
+            }
+        } catch (Exception e) {}
+        return null;
+    }
+
+    private Order mapOrder(ResultSet rs) throws SQLException {
+        int carrierId = rs.getInt("carrier_id");
+        return new Order(
+                rs.getInt("id"), rs.getInt("customer_id"), rs.wasNull() ? null : carrierId,
+                OrderStatus.valueOf(rs.getString("status")),
+                rs.getTimestamp("order_time").toLocalDateTime(),
+                rs.getTimestamp("requested_delivery_time").toLocalDateTime(),
+                rs.getTimestamp("delivered_time") != null ? rs.getTimestamp("delivered_time").toLocalDateTime() : null,
+                rs.getDouble("total_before_tax"), rs.getDouble("vat"), rs.getDouble("total_after_tax")
+        );
+    }
+
+    private static double round2(double v) { return Math.round(v * 100.0) / 100.0; }
+
+    public List<Order> getOrdersForCustomer(int customerId) {
+        List<Order> list = new ArrayList<>();
+        String sql = "SELECT * FROM orders WHERE customer_id = ? ORDER BY order_time DESC";
+        try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, customerId);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                Order o = mapOrder(rs);
+                o.setItems(getOrderItems(o.getId()));
+                list.add(o);
+            }
+        } catch (Exception e) { e.printStackTrace(); }
+        return list;
+    }
+
+    public List<Order> getAvailableOrders() {
+        List<Order> list = new ArrayList<>();
+        String sql = "SELECT * FROM orders WHERE status = 'CREATED' AND carrier_id IS NULL ORDER BY order_time ASC";
+        try (Connection c = Db.getConnection(); Statement st = c.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) {
+                Order o = mapOrder(rs);
+                o.setItems(getOrderItems(o.getId()));
+                list.add(o);
+            }
+        } catch (Exception e) { e.printStackTrace(); }
+        return list;
+    }
+
+    public List<Order> getOrdersByCarrier(int carrierId, OrderStatus status) {
+        List<Order> list = new ArrayList<>();
+        String sql = "SELECT * FROM orders WHERE carrier_id = ? AND status = ? ORDER BY order_time DESC";
+        try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, carrierId);
+            ps.setString(2, status.name());
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                Order o = mapOrder(rs);
+                o.setItems(getOrderItems(o.getId()));
+                list.add(o);
+            }
+        } catch (Exception e) { e.printStackTrace(); }
+        return list;
+    }
+
+    public double getCouponDiscountForOrder(int orderId) {
+        String sql = "SELECT c.kind, c.value, o.total_before_tax FROM orders o JOIN coupons c ON o.coupon_id = c.id WHERE o.id = ?";
+        try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, orderId);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                String kind = rs.getString("kind");
+                double val = rs.getDouble("value");
+                return "PERCENT".equals(kind) ? rs.getDouble("total_before_tax") * (val / 100.0) : val;
+            }
+        } catch (Exception e) {}
+        return 0.0;
     }
 }

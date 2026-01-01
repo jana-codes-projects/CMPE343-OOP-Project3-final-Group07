@@ -19,6 +19,7 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.layout.Priority;
 import javafx.stage.Stage;
+import javafx.scene.control.TextInputDialog;
 
 public class CustomerController {
 
@@ -51,8 +52,11 @@ public class CustomerController {
     public void initialize() {
         if (Session.isLoggedIn()) {
             this.currentCustomerId = Session.getUser().getId();
-            usernameLabel.setText(Session.getUser().getUsername());
-        }
+
+            String name = Session.getUser().getUsername();
+            double balance = Session.getUser().getWalletBalance();
+
+            usernameLabel.setText(name + " | Wallet: " + String.format("%.2f", balance) + " ₺");        }
 
         // Load Data
         ObservableList<Product> allProducts = FXCollections.observableArrayList(productDao.findAll());
@@ -137,8 +141,15 @@ public class CustomerController {
         Label nameLbl = new Label(p.getName());
         nameLbl.getStyleClass().add("product-title");
 
-        Label priceLbl = new Label(p.getPrice() + " ₺ / kg");
-        priceLbl.getStyleClass().add("product-price");
+        Label priceLbl = new Label();
+        if (p.isLowStock()) {
+            priceLbl.setText(String.format("%.2f ₺ / kg", p.getPrice()));
+            priceLbl.getStyleClass().add("product-price-emergency"); // Yeni bir CSS sınıfı
+            priceLbl.setStyle("-fx-text-fill: #f87171; -fx-font-weight: bold;"); // Koddan kırmızı yapalım
+        } else {
+            priceLbl.setText(String.format("%.2f ₺ / kg", p.getPrice()));
+            priceLbl.getStyleClass().add("product-price");
+        }
 
         // Calculate available stock (current stock - items in cart)
         double cartQuantity = cartDao.getCartQuantity(currentCustomerId, p.getId());
@@ -147,11 +158,13 @@ public class CustomerController {
         Label stockLbl;
         if (availableStock <= 0) {
             stockLbl = new Label("Out of Stock");
+        } else if (availableStock <= p.getThresholdKg()) {
+            stockLbl = new Label(String.format("⚠️ Low Stock: %.2f kg", availableStock));
             stockLbl.getStyleClass().addAll("stock-tag", "stock-low");
-            stockLbl.setStyle("-fx-text-fill: #ef4444; -fx-font-weight: bold;");
+            nameLbl.setText(p.getName() + " 🔥");
         } else {
             stockLbl = new Label(String.format("%.2f kg", availableStock));
-            stockLbl.getStyleClass().addAll("stock-tag", availableStock <= p.getThresholdKg() ? "stock-low" : "stock-ok");
+            stockLbl.getStyleClass().addAll("stock-tag", "stock-ok");
         }
 
         // Controls
@@ -624,6 +637,52 @@ public class CustomerController {
         fruitsGrid.setVisible(fruitsVisible);
         fruitsGrid.setManaged(fruitsVisible);
         fruitsToggle.setText(fruitsVisible ? "▼" : "▶");
+    }
+
+    @FXML
+    private void handleAddFunds() {
+        // 1. Create a dialog to get the amount from the user
+        TextInputDialog dialog = new TextInputDialog("100.0");
+        dialog.setTitle("Wallet Top-up");
+        dialog.setHeaderText("Add Funds to Your Wallet");
+        dialog.setContentText("Please enter the amount to add (₺):");
+
+        // 2. Apply the current CSS theme to the dialog
+        if (searchField.getScene() != null) {
+            dialog.getDialogPane().getStylesheets().addAll(searchField.getScene().getStylesheets());
+        }
+
+        // 3. Process the input
+        java.util.Optional<String> result = dialog.showAndWait();
+        result.ifPresent(amountStr -> {
+            try {
+                double amount = Double.parseDouble(amountStr.trim());
+                if (amount <= 0) {
+                    toast("Please enter a positive amount.", ToastService.Type.ERROR);
+                    return;
+                }
+
+                // Update Database using UserDao
+                UserDao userDao = new UserDao();
+                userDao.updateWalletBalance(currentCustomerId, amount);
+
+                // Update local Session object
+                double currentBalance = Session.getUser().getWalletBalance();
+                double newTotal = currentBalance + amount;
+                Session.getUser().setWalletBalance(newTotal);
+
+                // Update UI Label immediately
+                usernameLabel.setText(Session.getUser().getUsername() + " | Wallet: " + String.format("%.2f", newTotal) + " ₺");
+
+                toast("Successfully added " + String.format("%.2f", amount) + " ₺ to your wallet!", ToastService.Type.SUCCESS);
+
+            } catch (NumberFormatException e) {
+                toast("Invalid amount format. Please enter a number.", ToastService.Type.ERROR);
+            } catch (Exception e) {
+                e.printStackTrace();
+                toast("An error occurred while updating balance.", ToastService.Type.ERROR);
+            }
+        });
     }
 
     @FXML

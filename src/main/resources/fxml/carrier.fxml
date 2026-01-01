@@ -3,7 +3,7 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.geometry.Insets?>
 
-<BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml" 
+<BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.cmpe343.fx.controller.CarrierController" styleClass="root">
    <stylesheets>
       <java.net.URL value="@../css/base.css" />
@@ -19,7 +19,7 @@
    </top>
    
    <center>
-      <TabPane closable="false">
+      <TabPane tabClosingPolicy="UNAVAILABLE">
          <tabs>
             <Tab text="Active Orders" closable="false">
                <SplitPane dividerPositions="0.4" style="-fx-background-color: transparent;">

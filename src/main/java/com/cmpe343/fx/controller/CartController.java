@@ -260,7 +260,6 @@ public class CartController {
             return;
         }
 
-        // Validate Date (Reused logic, simplified)
         if (deliveryDatePicker.getValue() == null || deliveryTimeField.getText().isBlank()) {
             ToastService.show(cartItemsContainer.getScene(), "Delivery time must be entered.", ToastService.Type.ERROR,
                     ToastService.Position.BOTTOM_CENTER, Duration.seconds(2));
@@ -272,38 +271,69 @@ public class CartController {
             LocalTime t = LocalTime.parse(deliveryTimeField.getText().trim());
             LocalDateTime requested = LocalDateTime.of(d, t);
 
-            // Basic check
             if (requested.isBefore(LocalDateTime.now())) {
                 ToastService.show(cartItemsContainer.getScene(), "Cannot select past time.", ToastService.Type.ERROR,
                         ToastService.Position.BOTTOM_CENTER, Duration.seconds(2));
                 return;
             }
 
-            // Create Order
-            // Validate coupon one more time before placing order to catch race conditions
+            // 1. Calculate the final total (Subtotal - Discount + VAT)
+            double subtotal = currentCartItems.stream()
+                    .mapToDouble(item -> Math.round(item.getLineTotal() * 100.0) / 100.0)
+                    .sum();
+
+            double discount = 0.0;
             if (selectedCouponId != null) {
                 com.cmpe343.model.Coupon coupon = couponDao.getCouponById(selectedCouponId);
-                if (coupon == null) {
-                    ToastService.show(cartItemsContainer.getScene(), "The selected coupon is no longer valid. Please remove it and try again.", ToastService.Type.ERROR,
-                            ToastService.Position.BOTTOM_CENTER, Duration.seconds(3));
-                    selectedCouponId = null;
-                    couponComboBox.setValue("No Coupon");
-                    couponDiscountLabel.setText("");
-                    updateTotal();
-                    return;
+                if (coupon != null) {
+                    discount = coupon.calculateDiscount(subtotal);
                 }
             }
-            
+
+            double totalAfterDiscount = Math.max(0, subtotal - discount);
+            double vat = Math.round((totalAfterDiscount * 0.20) * 100.0) / 100.0;
+            double finalTotal = totalAfterDiscount + vat;
+
+            // 2. --- WALLET PAYMENT CHECK ---
+            double userBalance = Session.getUser().getWalletBalance();
+
+            if (userBalance < finalTotal) {
+                ToastService.show(cartItemsContainer.getScene(),
+                        "Insufficient balance! You need " + String.format("%.2f", finalTotal - userBalance) + " ₺ more.",
+                        ToastService.Type.ERROR, ToastService.Position.BOTTOM_CENTER, Duration.seconds(3));
+                return;
+            }
+
+            // 3. Deduct amount from Database (We pass a negative value because updateWalletBalance adds to current)
+            com.cmpe343.dao.UserDao userDao = new com.cmpe343.dao.UserDao();
+            userDao.updateWalletBalance(Session.getUser().getId(), -finalTotal);
+
+            // 4. Update the local Session balance
+            Session.getUser().setWalletBalance(userBalance - finalTotal);
+            // ------------------------------
+
+            // 5. Create Order in Database
             int orderId = orderDao.createOrder(Session.getUser().getId(), currentCartItems, requested, selectedCouponId);
 
-            // Clear cart from DB after order
+            // 6. --- LOYALTY POINTS SYSTEM ---
+            // Reward 1% of the total price back to the wallet
+            double earnedPoints = finalTotal * 0.01;
+            userDao.updateWalletBalance(Session.getUser().getId(), earnedPoints);
+            Session.getUser().setWalletBalance(Session.getUser().getWalletBalance() + earnedPoints);
+            // -----------------------------
+
+            // 7. Clear cart from DB and local list
             cartDao.clear(Session.getUser().getId());
             currentCartItems.clear();
             renderCartItems();
 
-            ToastService.show(cartItemsContainer.getScene(), "Order placed! #" + orderId, ToastService.Type.SUCCESS,
-                    ToastService.Position.BOTTOM_CENTER, Duration.seconds(3));
+            ToastService.show(cartItemsContainer.getScene(),
+                    "Order placed! #" + orderId + " - Points Earned: " + String.format("%.2f", earnedPoints) + " ₺",
+                    ToastService.Type.SUCCESS, ToastService.Position.BOTTOM_CENTER, Duration.seconds(3));
 
+        } catch (java.time.format.DateTimeParseException e) {
+            ToastService.show(cartItemsContainer.getScene(), "Invalid time format (HH:mm)", ToastService.Type.ERROR,
+                    ToastService.Position.BOTTOM_CENTER, Duration.seconds(2));
         } catch (Exception e) {
             e.printStackTrace();
             ToastService.show(cartItemsContainer.getScene(), "Error: " + e.getMessage(), ToastService.Type.ERROR,
