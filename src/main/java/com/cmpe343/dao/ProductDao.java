@@ -44,31 +44,32 @@ public class ProductDao {
         }
     }
 
-    // public byte[] getProductImageBlob(int productId) {
-    // String sql = "SELECT image_blob FROM products WHERE id = ?";
-    //
-    // try (Connection c = Db.getConnection();
-    // java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
-    // ps.setInt(1, productId);
-    //
-    // try (ResultSet rs = ps.executeQuery()) {
-    // if (rs.next()) {
-    // Blob blob = rs.getBlob("image_blob");
-    // if (blob != null && blob.length() > 0) {
-    // return blob.getBytes(1, (int) blob.length());
-    // }
-    // }
-    // }
-    // } catch (Exception e) {
-    // e.printStackTrace();
-    // }
-    // return null;
-    // }
+    public byte[] getProductImageBlob(int productId) {
+        String sql = "SELECT image_blob FROM products WHERE id = ?";
 
-    public int createProduct(String name, String type, double price, double stockKg, double thresholdKg) {
+        try (Connection c = Db.getConnection();
+                java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, productId);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    Blob blob = rs.getBlob("image_blob");
+                    if (blob != null && blob.length() > 0) {
+                        return blob.getBytes(1, (int) blob.length());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public int createProduct(String name, String type, double price, double stockKg, double thresholdKg,
+            byte[] imageBytes) {
         String sql = """
-                    INSERT INTO products (name, type, price, stock_kg, threshold_kg)
-                    VALUES (?, ?, ?, ?, ?)
+                    INSERT INTO products (name, type, price, stock_kg, threshold_kg, image_blob)
+                    VALUES (?, ?, ?, ?, ?, ?)
                 """;
 
         try (Connection c = Db.getConnection();
@@ -78,6 +79,11 @@ public class ProductDao {
             ps.setDouble(3, price);
             ps.setDouble(4, stockKg);
             ps.setDouble(5, thresholdKg);
+            if (imageBytes != null) {
+                ps.setBytes(6, imageBytes);
+            } else {
+                ps.setNull(6, java.sql.Types.BLOB);
+            }
 
             ps.executeUpdate();
 
@@ -104,12 +110,16 @@ public class ProductDao {
      * @return true if the update was successful, false otherwise
      */
     public boolean updateProduct(int productId, String name, String type, double price, double stockKg,
-            double thresholdKg) {
+            double thresholdKg, byte[] imageBytes) {
         String sql = """
                     UPDATE products
                     SET name = ?, type = ?, price = ?, stock_kg = ?, threshold_kg = ?
+                    %s
                     WHERE id = ?
                 """;
+
+        String imageSql = (imageBytes != null) ? ", image_blob = ?" : "";
+        sql = String.format(sql, imageSql);
 
         try (Connection c = Db.getConnection();
                 java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
@@ -118,7 +128,12 @@ public class ProductDao {
             ps.setDouble(3, price);
             ps.setDouble(4, stockKg);
             ps.setDouble(5, thresholdKg);
-            ps.setInt(6, productId);
+
+            int paramIndex = 6;
+            if (imageBytes != null) {
+                ps.setBytes(paramIndex++, imageBytes);
+            }
+            ps.setInt(paramIndex, productId);
 
             int rowsAffected = ps.executeUpdate();
             return rowsAffected > 0;

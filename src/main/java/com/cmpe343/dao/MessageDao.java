@@ -18,7 +18,7 @@ public class MessageDao {
         // text_clob, created_at, replied_at
         String sql = """
                     SELECT m.id, u.username as sender, m.text_clob as content,
-                           m.created_at, 0 as is_read
+                           m.created_at, m.is_read, m.replied_at
                     FROM messages m
                     JOIN users u ON m.customer_id = u.id
                     ORDER BY m.created_at DESC
@@ -36,12 +36,19 @@ public class MessageDao {
                 LocalDateTime messageTime = timestamp != null
                         ? timestamp.toLocalDateTime()
                         : LocalDateTime.now(); // Fallback to current time if NULL
+
+                java.sql.Timestamp repliedTimestamp = rs.getTimestamp("replied_at");
+                LocalDateTime repliedTime = repliedTimestamp != null
+                        ? repliedTimestamp.toLocalDateTime()
+                        : null;
+
                 list.add(new Message(
                         rs.getInt("id"),
                         rs.getString("sender"),
                         rs.getString("content"),
                         messageTime,
-                        rs.getBoolean("is_read")));
+                        rs.getBoolean("is_read"),
+                        repliedTime));
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -55,7 +62,7 @@ public class MessageDao {
         // text_clob, created_at, replied_at
         String sql = """
                     SELECT m.id, u.username as sender, m.text_clob as content,
-                           m.created_at, 0 as is_read
+                           m.created_at, m.is_read, m.replied_at
                     FROM messages m
                     JOIN users u ON m.customer_id = u.id
                     WHERE m.customer_id = ?
@@ -75,12 +82,19 @@ public class MessageDao {
                     LocalDateTime messageTime = timestamp != null
                             ? timestamp.toLocalDateTime()
                             : LocalDateTime.now(); // Fallback to current time if NULL
+
+                    java.sql.Timestamp repliedTimestamp = rs.getTimestamp("replied_at");
+                    LocalDateTime repliedTime = repliedTimestamp != null
+                            ? repliedTimestamp.toLocalDateTime()
+                            : null;
+
                     list.add(new Message(
                             rs.getInt("id"),
                             rs.getString("sender"),
                             rs.getString("content"),
                             messageTime,
-                            rs.getBoolean("is_read")));
+                            rs.getBoolean("is_read"),
+                            repliedTime));
                 }
             }
         } catch (Exception e) {
@@ -124,7 +138,7 @@ public class MessageDao {
         // Note: This marks the message as "replied to" rather than just "read"
         // If you need a separate read status, you'd need to add an is_read column to
         // the schema
-        String sql = "UPDATE messages SET id = id WHERE id = ?"; // Temporary fix to avoid replied_at error
+        String sql = "UPDATE messages SET is_read = 1, replied_at = NOW() WHERE id = ?";
         try (Connection c = Db.getConnection();
                 PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, messageId);
@@ -172,7 +186,7 @@ public class MessageDao {
      * @return true if the reply was successful, false otherwise
      */
     public boolean replyToMessage(int messageId, String replyText) {
-        String sql = "UPDATE messages SET reply_text = ? WHERE id = ?"; // Temporary fix to avoid replied_at error
+        String sql = "UPDATE messages SET reply_text = ?, replied_at = NOW() WHERE id = ?";
         try (Connection c = Db.getConnection();
                 PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, replyText);
@@ -217,7 +231,7 @@ public class MessageDao {
         List<Message> list = new ArrayList<>();
         String sql = """
                     SELECT m.id, u.username as sender, m.text_clob as content,
-                           m.created_at, 0 as is_read,
+                           m.created_at, m.is_read, m.replied_at,
                            m.reply_text
                     FROM messages m
                     JOIN users u ON m.customer_id = u.id

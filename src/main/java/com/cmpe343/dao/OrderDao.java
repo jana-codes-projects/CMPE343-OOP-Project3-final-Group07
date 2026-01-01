@@ -647,7 +647,24 @@ public class OrderDao {
                 ps.executeUpdate();
             }
 
-            return new CancelResult(true, "Order cancelled successfully. Stock has been restored.");
+            // Wallet Refund Logic: Get order amount and refund to user
+            String amountSql = "SELECT total_after_tax, customer_id FROM orders WHERE id = ?";
+            try (PreparedStatement ps = c.prepareStatement(amountSql)) {
+                ps.setInt(1, orderId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        double amount = rs.getDouble("total_after_tax");
+                        int custId = rs.getInt("customer_id");
+
+                        // Refund to wallet
+                        UserDao userDao = new UserDao();
+                        userDao.updateWalletBalance(custId, amount);
+                    }
+                }
+            }
+
+            return new CancelResult(true,
+                    "Order cancelled successfully. Stock has been restored and funds have been refunded to your wallet.");
 
         } catch (Exception e) {
             e.printStackTrace();

@@ -7,18 +7,20 @@ public class User {
     private String phone;
     private String address;
     private boolean active;
+    private double balance;
 
     public User(int id, String username, String role) {
-        this(id, username, role, null, null, true);
+        this(id, username, role, null, null, true, 0.0);
     }
 
-    public User(int id, String username, String role, String phone, String address, boolean active) {
+    public User(int id, String username, String role, String phone, String address, boolean active, double balance) {
         this.id = id;
         this.username = username;
         this.role = role;
         this.phone = phone;
         this.address = address;
         this.active = active;
+        this.balance = balance;
     }
 
     public int getId() {
@@ -55,5 +57,13 @@ public class User {
 
     public void setAddress(String address) {
         this.address = address;
+    }
+
+    public double getBalance() {
+        return balance;
+    }
+
+    public void setBalance(double balance) {
+        this.balance = balance;
     }
 }

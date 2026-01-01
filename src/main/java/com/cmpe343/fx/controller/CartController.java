@@ -145,12 +145,10 @@ public class CartController {
         // item
         try {
             javafx.scene.image.Image image = null;
-            // byte[] imageBytes =
-            // productDao.getProductImageBlob(item.getProduct().getId());
-            // if (imageBytes != null) {
-            // image = new javafx.scene.image.Image(new
-            // java.io.ByteArrayInputStream(imageBytes));
-            // }
+            byte[] imageBytes = productDao.getProductImageBlob(item.getProduct().getId());
+            if (imageBytes != null) {
+                image = new javafx.scene.image.Image(new java.io.ByteArrayInputStream(imageBytes));
+            }
 
             if (image != null) {
                 javafx.scene.image.ImageView iv = new javafx.scene.image.ImageView(image);
@@ -336,16 +334,56 @@ public class CartController {
                 }
             }
 
-            int orderId = orderDao.createOrder(Session.getUser().getId(), currentCartItems, requested,
+            // WALLET BALANCE CHECK
+            double discount = 0.0;
+            if (selectedCouponId != null) {
+                com.cmpe343.model.Coupon coupon = couponDao.getCouponById(selectedCouponId);
+                if (coupon != null)
+                    discount = coupon.calculateDiscount(subtotal);
+            }
+            double totalAfterDiscount = Math.max(0, subtotal - discount);
+            double vat = Math.round((totalAfterDiscount * 0.20) * 100.0) / 100.0;
+            double finalTotal = totalAfterDiscount + vat;
+
+            com.cmpe343.model.User user = Session.getUser();
+            if (user.getBalance() < finalTotal) {
+                ToastService.show(cartItemsContainer.getScene(),
+                        String.format("Insufficient balance! Required: %.2f ₺, Your Balance: %.2f ₺",
+                                finalTotal, user.getBalance()),
+                        ToastService.Type.ERROR,
+                        ToastService.Position.BOTTOM_CENTER, Duration.seconds(3));
+                return;
+            }
+
+            int orderId = orderDao.createOrder(user.getId(), currentCartItems, requested,
                     selectedCouponId);
 
-            // Clear cart from DB after order
-            cartDao.clear(Session.getUser().getId());
-            currentCartItems.clear();
-            renderCartItems();
+            if (orderId > 0) {
+                // Deduct from wallet
+                com.cmpe343.dao.UserDao userDao = new com.cmpe343.dao.UserDao();
+                // Deduct from wallet and Add Loyalty Points (1% back)
+                userDao.updateWalletBalance(user.getId(), -finalTotal);
 
-            ToastService.show(cartItemsContainer.getScene(), "Order placed! #" + orderId, ToastService.Type.SUCCESS,
-                    ToastService.Position.BOTTOM_CENTER, Duration.seconds(3));
+                double earnedPoints = finalTotal * 0.01;
+                userDao.updateWalletBalance(user.getId(), earnedPoints);
+
+                // Update local session user object
+                user.setBalance(user.getBalance() - finalTotal + earnedPoints);
+
+                // Clear cart from DB after order
+                cartDao.clear(user.getId());
+                currentCartItems.clear();
+                renderCartItems();
+
+                ToastService.show(cartItemsContainer.getScene(),
+                        "Order placed! #" + orderId + " - Loyalty Earned: " + String.format("%.2f", earnedPoints)
+                                + " ₺",
+                        ToastService.Type.SUCCESS,
+                        ToastService.Position.BOTTOM_CENTER, Duration.seconds(3));
+            } else {
+                ToastService.show(cartItemsContainer.getScene(), "Failed to place order.", ToastService.Type.ERROR,
+                        ToastService.Position.BOTTOM_CENTER, Duration.seconds(3));
+            }
 
         } catch (Exception e) {
             e.printStackTrace();

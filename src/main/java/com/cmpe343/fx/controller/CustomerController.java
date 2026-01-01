@@ -27,6 +27,8 @@ public class CustomerController {
     @FXML
     private Label usernameLabel;
     @FXML
+    private Label balanceLabel;
+    @FXML
     private Label cartCountBadge;
 
     @FXML
@@ -53,6 +55,7 @@ public class CustomerController {
         if (Session.isLoggedIn()) {
             this.currentCustomerId = Session.getUser().getId();
             usernameLabel.setText(Session.getUser().getUsername());
+            updateBalanceDisplay();
         }
 
         // Load Data
@@ -120,11 +123,10 @@ public class CustomerController {
         Node imageNode;
         try {
             javafx.scene.image.Image image = null;
-            // byte[] imageBytes = productDao.getProductImageBlob(p.getId());
-            // if (imageBytes != null) {
-            // image = new javafx.scene.image.Image(new
-            // java.io.ByteArrayInputStream(imageBytes));
-            // }
+            byte[] imageBytes = productDao.getProductImageBlob(p.getId());
+            if (imageBytes != null) {
+                image = new javafx.scene.image.Image(new java.io.ByteArrayInputStream(imageBytes));
+            }
 
             if (image != null) {
                 javafx.scene.image.ImageView iv = new javafx.scene.image.ImageView(image);
@@ -377,8 +379,6 @@ public class CustomerController {
             card.getChildren().add(actions);
         }
 
-        // ORDER CANCELLATION: Add cancel button for CREATED and ASSIGNED orders within
-        // 1 hour
         if (order.getStatus() == com.cmpe343.model.Order.OrderStatus.CREATED ||
                 order.getStatus() == com.cmpe343.model.Order.OrderStatus.ASSIGNED) {
 
@@ -386,22 +386,35 @@ public class CustomerController {
             java.time.LocalDateTime cancellationDeadline = orderTime.plusHours(1);
             java.time.LocalDateTime now = java.time.LocalDateTime.now();
 
+            HBox actionContainer = new HBox(8);
+            actionContainer.setAlignment(Pos.CENTER_LEFT);
+
             if (now.isBefore(cancellationDeadline)) {
                 // Calculate remaining time
                 long minutesRemaining = java.time.Duration.between(now, cancellationDeadline).toMinutes();
 
-                HBox cancelActions = new HBox(8);
-                cancelActions.setAlignment(Pos.CENTER_LEFT);
-
                 Button cancelBtn = new Button("Cancel Order");
-                cancelBtn.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-padding: 6 12;");
+                cancelBtn.setStyle(
+                        "-fx-background-color: #ef4444; -fx-text-fill: white; -fx-padding: 6 12; -fx-cursor: hand;");
                 cancelBtn.setOnAction(e -> handleCancelOrder(order));
 
                 Label timeRemaining = new Label(String.format("(%d min left to cancel)", minutesRemaining));
                 timeRemaining.setStyle("-fx-text-fill: #f59e0b; -fx-font-size: 11px;");
 
-                cancelActions.getChildren().addAll(cancelBtn, timeRemaining);
-                card.getChildren().add(cancelActions);
+                actionContainer.getChildren().addAll(cancelBtn, timeRemaining);
+            }
+
+            // ADD TRACKING BUTTON if ASSIGNED
+            if (order.getStatus() == com.cmpe343.model.Order.OrderStatus.ASSIGNED) {
+                Button trackBtn = new Button("Track Courier");
+                trackBtn.setStyle(
+                        "-fx-background-color: #f59e0b; -fx-text-fill: white; -fx-padding: 6 12; -fx-cursor: hand; -fx-font-weight: bold;");
+                trackBtn.setOnAction(e -> openTrackingScreen(order));
+                actionContainer.getChildren().add(trackBtn);
+            }
+
+            if (!actionContainer.getChildren().isEmpty()) {
+                card.getChildren().add(actionContainer);
             }
         }
 
@@ -413,20 +426,41 @@ public class CustomerController {
                 javafx.scene.control.Alert.AlertType.CONFIRMATION);
         confirmAlert.setTitle("Cancel Order");
         confirmAlert.setHeaderText("Are you sure you want to cancel Order #" + order.getId() + "?");
-        confirmAlert.setContentText("Stock will be restored and this action cannot be undone.");
+        confirmAlert.setContentText("Funds will be automatically refunded to your wallet.");
 
         confirmAlert.showAndWait().ifPresent(response -> {
             if (response == javafx.scene.control.ButtonType.OK) {
                 com.cmpe343.dao.OrderDao.CancelResult result = orderDao.cancelOrder(order.getId(), currentCustomerId);
                 if (result.success) {
-                    toast(result.message, ToastService.Type.SUCCESS);
-                    refreshProducts(); // Refresh product list to show updated stock
-                    handleViewOrders(); // Refresh orders
+                    // Update session balance (The DAO handles DB part)
+                    double refundAmount = order.getTotalAfterTax();
+                    Session.getUser().setBalance(Session.getUser().getBalance() + refundAmount);
+                    updateBalanceDisplay();
+
+                    toast("Order cancelled! Funds refunded.", ToastService.Type.SUCCESS);
+                    refreshProducts();
+                    handleViewOrders();
                 } else {
                     toast(result.message, ToastService.Type.ERROR);
                 }
             }
         });
+    }
+
+    private void openTrackingScreen(com.cmpe343.model.Order order) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/TrackingView.fxml"));
+            javafx.scene.Parent root = loader.load();
+
+            javafx.stage.Stage stage = new javafx.stage.Stage();
+            stage.setTitle("Live Tracking - Order #" + order.getId());
+            stage.setScene(new javafx.scene.Scene(root));
+            stage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+            stage.show();
+        } catch (java.io.IOException e) {
+            e.printStackTrace();
+            toast("Could not open tracking screen.", ToastService.Type.ERROR);
+        }
     }
 
     private void downloadInvoice(com.cmpe343.model.Order order) {
@@ -786,6 +820,52 @@ public class CustomerController {
         });
 
         dialog.showAndWait();
+    }
+
+    @FXML
+    private void handleWallet() {
+        if (!Session.isLoggedIn())
+            return;
+
+        TextInputDialog dialog = new TextInputDialog("50.0");
+        dialog.setTitle("Top Up Wallet");
+        dialog.setHeaderText("Add funds to your GreenGrocer Wallet");
+        dialog.setContentText("Amount to add (TL):");
+
+        // Style the dialog
+        dialog.getDialogPane().getStylesheets().addAll(searchField.getScene().getStylesheets());
+        dialog.getDialogPane().getStyleClass().add("custom-dialog");
+
+        dialog.showAndWait().ifPresent(amountStr -> {
+            try {
+                double amount = Double.parseDouble(amountStr);
+                if (amount <= 0) {
+                    toast("Please enter a positive amount", ToastService.Type.ERROR);
+                    return;
+                }
+
+                com.cmpe343.dao.UserDao userDao = new com.cmpe343.dao.UserDao();
+                userDao.updateWalletBalance(currentCustomerId, amount);
+
+                // Update Session
+                com.cmpe343.model.User user = Session.getUser();
+                user.setBalance(user.getBalance() + amount);
+
+                updateBalanceDisplay();
+                toast("Wallet topped up successfully!", ToastService.Type.SUCCESS);
+            } catch (NumberFormatException e) {
+                toast("Invalid amount format", ToastService.Type.ERROR);
+            } catch (Exception e) {
+                e.printStackTrace();
+                toast("Failed to update wallet", ToastService.Type.ERROR);
+            }
+        });
+    }
+
+    private void updateBalanceDisplay() {
+        if (balanceLabel != null && Session.isLoggedIn()) {
+            balanceLabel.setText(String.format("%.2f ₺", Session.getUser().getBalance()));
+        }
     }
 
     private void toast(String msg, ToastService.Type type) {

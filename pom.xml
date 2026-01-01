@@ -55,6 +55,11 @@
       <artifactId>layout</artifactId>
       <version>8.0.2</version>
     </dependency>
+    <dependency>
+      <groupId>com.itextpdf</groupId>
+      <artifactId>barcodes</artifactId>
+      <version>8.0.2</version>
+    </dependency>
 
   </dependencies>
 

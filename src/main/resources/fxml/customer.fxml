@@ -37,10 +37,15 @@
 
         <Region prefWidth="16"/>
 
-        <!-- User Info -->
+        <!-- User Info & Wallet -->
         <HBox alignment="CENTER" spacing="12">
+            <HBox alignment="CENTER" spacing="8" onMouseClicked="#handleWallet" style="-fx-cursor: hand; -fx-background-color: rgba(255,255,255,0.05); -fx-padding: 4 12; -fx-background-radius: 20;">
+                <javafx.scene.shape.SVGPath content="M21 18v1c0 1.1-.9 2-2 2H5c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" 
+                                            fill="#10b981" scaleX="0.8" scaleY="0.8"/>
+                <Label fx:id="balanceLabel" text="0.00 ₺" style="-fx-text-fill: #10b981; -fx-font-weight: bold;"/>
+            </HBox>
             <Label fx:id="usernameLabel" text="User" styleClass="sub" style="-fx-font-weight: 700; -fx-text-fill: white;"/>
-            <Button text="Log Out" onAction="#handleLogout" styleClass="btn-outline" style="-fx-font-size: 12px;"/>
+            <Button text="Log Out" onAction="#handleLogout" styleClass="btn-outline" style="-fx-font-size: 11px;"/>
         </HBox>
 
         <!-- Cart Button Wrapper -->

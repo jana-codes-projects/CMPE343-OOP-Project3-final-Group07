@@ -142,3 +142,42 @@
 .dialog-pane .header-panel {
     -fx-background-color: #0f172a;
 }
+
+/* Container styling */
+.report-container {
+    -fx-padding: 24;
+    -fx-spacing: 20;
+    -fx-background-color: transparent; /* Root background will show through */
+}
+
+/* Titles - Adjusted for White Text */
+.report-title {
+    -fx-font-size: 20px;
+    -fx-font-weight: 700;
+    -fx-text-fill: white;
+    -fx-padding: 10 0 10 0;
+}
+
+/* Modern ListView Styling - Dark Mode Version */
+.report-list {
+    -fx-background-color: rgba(30, 41, 59, 0.4);
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+    -fx-border-color: rgba(255, 255, 255, 0.05);
+}
+
+.report-list .list-cell {
+    -fx-padding: 12;
+    -fx-background-color: transparent;
+    -fx-text-fill: #e2e8f0;
+    -fx-border-color: transparent transparent rgba(255, 255, 255, 0.05) transparent;
+}
+
+.report-list .list-cell:odd {
+    -fx-background-color: rgba(255, 255, 255, 0.02);
+}
+
+.report-list .list-cell:filled:hover {
+    -fx-background-color: rgba(99, 102, 241, 0.2); /* Indigo hover effect */
+    -fx-text-fill: #6366f1;
+}

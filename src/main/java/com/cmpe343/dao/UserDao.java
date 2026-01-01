@@ -14,7 +14,7 @@ public class UserDao {
 
     public User login(String username, String password) {
         String sql = """
-                    SELECT id, username, role
+                    SELECT id, username, role, phone, address, is_active, wallet_balance
                     FROM users
                     WHERE username = ?
                       AND password_hash = SHA2(?, 256)
@@ -29,7 +29,7 @@ public class UserDao {
             ResultSet rs = ps.executeQuery();
 
             if (rs.next()) {
-                return mapUser(rs);
+                return mapUserExtended(rs);
             }
             return null;
         } catch (Exception e) {
@@ -39,9 +39,7 @@ public class UserDao {
 
     public List<User> getAllCarriers() {
         List<User> list = new ArrayList<>();
-        String sql = "SELECT id, username, role, phone, address, is_active FROM users WHERE role = 'CARRIER'"; // Assuming
-                                                                                                               // new
-                                                                                                               // fields
+        String sql = "SELECT id, username, role, phone, address, is_active, wallet_balance FROM users WHERE role = 'CARRIER'";
 
         try (Connection c = Db.getConnection();
                 PreparedStatement ps = c.prepareStatement(sql);
@@ -58,7 +56,7 @@ public class UserDao {
     }
 
     public User getUserById(int id) {
-        String sql = "SELECT id, username, role, phone, address, is_active FROM users WHERE id = ?";
+        String sql = "SELECT id, username, role, phone, address, is_active, wallet_balance FROM users WHERE id = ?";
         try (Connection c = Db.getConnection();
                 PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, id);
@@ -75,7 +73,7 @@ public class UserDao {
     }
 
     private User getUserByIdBasic(int id) {
-        String sql = "SELECT id, username, role FROM users WHERE id = ?";
+        String sql = "SELECT id, username, role, wallet_balance FROM users WHERE id = ?";
         try (Connection c = Db.getConnection();
                 PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, id);
@@ -91,10 +89,31 @@ public class UserDao {
     }
 
     private User mapUser(ResultSet rs) throws Exception {
+        double balance = 0.0;
+        try {
+            balance = rs.getDouble("wallet_balance");
+        } catch (Exception e) {
+        }
         return new User(
                 rs.getInt("id"),
                 rs.getString("username"),
-                rs.getString("role"));
+                rs.getString("role"),
+                null,
+                null,
+                true,
+                balance);
+    }
+
+    public void updateWalletBalance(int userId, double amount) {
+        String sql = "UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?";
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setDouble(1, amount);
+            ps.setInt(2, userId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     public void activateCarrier(int userId) {
@@ -117,11 +136,28 @@ public class UserDao {
         }
     }
 
+    public boolean registerCustomer(String username, String password, String address, String phone) {
+        String sql = "INSERT INTO users (username, password_hash, role, address, phone, is_active, wallet_balance) VALUES (?, SHA2(?, 256), 'customer', ?, ?, 1, 0.0)";
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, username);
+            ps.setString(2, password);
+            ps.setString(3, address);
+            ps.setString(4, phone);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
     private User mapUserExtended(ResultSet rs) throws SQLException {
         // Try to get extended fields, default to null/true if column missing
         String phone = null;
         String address = null;
         boolean active = true;
+
+        double balance = 0.0;
 
         try {
             phone = rs.getString("phone");
@@ -135,6 +171,10 @@ public class UserDao {
             active = rs.getBoolean("is_active");
         } catch (Exception e) {
         }
+        try {
+            balance = rs.getDouble("wallet_balance");
+        } catch (Exception e) {
+        }
 
         return new User(
                 rs.getInt("id"),
@@ -142,7 +182,8 @@ public class UserDao {
                 rs.getString("role"),
                 phone,
                 address,
-                active);
+                active,
+                balance);
     }
 
     /**
@@ -176,8 +217,8 @@ public class UserDao {
      */
     public int createCustomer(String username, String password, String phone, String address) {
         String sql = """
-                    INSERT INTO users (username, password_hash, role, phone, address, is_active)
-                    VALUES (?, SHA2(?, 256), 'customer', ?, ?, 1)
+                    INSERT INTO users (username, password_hash, role, phone, address, is_active, wallet_balance)
+                    VALUES (?, SHA2(?, 256), 'customer', ?, ?, 1, 0.0)
                 """;
 
         try (Connection c = Db.getConnection();
@@ -238,8 +279,8 @@ public class UserDao {
      */
     public int createCarrier(String username, String password, String phone, String address) {
         String sql = """
-                    INSERT INTO users (username, password_hash, role, phone, address, is_active)
-                    VALUES (?, SHA2(?, 256), 'carrier', ?, ?, 1)
+                    INSERT INTO users (username, password_hash, role, phone, address, is_active, wallet_balance)
+                    VALUES (?, SHA2(?, 256), 'carrier', ?, ?, 1, 0.0)
                 """;
 
         try (Connection c = Db.getConnection();

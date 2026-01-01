@@ -11,6 +11,7 @@ import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
@@ -255,10 +256,31 @@ public class OwnerController {
         Label stockLabel = new Label("Stock: " + product.getStockKg() + " kg");
         stockLabel.getStyleClass().addAll("badge", product.isLowStock() ? "badge-danger" : "badge-success");
 
+        // Thumbnail
+        Node thumbNode;
+        try {
+            byte[] bytes = productDAO.getProductImageBlob(product.getId());
+            if (bytes != null) {
+                javafx.scene.image.Image img = new javafx.scene.image.Image(new java.io.ByteArrayInputStream(bytes));
+                javafx.scene.image.ImageView iv = new javafx.scene.image.ImageView(img);
+                iv.setFitWidth(30);
+                iv.setFitHeight(30);
+                iv.setPreserveRatio(true);
+                thumbNode = iv;
+            } else {
+                Label l = new Label(product.getName().substring(0, 1).toUpperCase());
+                l.setStyle(
+                        "-fx-background-color: #334155; -fx-text-fill: white; -fx-padding: 4 8; -fx-background-radius: 4;");
+                thumbNode = l;
+            }
+        } catch (Exception e) {
+            thumbNode = new Label("?");
+        }
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
 
-        item.getChildren().addAll(nameLabel, typeLabel, priceLabel, stockLabel, spacer);
+        item.getChildren().addAll(thumbNode, nameLabel, typeLabel, priceLabel, stockLabel, spacer);
         // Fix lambda capture: create final copy to avoid capturing loop variable by
         // reference
         final Product finalProduct = product;
@@ -275,6 +297,30 @@ public class OwnerController {
 
         Label name = new Label(product.getName());
         name.getStyleClass().add("detail-header");
+
+        // Image display
+        Node imageNode;
+        try {
+            byte[] imageBytes = productDAO.getProductImageBlob(product.getId());
+            if (imageBytes != null) {
+                javafx.scene.image.Image img = new javafx.scene.image.Image(
+                        new java.io.ByteArrayInputStream(imageBytes));
+                javafx.scene.image.ImageView iv = new javafx.scene.image.ImageView(img);
+                iv.setFitWidth(150);
+                iv.setFitHeight(150);
+                iv.setPreserveRatio(true);
+                imageNode = iv;
+            } else {
+                Label placeholder = new Label("No Image");
+                placeholder.getStyleClass().add("muted");
+                imageNode = placeholder;
+            }
+        } catch (Exception e) {
+            imageNode = new Label("Error loading image");
+        }
+        VBox imgBox = new VBox(imageNode);
+        imgBox.setAlignment(Pos.CENTER);
+        imgBox.setStyle("-fx-padding: 10; -fx-background-color: rgba(255,255,255,0.05); -fx-background-radius: 8;");
 
         VBox meta = new VBox(5);
         meta.getChildren().addAll(
@@ -297,7 +343,7 @@ public class OwnerController {
 
         actions.getChildren().addAll(editBtn, deleteBtn);
 
-        card.getChildren().addAll(name, meta, actions);
+        card.getChildren().addAll(name, imgBox, meta, actions);
         productDetailContainer.getChildren().add(card);
     }
 
@@ -751,7 +797,8 @@ public class OwnerController {
         meta.getChildren().addAll(
                 createDetailRow("Sender", message.getSender()),
                 createDetailRow("Timestamp", messageTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))),
-                createDetailRow("Status", message.isRead() ? "Replied" : "Unread"));
+                createDetailRow("Status",
+                        message.getRepliedAt() != null ? "Replied" : (message.isRead() ? "Read" : "New")));
 
         Separator sep = new Separator();
         sep.setStyle("-fx-opacity: 0.3; -fx-padding: 10 0;");
@@ -1354,6 +1401,40 @@ public class OwnerController {
                 priceLabel, priceField,
                 stockLabel, stockField,
                 thresholdLabel, thresholdField);
+
+        // Image Selection Section
+        Label imageLabel = new Label("Product Image:");
+        imageLabel.getStyleClass().add("field-label");
+
+        Button chooseImageBtn = new Button("Choose Image...");
+        chooseImageBtn.getStyleClass().add("btn-outline");
+        chooseImageBtn.setMaxWidth(Double.MAX_VALUE);
+
+        Label selectedFileLabel = new Label("No file selected");
+        selectedFileLabel.getStyleClass().add("muted");
+        selectedFileLabel.setStyle("-fx-font-size: 11px;");
+
+        final byte[][] imageBytesContainer = new byte[1][0];
+        imageBytesContainer[0] = null;
+
+        chooseImageBtn.setOnAction(e -> {
+            javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
+            fileChooser.setTitle("Select Product Image");
+            fileChooser.getExtensionFilters().addAll(
+                    new javafx.stage.FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.gif"));
+            java.io.File selectedFile = fileChooser.showOpenDialog(dialog.getOwner());
+            if (selectedFile != null) {
+                try {
+                    imageBytesContainer[0] = java.nio.file.Files.readAllBytes(selectedFile.toPath());
+                    selectedFileLabel.setText(selectedFile.getName() + " (" + (imageBytesContainer[0].length / 1024) + " KB)");
+                } catch (java.io.IOException ex) {
+                    showError("Could not read image file: " + ex.getMessage());
+                }
+            }
+        });
+
+        content.getChildren().addAll(imageLabel, chooseImageBtn, selectedFileLabel);
+
         dialog.getDialogPane().setContent(content);
 
         ButtonType saveButton = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
@@ -1391,8 +1472,8 @@ public class OwnerController {
                     }
 
                     if (product == null) {
-                        // Create new product - typeDbValue is already in database format (VEG/FRUIT)
-                        int productId = productDAO.createProduct(name, typeDbValue, price, stock, threshold);
+                        // Create new product
+                        int productId = productDAO.createProduct(name, typeDbValue, price, stock, threshold, imageBytesContainer[0]);
                         if (productId > 0) {
                             showSuccess("Product added successfully!");
                             loadProducts();
@@ -1401,7 +1482,7 @@ public class OwnerController {
                     } else {
                         // Update existing product
                         boolean success = productDAO.updateProduct(product.getId(), name, typeDbValue, price, stock,
-                                threshold);
+                                threshold, imageBytesContainer[0]);
                         if (success) {
                             showSuccess("Product updated successfully!");
                             loadProducts();

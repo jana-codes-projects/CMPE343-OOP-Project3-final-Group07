@@ -19,6 +19,7 @@ CREATE TABLE users (
   is_active     TINYINT(1)  NOT NULL DEFAULT 1,
   address       VARCHAR(255),
   phone         VARCHAR(30),
+  wallet_balance DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
