@@ -9,7 +9,6 @@
 /home/emirfurqan/CMPE343-OOP-Project3-Group7/src/main/java/com/cmpe343/model/Rating.java
 /home/emirfurqan/CMPE343-OOP-Project3-Group7/src/main/java/com/cmpe343/db/Db.java
 /home/emirfurqan/CMPE343-OOP-Project3-Group7/src/main/java/com/cmpe343/dao/CarrierDao.java
-/home/emirfurqan/CMPE343-OOP-Project3-Group7/src/main/java/com/cmpe343/app/Menu.java
 /home/emirfurqan/CMPE343-OOP-Project3-Group7/src/main/java/com/cmpe343/model/User.java
 /home/emirfurqan/CMPE343-OOP-Project3-Group7/src/main/java/com/cmpe343/fx/controller/CartController.java
 /home/emirfurqan/CMPE343-OOP-Project3-Group7/src/main/java/com/cmpe343/model/CartItem.java
@@ -21,6 +20,7 @@
 /home/emirfurqan/CMPE343-OOP-Project3-Group7/src/main/java/com/cmpe343/model/Coupon.java
 /home/emirfurqan/CMPE343-OOP-Project3-Group7/src/main/java/com/cmpe343/dao/UserDao.java
 /home/emirfurqan/CMPE343-OOP-Project3-Group7/src/main/java/com/cmpe343/model/Product.java
+/home/emirfurqan/CMPE343-OOP-Project3-Group7/src/main/java/com/cmpe343/db/SchemaValidator.java
 /home/emirfurqan/CMPE343-OOP-Project3-Group7/src/main/java/com/cmpe343/dao/OrderDao.java
 /home/emirfurqan/CMPE343-OOP-Project3-Group7/src/main/java/com/cmpe343/fx/controller/CustomerController.java
 /home/emirfurqan/CMPE343-OOP-Project3-Group7/src/main/java/com/cmpe343/App.java

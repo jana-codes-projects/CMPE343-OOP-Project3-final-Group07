@@ -39,7 +39,7 @@ public class UserDao {
 
     public List<User> getAllCarriers() {
         List<User> list = new ArrayList<>();
-        String sql = "SELECT id, username, role, phone, address, is_active FROM users WHERE role = 'CARRIER'"; // Assuming
+        String sql = "SELECT id, username, role, phone, address, is_active FROM users WHERE role = 'carrier'"; // Assuming
                                                                                                                // new
                                                                                                                // fields
 
@@ -143,5 +143,53 @@ public class UserDao {
                 phone,
                 address,
                 active);
+    }
+
+    public boolean registerCustomer(String username, String password, String address, String phone) {
+        // First check if username exists
+        String checkSql = "SELECT id FROM users WHERE username = ?";
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement(checkSql)) {
+            ps.setString(1, username);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return false; // Username taken
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Error checking username: " + e.getMessage(), e);
+        }
+
+        String sql = "INSERT INTO users (username, password_hash, role, address, phone, is_active) VALUES (?, SHA2(?, 256), 'customer', ?, ?, 1)";
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, username);
+            ps.setString(2, password);
+            ps.setString(3, address);
+            ps.setString(4, phone);
+            int rows = ps.executeUpdate();
+            return rows > 0;
+        } catch (Exception e) {
+            throw new RuntimeException("Error registering user: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Gets the owner user ID (first user with role 'owner').
+     * 
+     * @return The owner ID, or -1 if not found
+     */
+    public int getOwnerId() {
+        String sql = "SELECT id FROM users WHERE role = 'owner' LIMIT 1";
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) {
+                return rs.getInt("id");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return -1;
     }
 }

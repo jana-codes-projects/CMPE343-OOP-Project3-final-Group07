@@ -9,10 +9,27 @@ public class CartItem {
         this.quantityKg = quantityKg;
     }
 
-    public Product getProduct() { return product; }
-    public double getQuantityKg() { return quantityKg; }
-    public void setQuantityKg(double quantityKg) { this.quantityKg = quantityKg; }
+    public Product getProduct() {
+        return product;
+    }
 
-    public double getUnitPrice() { return product.getPrice(); }
-    public double getLineTotal() { return product.getPrice() * quantityKg; }
+    public double getQuantityKg() {
+        return quantityKg;
+    }
+
+    public void setQuantityKg(double quantityKg) {
+        this.quantityKg = quantityKg;
+    }
+
+    public double getUnitPrice() {
+        return product.getPrice();
+    }
+
+    public double getLineTotal() {
+        return product.getPrice() * quantityKg;
+    }
+
+    public boolean hasDiscount() {
+        return quantityKg > 5.0;
+    } // 5kg üzeri indirim
 }

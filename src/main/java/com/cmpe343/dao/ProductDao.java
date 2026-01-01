@@ -15,7 +15,7 @@ public class ProductDao {
         List<Product> list = new ArrayList<>();
 
         String sql = """
-                    SELECT id, name, type, price, stock_kg, threshold_kg, image_path
+                    SELECT id, name, type, price, stock_kg, threshold_kg, image_blob
                     FROM products
                     ORDER BY name
                 """;
@@ -32,13 +32,59 @@ public class ProductDao {
                         rs.getDouble("price"),
                         rs.getDouble("stock_kg"),
                         rs.getDouble("threshold_kg"),
-                        rs.getString("image_path")));
+                        rs.getBytes("image_blob")));
             }
 
             return list;
 
         } catch (Exception e) {
             throw new RuntimeException("Product listesi çekilemedi", e);
+        }
+    }
+
+    public void insert(Product p) {
+        String sql = "INSERT INTO products (name, type, price, stock_kg, threshold_kg, image_blob, is_active) VALUES (?, ?, ?, ?, ?, ?, 1)";
+        try (Connection c = Db.getConnection();
+                java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, p.getName());
+            ps.setString(2, p.getType().name());
+            ps.setDouble(3, p.getPrice());
+            ps.setDouble(4, p.getStockKg());
+            ps.setDouble(5, p.getThresholdKg());
+            ps.setBytes(6, p.getImageBlob());
+            ps.executeUpdate();
+        } catch (Exception e) {
+            throw new RuntimeException("Error inserting product: " + e.getMessage(), e);
+        }
+    }
+
+    public void update(Product p) {
+        String sql = "UPDATE products SET name=?, type=?, price=?, stock_kg=?, threshold_kg=?, image_blob=? WHERE id=?";
+        try (Connection c = Db.getConnection();
+                java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, p.getName());
+            ps.setString(2, p.getType().name());
+            ps.setDouble(3, p.getPrice());
+            ps.setDouble(4, p.getStockKg());
+            ps.setDouble(5, p.getThresholdKg());
+            ps.setBytes(6, p.getImageBlob());
+            ps.setInt(7, p.getId());
+            ps.executeUpdate();
+        } catch (Exception e) {
+            throw new RuntimeException("Error updating product: " + e.getMessage(), e);
+        }
+    }
+
+    public void delete(int id) {
+        // Soft delete usually better, but for this project requirements imply removal
+        // Check foreign keys first? Or just delete. Let's do DELETE.
+        String sql = "DELETE FROM products WHERE id=?";
+        try (Connection c = Db.getConnection();
+                java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, id);
+            ps.executeUpdate();
+        } catch (Exception e) {
+            throw new RuntimeException("Error deleting product: " + e.getMessage(), e);
         }
     }
 }

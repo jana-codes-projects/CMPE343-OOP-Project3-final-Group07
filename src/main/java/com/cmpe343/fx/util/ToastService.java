@@ -13,8 +13,13 @@ import javafx.util.Duration;
 
 public class ToastService {
 
-    public enum Type { SUCCESS, ERROR, INFO }
-    public enum Position { BOTTOM_CENTER, BOTTOM_RIGHT, TOP_RIGHT }
+    public enum Type {
+        SUCCESS, ERROR, INFO, WARNING
+    }
+
+    public enum Position {
+        BOTTOM_CENTER, BOTTOM_RIGHT, TOP_RIGHT
+    }
 
     private static final String OVERLAY_ID = "toastOverlay";
     private static final String CONTAINER_ID = "toastContainer";
@@ -24,7 +29,8 @@ public class ToastService {
     }
 
     public static void show(Scene scene, String message, Type type, Position pos, Duration duration) {
-        if (scene == null) return;
+        if (scene == null)
+            return;
 
         Platform.runLater(() -> {
             StackPane root = ensureStackRoot(scene);
@@ -92,13 +98,15 @@ public class ToastService {
     private static String css(Type type) {
         return switch (type) {
             case SUCCESS -> "toast-success";
-            case ERROR   -> "toast-error";
-            case INFO    -> "toast-info";
+            case ERROR -> "toast-error";
+            case INFO -> "toast-info";
+            case WARNING -> "toast-warning";
         };
     }
 
     private static StackPane ensureStackRoot(Scene scene) {
-        if (scene.getRoot() instanceof StackPane sp) return sp;
+        if (scene.getRoot() instanceof StackPane sp)
+            return sp;
 
         Node old = scene.getRoot();
         StackPane sp = new StackPane(old);

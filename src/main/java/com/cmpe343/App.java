@@ -1,6 +1,6 @@
 package com.cmpe343;
 
-import com.cmpe343.app.Menu;
+// import com.cmpe343.app.Menu;
 import com.cmpe343.model.User;
 import com.cmpe343.service.AuthService;
 
@@ -22,8 +22,8 @@ public class App {
 
         if (user == null) {
             System.out.println("❌ Hatalı kullanıcı adı veya şifre");
-        } else {
-            Menu.show(user);
+            // Menu.show(user);
+            System.out.println("CLI Menu is disabled. Please use the JavaFX application.");
         }
     }
 }

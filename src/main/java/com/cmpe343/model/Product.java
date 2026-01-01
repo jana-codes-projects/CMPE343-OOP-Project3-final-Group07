@@ -1,9 +1,11 @@
 package com.cmpe343.model;
 
+import java.io.InputStream;
+
 public class Product {
 
     public enum ProductType {
-        FRUIT, VEGETABLE, OTHER
+        VEG, FRUIT, OTHER
     }
 
     private int id;
@@ -12,28 +14,24 @@ public class Product {
     private double price;
     private double stockKg;
     private double thresholdKg;
-    private String imagePath;
-    private boolean active = true; // Added for OwnerController compatibility
+    private byte[] imageBlob; // For holding image data
+    private boolean active = true;
 
     public Product(int id, String name, ProductType type,
-            double price, double stockKg, double thresholdKg, String imagePath) {
+            double price, double stockKg, double thresholdKg, byte[] imageBlob) {
         this.id = id;
         this.name = name;
         this.type = type;
         this.price = price;
         this.stockKg = stockKg;
         this.thresholdKg = thresholdKg;
-        this.imagePath = imagePath;
+        this.imageBlob = imageBlob;
     }
 
     // Constructor for DB reading of existing string types
     public Product(int id, String name, String typeStr,
-            double price, double stockKg, double thresholdKg, String imagePath) {
-        this(id, name, parseType(typeStr), price, stockKg, thresholdKg, imagePath);
-    }
-
-    public Product(int id, String name, String typeStr, double price, double stockKg) {
-        this(id, name, parseType(typeStr), price, stockKg, 0, null);
+            double price, double stockKg, double thresholdKg, byte[] imageBlob) {
+        this(id, name, parseType(typeStr), price, stockKg, thresholdKg, imageBlob);
     }
 
     private static ProductType parseType(String typeStr) {
@@ -42,11 +40,6 @@ public class Product {
         try {
             return ProductType.valueOf(typeStr.toUpperCase());
         } catch (IllegalArgumentException e) {
-            // Mapping for existing "Fruit" / "Vegetable" strings
-            if (typeStr.equalsIgnoreCase("Fruit"))
-                return ProductType.FRUIT;
-            if (typeStr.equalsIgnoreCase("Vegetable"))
-                return ProductType.VEGETABLE;
             return ProductType.OTHER;
         }
     }
@@ -75,8 +68,8 @@ public class Product {
         return thresholdKg;
     }
 
-    public String getImagePath() {
-        return imagePath;
+    public byte[] getImageBlob() {
+        return imageBlob;
     }
 
     public boolean isLowStock() {
@@ -89,5 +82,17 @@ public class Product {
 
     public void setActive(boolean active) {
         this.active = active;
+    }
+
+    public double getEffectivePrice() {
+        return isLowStock() ? price * 2 : price;
+    }
+
+    public String getTypeDisplayName() {
+        return type == ProductType.VEG ? "VEG" : (type == ProductType.FRUIT ? "FRUIT" : "OTHER");
+    }
+
+    public String getTypeAsDbString() {
+        return type == ProductType.VEG ? "VEG" : (type == ProductType.FRUIT ? "FRUIT" : "OTHER");
     }
 }

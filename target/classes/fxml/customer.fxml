@@ -2,73 +2,194 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 <?import javafx.geometry.Insets?>
-<?import java.lang.String?>
+<?import javafx.scene.shape.SVGPath?>
 
-<VBox spacing="0"
-      styleClass="root"
-      xmlns="http://javafx.com/javafx"
-      xmlns:fx="http://javafx.com/fxml"
-      fx:controller="com.cmpe343.fx.controller.CustomerController">
-      
+<StackPane xmlns="http://javafx.com/javafx"
+           xmlns:fx="http://javafx.com/fxml"
+           fx:controller="com.cmpe343.fx.controller.CustomerController"
+           styleClass="root">
 
-    <!-- HEADER -->
-    <HBox spacing="20" alignment="CENTER_LEFT" styleClass="header-panel" style="-fx-padding: 18 24;">
-        <Label text="Group7 GreenGrocer" styleClass="h1"/>
-        
-        <Region HBox.hgrow="ALWAYS"/>
-        
-        <!-- Search -->
-        <HBox alignment="CENTER_LEFT" styleClass="search-container">
-            <StackPane style="-fx-padding: 0 8 0 0;">
-                <javafx.scene.shape.SVGPath content="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" 
-                                            fill="#94a3b8" scaleX="1.2" scaleY="1.2"/>
-            </StackPane>
-            <TextField fx:id="searchField" promptText="Search fresh products..." 
-                       style="-fx-background-color: transparent; -fx-border-width: 0; -fx-text-fill: white; -fx-pref-width: 250;"/>
-        </HBox>
+    <stylesheets>
+        <java.net.URL value="@../css/base.css" />
+        <java.net.URL value="@../css/customer.css" />
+    </stylesheets>
 
-        <Region prefWidth="32"/>
+    <VBox spacing="0" styleClass="page">
 
-        <!-- User Info -->
-        <HBox alignment="CENTER" spacing="12">
-            <Label fx:id="usernameLabel" text="User" styleClass="sub" style="-fx-font-weight: 700; -fx-text-fill: white;"/>
-            <Button text="Log Out" onAction="#handleLogout" styleClass="btn-outline" style="-fx-font-size: 12px;"/>
-        </HBox>
-
-        <!-- Cart Button Wrapper -->
-        <StackPane onMouseClicked="#handleOpenCart" style="-fx-cursor: hand;">
-             <Button style="-fx-background-color: rgba(255,255,255,0.1); -fx-background-radius: 50; -fx-min-width: 42; -fx-min-height: 42;"
-                     mouseTransparent="true">
-                 <graphic>
-                     <javafx.scene.shape.SVGPath content="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.54-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z" 
-                                                 fill="white" scaleX="1.3" scaleY="1.3"/>
-                 </graphic>
-             </Button>
-             
-             <!-- Badge -->
-             <Label fx:id="cartCountBadge" text="0" visible="false" styleClass="badge" mouseTransparent="true"
-                    StackPane.alignment="TOP_RIGHT">
-                 <StackPane.margin><Insets top="0" right="0"/></StackPane.margin>
-             </Label>
-        </StackPane>
-    </HBox>
-
-    <!-- CONTENT -->
-    <ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-background: transparent;" VBox.vgrow="ALWAYS">
-        <VBox spacing="32" style="-fx-padding: 32;">
-            
-            <!-- Vegetables -->
-            <VBox spacing="16">
-                 <Label text="Vegetables" styleClass="section-title"/>
-                 <FlowPane fx:id="vegetablesGrid" hgap="24" vgap="24" prefWrapLength="1000"/>
+        <!-- TOP BAR -->
+        <HBox alignment="CENTER_LEFT" spacing="18" styleClass="topbar">
+            <VBox spacing="2">
+                <Label text="Group7 GreenGrocer" styleClass="brand"/>
+                <Label fx:id="welcomeLabel" text="Welcome back" styleClass="muted"/>
             </VBox>
 
-            <!-- Fruits -->
-            <VBox spacing="16">
-                 <Label text="Fruits" styleClass="section-title" style="-fx-border-color: #10b981;"/> <!-- different color accent for fruits -->
-                 <FlowPane fx:id="fruitsGrid" hgap="24" vgap="24" prefWrapLength="1000"/>
+            <Region HBox.hgrow="ALWAYS"/>
+
+            <!-- Search -->
+            <HBox alignment="CENTER_LEFT" styleClass="searchbar">
+                <SVGPath content="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"
+                         styleClass="icon-muted"/>
+                <TextField fx:id="searchField" promptText="Search vegetables &amp; fruits..."
+                           styleClass="searchField"/>
+                <Button text="Clear" onAction="#handleClearSearch" styleClass="btn-ghost"/>
+            </HBox>
+
+            <Region prefWidth="8"/>
+
+            <!-- User -->
+            <HBox alignment="CENTER" spacing="12" styleClass="userbox">
+                <StackPane styleClass="avatar">
+                    <Label fx:id="avatarLetter" text="U" styleClass="avatar-text"/>
+                </StackPane>
+
+                <VBox spacing="0">
+                    <Label fx:id="usernameLabel" text="User" styleClass="user-name"/>
+                    <Label fx:id="resultInfoLabel" text="" styleClass="muted tiny"/>
+                </VBox>
+
+                <Region prefWidth="6"/>
+
+                <!-- Cart -->
+                <StackPane onMouseClicked="#handleOpenCart" styleClass="icon-btn-wrap">
+                    <Button styleClass="icon-btn" mouseTransparent="true">
+                        <graphic>
+                            <SVGPath content="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.54-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"
+                                     styleClass="icon-white"/>
+                        </graphic>
+                    </Button>
+
+                    <Label fx:id="cartCountBadge" text="0" visible="false"
+                           styleClass="badge" mouseTransparent="true"
+                           StackPane.alignment="TOP_RIGHT">
+                        <StackPane.margin><Insets top="-6" right="-6"/></StackPane.margin>
+                    </Label>
+                </StackPane>
+
+                <Button text="Log Out" onAction="#handleLogout" styleClass="btn-outline-small"/>
+            </HBox>
+        </HBox>
+
+        <!-- BODY -->
+        <ScrollPane fitToWidth="true" styleClass="scroll-pane" VBox.vgrow="ALWAYS">
+            <VBox spacing="18" styleClass="body">
+
+                <!-- HERO STRIP -->
+                <HBox alignment="CENTER_LEFT" spacing="14" styleClass="hero">
+                    <VBox spacing="3">
+                        <Label text="Fresh Market" styleClass="hero-title"/>
+                        <Label text="Pick today’s best vegetables &amp; fruits. Fast checkout. Live support."
+                               styleClass="hero-sub"/>
+                    </VBox>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <StackPane styleClass="hero-pill">
+                        <Label text="✨ Seasonal Picks" styleClass="hero-pill-text"/>
+                    </StackPane>
+                </HBox>
+
+                <!-- CATEGORY: VEGETABLES -->
+                <VBox styleClass="category-card">
+                    <HBox alignment="CENTER_LEFT" spacing="12" styleClass="category-head">
+                        <StackPane styleClass="cat-icon veg">
+                            <SVGPath content="M12 2C8.69 2 6 4.69 6 8c0 1.7.7 3.23 1.83 4.32L12 22l4.17-9.68C17.3 11.23 18 9.7 18 8c0-3.31-2.69-6-6-6z"
+                                     styleClass="icon-white"/>
+                        </StackPane>
+                        <VBox spacing="0">
+                            <Label text="Vegetables" styleClass="cat-title"/>
+                            <Label fx:id="vegCountLabel" text="" styleClass="muted tiny"/>
+                        </VBox>
+
+                        <Region HBox.hgrow="ALWAYS"/>
+
+                        <Button styleClass="btn-collapse" onAction="#handleToggleVegetables">
+                            <graphic>
+                                <SVGPath fx:id="vegChevron"
+                                         content="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"
+                                         styleClass="icon-muted"/>
+                            </graphic>
+                        </Button>
+                    </HBox>
+
+                    <VBox fx:id="vegContentBox" styleClass="category-content">
+                        <FlowPane fx:id="vegetablesGrid" hgap="18" vgap="18" prefWrapLength="1200"/>
+                    </VBox>
+                </VBox>
+
+                <!-- CATEGORY: FRUITS -->
+                <VBox styleClass="category-card">
+                    <HBox alignment="CENTER_LEFT" spacing="12" styleClass="category-head">
+                        <StackPane styleClass="cat-icon fruit">
+                            <SVGPath content="M12 2c3.86 0 7 3.14 7 7 0 5.25-7 13-7 13S5 14.25 5 9c0-3.86 3.14-7 7-7z"
+                                     styleClass="icon-white"/>
+                        </StackPane>
+                        <VBox spacing="0">
+                            <Label text="Fruits" styleClass="cat-title"/>
+                            <Label fx:id="fruitCountLabel" text="" styleClass="muted tiny"/>
+                        </VBox>
+
+                        <Region HBox.hgrow="ALWAYS"/>
+
+                        <Button styleClass="btn-collapse" onAction="#handleToggleFruits">
+                            <graphic>
+                                <SVGPath fx:id="fruitChevron"
+                                         content="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"
+                                         styleClass="icon-muted"/>
+                            </graphic>
+                        </Button>
+                    </HBox>
+
+                    <VBox fx:id="fruitContentBox" styleClass="category-content">
+                        <FlowPane fx:id="fruitsGrid" hgap="18" vgap="18" prefWrapLength="1200"/>
+                    </VBox>
+                </VBox>
+
             </VBox>
-            
-        </VBox>
-    </ScrollPane>
-</VBox>
+        </ScrollPane>
+
+    </VBox>
+
+    <!-- CHAT WIDGET - Must be direct child of StackPane to be on top -->
+    <VBox fx:id="chatContainer" visible="false" managed="false" maxWidth="380" maxHeight="550"
+          StackPane.alignment="BOTTOM_RIGHT" styleClass="chat-window" mouseTransparent="false">
+        <StackPane.margin>
+            <Insets bottom="96" right="32"/>
+        </StackPane.margin>
+
+        <HBox alignment="CENTER_LEFT" spacing="10" styleClass="chat-header">
+            <Label text="Live Support" styleClass="chat-title"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button onAction="#toggleChat" styleClass="btn-ghost">
+                <graphic>
+                    <SVGPath content="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
+                             styleClass="icon-muted"/>
+                </graphic>
+            </Button>
+        </HBox>
+
+        <ScrollPane fx:id="chatScroll" fitToWidth="true" VBox.vgrow="ALWAYS" styleClass="scroll-pane">
+            <VBox fx:id="chatMessagesBox" spacing="10" style="-fx-padding: 14;"/>
+        </ScrollPane>
+
+        <HBox spacing="10" styleClass="chat-bottom">
+            <TextField fx:id="chatInput" promptText="Type a message..." HBox.hgrow="ALWAYS"
+                       styleClass="chat-input" onAction="#handleSendChatMessage"/>
+            <Button onAction="#handleSendChatMessage" styleClass="btn-primary">
+                <graphic>
+                    <SVGPath content="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"
+                             styleClass="icon-white"/>
+                </graphic>
+            </Button>
+        </HBox>
+    </VBox>
+
+    <!-- Chat FAB - Must be direct child of StackPane to be on top -->
+    <Button onAction="#toggleChat" styleClass="chat-fab" StackPane.alignment="BOTTOM_RIGHT">
+        <StackPane.margin>
+            <Insets bottom="32" right="32"/>
+        </StackPane.margin>
+        <graphic>
+            <SVGPath content="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"
+                     styleClass="icon-white"/>
+        </graphic>
+    </Button>
+
+</StackPane>

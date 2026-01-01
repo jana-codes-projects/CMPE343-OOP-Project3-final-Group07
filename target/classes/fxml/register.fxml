@@ -25,37 +25,40 @@
                 <SVGPath content="M12 2L2 7l10 5 10-5-10-5zm0 9l2-1-2-1-2 1 2 1zm0-9l10 5v6l-10 5-10-5V7l10-5z" 
                          fill="#818cf8" scaleX="1.5" scaleY="1.5"/>
             </StackPane>
-            <Label text="Welcome Back" styleClass="h1"/>
-            <Label text="Sign in to continue to GreenGrocer" styleClass="sub"/>
+            <Label text="Create Account" styleClass="h1"/>
+            <Label text="Sign up for GreenGrocer" styleClass="sub"/>
         </VBox>
 
         <!-- Form -->
         <VBox spacing="16">
             <VBox spacing="8">
                 <Label text="Username" styleClass="field-label"/>
-                <TextField fx:id="usernameField" promptText="e.g. ahmet.yilmaz" styleClass="field"/>
+                <TextField fx:id="registerUsernameField" promptText="e.g. ahmet.yilmaz" styleClass="field"/>
             </VBox>
 
             <VBox spacing="8">
                 <Label text="Password" styleClass="field-label"/>
-                <PasswordField fx:id="passwordField" promptText="••••••••" styleClass="field"/>
+                <PasswordField fx:id="registerPasswordField" promptText="••••••••" styleClass="field"/>
+            </VBox>
+
+            <VBox spacing="8">
+                <Label text="Confirm Password" styleClass="field-label"/>
+                <PasswordField fx:id="registerConfirmPasswordField" promptText="••••••••" styleClass="field"/>
             </VBox>
         </VBox>
 
         <!-- Actions -->
         <VBox spacing="16">
-            <Button fx:id="loginButton" text="Sign In" onAction="#handleLogin" styleClass="btn-primary" maxWidth="Infinity"/>
+            <Button fx:id="registerButton" text="Sign Up" onAction="#handleRegisterSubmit" styleClass="btn-primary" maxWidth="Infinity"/>
             
             <HBox alignment="CENTER" spacing="8">
-                <Label text="Don't have an account?" styleClass="muted"/>
-                <Hyperlink text="Create Account" onAction="#handleRegister" styleClass="link"/>
+                <Label text="Already have an account?" styleClass="muted"/>
+                <Hyperlink text="Sign In" onAction="#handleBackToLogin" styleClass="link"/>
             </HBox>
-             <HBox alignment="CENTER">
-                 <Hyperlink text="Exit Application" onAction="#handleExit" styleClass="link" style="-fx-font-size: 12px; -fx-opacity: 0.8;"/>
-             </HBox>
         </VBox>
 
         <Label text="© 2025 Gr7Project3" styleClass="footer"/>
     </VBox>
 
 </StackPane>
+

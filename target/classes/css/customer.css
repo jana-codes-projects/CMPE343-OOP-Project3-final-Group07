@@ -103,3 +103,46 @@
     -fx-border-width: 0 0 0 4;
     /* Left border accent */
 }
+
+/* Chat window - ensure it's always on top */
+.chat-window {
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.4), 25, 0, 0, 10);
+    -fx-background-color: rgba(30, 41, 59, 0.98);
+    -fx-background-radius: 16;
+    -fx-border-color: rgba(255, 255, 255, 0.15);
+    -fx-border-radius: 16;
+    -fx-border-width: 1;
+}
+
+/* Chat FAB - ensure it's always on top */
+.chat-fab {
+    -fx-effect: dropshadow(gaussian, rgba(99, 102, 241, 0.5), 20, 0, 0, 8);
+}
+
+/* Search bar specific */
+.searchbar {
+    -fx-background-color: rgba(30, 41, 59, 0.6);
+    -fx-background-radius: 24;
+    -fx-border-radius: 24;
+    -fx-border-color: #334155;
+    -fx-padding: 8 16;
+}
+
+.searchbar:focused-within {
+    -fx-border-color: #6366f1;
+}
+
+.searchField {
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+    -fx-prompt-text-fill: #64748b;
+    -fx-border-width: 0;
+    -fx-padding: 0;
+}
+
+/* H3 */
+.h3 {
+    -fx-font-size: 16px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #f8fafc;
+}

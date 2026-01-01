@@ -1,5 +1,6 @@
 com/cmpe343/dao/ProductDao.class
 com/cmpe343/fx/controller/CarrierController.class
+com/cmpe343/db/SchemaValidator.class
 com/cmpe343/service/AuthService.class
 com/cmpe343/App.class
 com/cmpe343/dao/OrderDao.class
@@ -7,6 +8,7 @@ com/cmpe343/model/Coupon.class
 com/cmpe343/model/Product.class
 com/cmpe343/model/Rating.class
 com/cmpe343/model/Order$OrderStatus.class
+com/cmpe343/dao/MessageDao$Conversation.class
 com/cmpe343/fx/util/ToastService.class
 com/cmpe343/dao/MessageDao.class
 com/cmpe343/model/Product$ProductType.class
@@ -15,18 +17,20 @@ com/cmpe343/fx/util/ToastService$Position.class
 com/cmpe343/model/Message.class
 com/cmpe343/fx/MainFx.class
 com/cmpe343/fx/controller/LoginController.class
+com/cmpe343/model/Coupon$CouponKind.class
 com/cmpe343/dao/CouponDao.class
 com/cmpe343/dao/RatingDao.class
+com/cmpe343/fx/controller/CarrierController$1.class
 com/cmpe343/fx/util/ToastService$Type.class
 com/cmpe343/dao/UserDao.class
 com/cmpe343/fx/controller/OwnerController.class
 com/cmpe343/model/CartItem.class
 com/cmpe343/db/Db.class
 com/cmpe343/fx/controller/CustomerController.class
+com/cmpe343/fx/controller/OwnerController$1.class
 com/cmpe343/dao/CarrierDao.class
 com/cmpe343/dao/CartDao.class
 com/cmpe343/model/Order.class
-com/cmpe343/app/Menu.class
 com/cmpe343/fx/controller/CartController.class
 com/cmpe343/dao/CartDao$CartLoadResult.class
 com/cmpe343/fx/Session.class

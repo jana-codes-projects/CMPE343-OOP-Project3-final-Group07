@@ -13,6 +13,9 @@ public class MainFx extends Application  {
         Scene scene = new Scene(loader.load(), 640, 480);
         stage.setTitle("Gr7Project3 - Login");
         stage.setScene(scene);
+        stage.setMinWidth(600);
+        stage.setMinHeight(400);
+        stage.centerOnScreen();
         stage.show();
     }
 

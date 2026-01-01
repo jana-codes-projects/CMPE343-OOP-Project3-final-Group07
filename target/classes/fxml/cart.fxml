@@ -2,44 +2,73 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 <?import javafx.geometry.Insets?>
-<?import java.lang.String?>
+<?import javafx.scene.shape.SVGPath?>
 
-<VBox spacing="16"
+<VBox spacing="24"
       styleClass="root"
       xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml"
       fx:controller="com.cmpe343.fx.controller.CartController">
       
-    <padding><Insets top="24" right="24" bottom="24" left="24"/></padding>
+    <padding><Insets top="32" right="32" bottom="32" left="32"/></padding>
 
-    <HBox spacing="12" alignment="CENTER_LEFT">
+    <HBox spacing="16" alignment="CENTER_LEFT">
         <Button onAction="#handleBack" styleClass="btn-outline">
             <graphic>
-                <javafx.scene.shape.SVGPath content="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" fill="white"/>
+                <SVGPath content="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" fill="#cbd5e1"/>
             </graphic>
             <tooltip><Tooltip text="Back to Shop"/></tooltip>
         </Button>
         <Label text="Your Cart" styleClass="h1"/>
     </HBox>
 
-    <ScrollPane fitToWidth="true" style="-fx-background: transparent; -fx-background-color: transparent;" VBox.vgrow="ALWAYS">
-        <VBox fx:id="cartItemsContainer" styleClass="cart-list-container"/>
-    </ScrollPane>
+    <HBox spacing="24" VBox.vgrow="ALWAYS">
+        <!-- Cart Items Column -->
+        <VBox spacing="16" HBox.hgrow="ALWAYS">
+            <ScrollPane fitToWidth="true" styleClass="scroll-pane" VBox.vgrow="ALWAYS" style="-fx-padding: 0;">
+                <VBox fx:id="cartItemsContainer" styleClass="list-container" spacing="12"/>
+            </ScrollPane>
+        </VBox>
 
-    <VBox spacing="12" styleClass="cart-summary-card">
-        <Label text="Delivery Details" styleClass="h2"/>
-        <HBox spacing="12" alignment="CENTER_LEFT">
-             <DatePicker fx:id="deliveryDatePicker" promptText="Delivery Date" style="-fx-base: #1e293b;"/>
-             <TextField fx:id="deliveryTimeField" promptText="HH:mm" styleClass="field" prefWidth="100"/>
-             <Label text="Must be within 48h" styleClass="muted"/>
-        </HBox>
-        
-        <Separator style="-fx-opacity: 0.1;"/>
+        <!-- Summary Column -->
+        <VBox spacing="24" minWidth="350" prefWidth="350" styleClass="summary-column">
+            <VBox spacing="20" styleClass="card" style="-fx-padding: 24;">
+                <Label text="Order Summary" styleClass="h2"/>
+                
+                <Separator style="-fx-opacity: 0.1;"/>
+                
+                <Label text="Delivery Details" styleClass="h3"/>
+                
+                <VBox spacing="16">
+                     <VBox spacing="4">
+                        <Label text="Date" styleClass="field-label"/>
+                        <DatePicker fx:id="deliveryDatePicker" promptText="Select Date" style="-fx-base: #1e293b;" maxWidth="Infinity"/>
+                     </VBox>
+                     
+                     <VBox spacing="4">
+                        <Label text="Time (HH:mm)" styleClass="field-label"/>
+                        <TextField fx:id="deliveryTimeField" promptText="e.g. 14:30" styleClass="field"/>
+                     </VBox>
+                     
+                     <HBox spacing="8" alignment="CENTER_LEFT" style="-fx-padding: 8; -fx-background-color: rgba(59, 130, 246, 0.1); -fx-background-radius: 8;">
+                        <SVGPath content="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" 
+                                 fill="#3b82f6"/>
+                        <Label text="Delivery must be within 48 hours" styleClass="sub" style="-fx-text-fill: #60a5fa;" wrapText="true"/>
+                     </HBox>
+                </VBox>
+                
+                <Separator style="-fx-opacity: 0.1;"/>
 
-        <HBox spacing="24" alignment="CENTER_RIGHT">
-            <Label fx:id="totalLabel" text="Total: 0.00 ₺" styleClass="cart-total"/>
-            <Button text="Place Order" onAction="#handlePlaceOrder" styleClass="btn-primary" style="-fx-font-size: 14px; -fx-padding: 10 32 10 32;"/>
-        </HBox>
-    </VBox>
+                <VBox spacing="16">
+                    <HBox spacing="16" alignment="CENTER_LEFT">
+                        <Label text="Total" styleClass="h2"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Label fx:id="totalLabel" text="0.00 ₺" styleClass="h2" style="-fx-text-fill: #10b981; -fx-font-size: 24px; -fx-font-weight: 800;"/>
+                    </HBox>
+                    <Button fx:id="placeOrderButton" text="Place Order" onAction="#handlePlaceOrder" styleClass="btn-primary" maxWidth="Infinity" style="-fx-padding: 14; -fx-font-size: 16px; -fx-font-weight: 700;"/>
+                </VBox>
+            </VBox>
+        </VBox>
+    </HBox>
 
 </VBox>

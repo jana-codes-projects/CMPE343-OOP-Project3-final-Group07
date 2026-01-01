@@ -142,3 +142,136 @@
 .dialog-pane .header-panel {
     -fx-background-color: #0f172a;
 }
+
+/* Header Panel */
+.header-panel {
+    -fx-background-color: rgba(15, 23, 42, 0.95);
+    -fx-border-color: rgba(255, 255, 255, 0.05);
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 16 24;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.2), 10, 0, 0, 2);
+}
+
+/* Button Danger */
+.btn-danger {
+    -fx-background-color: rgba(239, 68, 68, 0.1);
+    -fx-border-color: #ef4444;
+    -fx-border-radius: 8;
+    -fx-text-fill: #f87171;
+    -fx-cursor: hand;
+    -fx-padding: 8 16;
+}
+
+.btn-danger:hover {
+    -fx-background-color: rgba(239, 68, 68, 0.2);
+    -fx-border-color: #f87171;
+    -fx-text-fill: #fca5a5;
+}
+
+/* Badge Neutral */
+.badge-neutral {
+    -fx-background-color: rgba(148, 163, 184, 0.15);
+    -fx-text-fill: #94a3b8;
+}
+
+/* Chat Timestamp */
+.chat-timestamp {
+    -fx-text-fill: #64748b;
+    -fx-font-size: 10px;
+    -fx-opacity: 0.8;
+}
+
+/* List Item Base */
+.list-item-base {
+    -fx-background-color: rgba(30, 41, 59, 0.4);
+    -fx-padding: 14 18;
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-border-color: rgba(255, 255, 255, 0.05);
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.1), 2, 0, 0, 1);
+    -fx-transition: all 0.2s ease;
+}
+
+.list-item-base:hover {
+    -fx-background-color: rgba(30, 41, 59, 0.8);
+    -fx-border-color: #6366f1;
+    -fx-translate-x: 4;
+}
+
+.list-item-base:selected {
+    -fx-background-color: rgba(99, 102, 241, 0.2);
+    -fx-border-color: #6366f1;
+    -fx-border-width: 2;
+}
+
+/* Placeholder */
+.placeholder {
+    -fx-text-fill: #64748b;
+    -fx-font-size: 14px;
+    -fx-padding: 40;
+    -fx-alignment: center;
+}
+
+/* H3 Title */
+.h3 {
+    -fx-font-size: 16px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #f8fafc;
+    -fx-padding: 0 0 12 0;
+}
+
+/* Card improvements */
+.card {
+    -fx-background-color: rgba(30, 41, 59, 0.6);
+    -fx-background-radius: 16;
+    -fx-border-radius: 16;
+    -fx-border-color: rgba(255, 255, 255, 0.08);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.2), 10, 0, 0, 4);
+}
+
+/* List container improvements */
+.list-container {
+    -fx-background-color: transparent;
+    -fx-spacing: 8;
+    -fx-padding: 8;
+}
+
+/* Better spacing for detail containers */
+.detail-container {
+    -fx-spacing: 16;
+    -fx-padding: 16;
+}
+
+/* Action buttons container */
+.actions-container {
+    -fx-spacing: 10;
+    -fx-alignment: center-right;
+    -fx-padding: 16 0 0 0;
+}
+
+/* Chat view styles */
+.chat-view {
+    -fx-background-color: transparent;
+}
+
+/* Chat message bubbles */
+.chat-message-sent {
+    -fx-background-color: #6366f1;
+    -fx-background-radius: 18;
+    -fx-padding: 12 16;
+}
+
+.chat-message-received {
+    -fx-background-color: rgba(30, 41, 59, 0.8);
+    -fx-background-radius: 18;
+    -fx-border-color: rgba(255, 255, 255, 0.1);
+    -fx-border-radius: 18;
+    -fx-border-width: 1;
+    -fx-padding: 12 16;
+}
+
+.chat-timestamp {
+    -fx-font-size: 11px;
+    -fx-text-fill: rgba(255, 255, 255, 0.6);
+}

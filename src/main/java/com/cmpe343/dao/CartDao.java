@@ -10,32 +10,6 @@ import java.util.List;
 
 public class CartDao {
 
-    public CartDao() {
-        ensureTableExists();
-    }
-
-    private void ensureTableExists() {
-        String sql = """
-                    CREATE TABLE IF NOT EXISTS cart_items (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        user_id INT NOT NULL,
-                        product_id INT NOT NULL,
-                        quantity_kg DOUBLE DEFAULT 1.0,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        UNIQUE KEY unique_cart_item (user_id, product_id),
-                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-                        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
-                    )
-                """;
-        try (Connection c = Db.getConnection();
-                Statement s = c.createStatement()) {
-            s.execute(sql);
-        } catch (Exception e) {
-            e.printStackTrace();
-            System.err.println("Cart table creation failed: " + e.getMessage());
-        }
-    }
-
     public void addToCart(int userId, int productId, double kg) {
         // Upsert logic: If exists, add to current quantity
         String checkSql = "SELECT quantity_kg FROM cart_items WHERE user_id=? AND product_id=?";
@@ -108,7 +82,7 @@ public class CartDao {
     public CartLoadResult getCartItemsWithStockCheck(int userId) {
         CartLoadResult result = new CartLoadResult();
         String sql = """
-                    SELECT ci.product_id, ci.quantity_kg, p.name, p.type, p.price, p.stock_kg, p.image_path
+                    SELECT ci.product_id, ci.quantity_kg, p.name, p.type, p.price, p.stock_kg, p.threshold_kg, p.image_blob
                     FROM cart_items ci
                     JOIN products p ON ci.product_id = p.id
                     WHERE ci.user_id = ?
@@ -130,7 +104,8 @@ public class CartDao {
                     String pName = rs.getString("name");
                     String pType = rs.getString("type");
                     double pPrice = rs.getDouble("price");
-                    String pImagePath = rs.getString("image_path");
+                    double thresholdKg = rs.getDouble("threshold_kg");
+                    byte[] pImageBlob = rs.getBytes("image_blob");
 
                     // STOCK CHECK
                     if (stockKg <= 0) {
@@ -157,8 +132,8 @@ public class CartDao {
                     }
 
                     // Build Product & CartItem
-                    // Using 0 for threshold as it's not needed for cart display usually
-                    Product p = new Product(pId, pName, pType, pPrice, stockKg, 0, pImagePath);
+                    // Pass actual threshold logic
+                    Product p = new Product(pId, pName, pType, pPrice, stockKg, thresholdKg, pImageBlob);
                     CartItem item = new CartItem(p, cartKg);
                     result.items.add(item);
                 }
@@ -182,5 +157,18 @@ public class CartDao {
             e.printStackTrace();
         }
         return 0;
+    }
+
+    public void updateQuantity(int userId, int productId, double newQuantityKg) {
+        String sql = "UPDATE cart_items SET quantity_kg = ? WHERE user_id = ? AND product_id = ?";
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setDouble(1, newQuantityKg);
+            ps.setInt(2, userId);
+            ps.setInt(3, productId);
+            ps.executeUpdate();
+        } catch (Exception e) {
+            throw new RuntimeException("Error updating quantity: " + e.getMessage(), e);
+        }
     }
 }

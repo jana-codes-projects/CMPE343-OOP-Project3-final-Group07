@@ -2,6 +2,7 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.control.*?>
 <?import javafx.geometry.Insets?>
+<?import javafx.scene.shape.SVGPath?>
 
 <StackPane xmlns="http://javafx.com/javafx"
            xmlns:fx="http://javafx.com/fxml"
@@ -12,37 +13,47 @@
     <!-- Background -->
     <Pane styleClass="bg-gradient"/>
 
-    <!-- Center card -->
-    <VBox alignment="CENTER" spacing="16" maxWidth="420" styleClass="card">
+    <!-- Center Card -->
+    <VBox alignment="CENTER" spacing="24" maxWidth="400" styleClass="card">
         <padding>
-            <Insets top="26" right="26" bottom="26" left="26"/>
+            <Insets top="40" right="40" bottom="40" left="40"/>
         </padding>
 
-        <VBox spacing="6" alignment="CENTER_LEFT">
-            <Label text="Welcome back" styleClass="h1"/>
+        <!-- Brand / Header -->
+        <VBox spacing="8" alignment="CENTER">
+            <StackPane style="-fx-background-color: rgba(99, 102, 241, 0.2); -fx-background-radius: 50%; -fx-min-width: 64; -fx-min-height: 64; -fx-max-width: 64; -fx-max-height: 64;">
+                <SVGPath content="M12 2L2 7l10 5 10-5-10-5zm0 9l2-1-2-1-2 1 2 1zm0-9l10 5v6l-10 5-10-5V7l10-5z" 
+                         fill="#818cf8" scaleX="1.5" scaleY="1.5"/>
+            </StackPane>
+            <Label text="Welcome Back" styleClass="h1"/>
             <Label text="Sign in to continue to GreenGrocer" styleClass="sub"/>
         </VBox>
 
-        <VBox spacing="10">
-            <VBox spacing="6">
+        <!-- Form -->
+        <VBox spacing="16">
+            <VBox spacing="8">
                 <Label text="Username" styleClass="field-label"/>
                 <TextField fx:id="usernameField" promptText="e.g. ahmet.yilmaz" styleClass="field"/>
             </VBox>
 
-            <VBox spacing="6">
+            <VBox spacing="8">
                 <Label text="Password" styleClass="field-label"/>
                 <PasswordField fx:id="passwordField" promptText="••••••••" styleClass="field"/>
             </VBox>
-
         </VBox>
 
-        <Button fx:id="loginButton" text="Login" onAction="#handleLogin" styleClass="btn-primary" maxWidth="Infinity"/>
-
-        <HBox alignment="CENTER" spacing="12">
-            <Hyperlink text="Forgot password?" styleClass="link"/>
-            <Label text="•" styleClass="muted"/>
-            <Hyperlink text="Exit" onAction="#handleExit" styleClass="link"/>
-        </HBox>
+        <!-- Actions -->
+        <VBox spacing="16">
+            <Button fx:id="loginButton" text="Sign In" onAction="#handleLogin" styleClass="btn-primary" maxWidth="Infinity"/>
+            
+            <HBox alignment="CENTER" spacing="8">
+                <Label text="Don't have an account?" styleClass="muted"/>
+                <Hyperlink text="Create Account" onAction="#handleRegister" styleClass="link"/>
+            </HBox>
+             <HBox alignment="CENTER">
+                 <Hyperlink text="Exit Application" onAction="#handleExit" styleClass="link" style="-fx-font-size: 12px; -fx-opacity: 0.8;"/>
+             </HBox>
+        </VBox>
 
         <Label text="© 2025 Gr7Project3" styleClass="footer"/>
     </VBox>
