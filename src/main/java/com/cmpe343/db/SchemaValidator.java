@@ -181,37 +181,119 @@ public class SchemaValidator {
 
     private static void checkColumns(Connection conn, String tableName) throws Exception {
         Statement stmt = conn.createStatement();
-
-        // Critical Column Checks (Add if missing)
+        // generic check for all tables
+        // USERS
+        if (tableName.equals("users")) {
+            ensureColumn(conn, stmt, "users", "username", "VARCHAR(50) NOT NULL UNIQUE");
+            ensureColumn(conn, stmt, "users", "password_hash", "CHAR(64) NOT NULL");
+            ensureColumn(conn, stmt, "users", "role", "ENUM('customer','carrier','owner') NOT NULL");
+            ensureColumn(conn, stmt, "users", "is_active", "TINYINT(1) NOT NULL DEFAULT 1");
+            ensureColumn(conn, stmt, "users", "address", "VARCHAR(255)");
+            ensureColumn(conn, stmt, "users", "phone", "VARCHAR(30)");
+            ensureColumn(conn, stmt, "users", "created_at", "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP");
+        }
+        // PRODUCTS
         if (tableName.equals("products")) {
-            if (!columnExists(conn, "products", "image_blob")) {
-                System.out.println("   [FIX] Adding missing column: products.image_blob");
-                stmt.execute(
-                        "ALTER TABLE products ADD COLUMN image_blob LONGBLOB COMMENT 'Product image stored as Binary Large Object (BLOB)'");
-            }
-            if (!columnExists(conn, "products", "threshold_kg")) {
-                System.out.println("   [FIX] Adding missing column: products.threshold_kg");
-                stmt.execute("ALTER TABLE products ADD COLUMN threshold_kg DECIMAL(10,2) NOT NULL DEFAULT 0");
-            }
+            ensureColumn(conn, stmt, "products", "name", "VARCHAR(100) NOT NULL");
+            ensureColumn(conn, stmt, "products", "type", "ENUM('VEG','FRUIT') NOT NULL");
+            ensureColumn(conn, stmt, "products", "price", "DECIMAL(10,2) NOT NULL");
+            ensureColumn(conn, stmt, "products", "stock_kg", "DECIMAL(10,2) NOT NULL");
+            ensureColumn(conn, stmt, "products", "threshold_kg", "DECIMAL(10,2) NOT NULL");
+            ensureColumn(conn, stmt, "products", "image_blob",
+                    "LONGBLOB COMMENT 'Product image stored as Binary Large Object (BLOB)'");
+            ensureColumn(conn, stmt, "products", "is_active", "TINYINT(1) NOT NULL DEFAULT 1");
+            ensureColumn(conn, stmt, "products", "created_at", "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP");
         }
 
-        if (tableName.equals("invoices")) {
-            if (!columnExists(conn, "invoices", "pdf_blob")) {
-                System.out.println("   [FIX] Adding missing column: invoices.pdf_blob");
-                stmt.execute("ALTER TABLE invoices ADD COLUMN pdf_blob LONGBLOB");
-            }
+        // COUPONS
+        if (tableName.equals("coupons")) {
+            ensureColumn(conn, stmt, "coupons", "code", "VARCHAR(30) NOT NULL UNIQUE");
+            ensureColumn(conn, stmt, "coupons", "kind", "ENUM('AMOUNT','PERCENT') NOT NULL");
+            ensureColumn(conn, stmt, "coupons", "value", "DECIMAL(10,2) NOT NULL");
+            ensureColumn(conn, stmt, "coupons", "min_cart", "DECIMAL(10,2) NOT NULL DEFAULT 0");
+            ensureColumn(conn, stmt, "coupons", "is_active", "TINYINT(1) NOT NULL DEFAULT 1");
+            ensureColumn(conn, stmt, "coupons", "expires_at", "DATETIME NULL");
         }
 
+        // ORDERS
+        if (tableName.equals("orders")) {
+            ensureColumn(conn, stmt, "orders", "customer_id", "INT NOT NULL");
+            // note: FK constraints are generally part of create table, adding them via
+            // generic check only if column missing
+            // we won't strictly enforce FK reconstruction here to avoid duplication errors
+            // without more complex checks
+            ensureColumn(conn, stmt, "orders", "carrier_id", "INT NULL");
+            ensureColumn(conn, stmt, "orders", "status",
+                    "ENUM('CREATED','ASSIGNED','DELIVERED','CANCELLED') NOT NULL DEFAULT 'CREATED'");
+            ensureColumn(conn, stmt, "orders", "order_time", "DATETIME NOT NULL");
+            ensureColumn(conn, stmt, "orders", "requested_delivery_time", "DATETIME NOT NULL");
+            ensureColumn(conn, stmt, "orders", "delivered_time", "DATETIME NULL");
+            ensureColumn(conn, stmt, "orders", "total_before_tax", "DECIMAL(10,2) NOT NULL DEFAULT 0");
+            ensureColumn(conn, stmt, "orders", "vat", "DECIMAL(10,2) NOT NULL DEFAULT 0");
+            ensureColumn(conn, stmt, "orders", "total_after_tax", "DECIMAL(10,2) NOT NULL DEFAULT 0");
+            ensureColumn(conn, stmt, "orders", "coupon_id", "INT NULL");
+            ensureColumn(conn, stmt, "orders", "loyalty_discount", "DECIMAL(10,2) NOT NULL DEFAULT 0");
+        }
+
+        // ORDER_ITEMS
+        if (tableName.equals("order_items")) {
+            ensureColumn(conn, stmt, "order_items", "order_id", "INT NOT NULL");
+            ensureColumn(conn, stmt, "order_items", "product_id", "INT NOT NULL");
+            ensureColumn(conn, stmt, "order_items", "kg", "DECIMAL(10,2) NOT NULL");
+            ensureColumn(conn, stmt, "order_items", "unit_price_applied", "DECIMAL(10,2) NOT NULL");
+            ensureColumn(conn, stmt, "order_items", "line_total", "DECIMAL(10,2) NOT NULL");
+        }
+
+        // MESSAGES
         if (tableName.equals("messages")) {
-            if (!columnExists(conn, "messages", "sender_id")) {
-                System.out.println("   [FIX] Adding missing column: messages.sender_id");
-                stmt.execute("ALTER TABLE messages ADD COLUMN sender_id INT NULL");
-                stmt.execute(
-                        "ALTER TABLE messages ADD CONSTRAINT fk_msg_sender FOREIGN KEY (sender_id) REFERENCES users(id)");
-            }
+            ensureColumn(conn, stmt, "messages", "customer_id", "INT NOT NULL");
+            ensureColumn(conn, stmt, "messages", "owner_id", "INT NOT NULL");
+            ensureColumn(conn, stmt, "messages", "sender_id", "INT NULL");
+            ensureColumn(conn, stmt, "messages", "text_clob",
+                    "LONGTEXT NOT NULL COMMENT 'Message text stored as Character Large Object (CLOB)'");
+            ensureColumn(conn, stmt, "messages", "created_at", "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP");
+            ensureColumn(conn, stmt, "messages", "reply_text",
+                    "LONGTEXT NULL COMMENT 'Reply text stored as Character Large Object (CLOB)'");
+            ensureColumn(conn, stmt, "messages", "replied_at", "TIMESTAMP NULL");
         }
 
-        // Add more specific column checks here as needed
+        // RATINGS
+        if (tableName.equals("ratings")) {
+            ensureColumn(conn, stmt, "ratings", "order_id", "INT NOT NULL UNIQUE");
+            ensureColumn(conn, stmt, "ratings", "carrier_id", "INT NOT NULL");
+            ensureColumn(conn, stmt, "ratings", "customer_id", "INT NOT NULL");
+            ensureColumn(conn, stmt, "ratings", "rating", "TINYINT NOT NULL");
+            ensureColumn(conn, stmt, "ratings", "comment", "VARCHAR(255)");
+            ensureColumn(conn, stmt, "ratings", "created_at", "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP");
+        }
+
+        // INVOICES
+        if (tableName.equals("invoices")) {
+            ensureColumn(conn, stmt, "invoices", "order_id", "INT PRIMARY KEY");
+            ensureColumn(conn, stmt, "invoices", "pdf_blob",
+                    "LONGBLOB NOT NULL COMMENT 'PDF invoice stored as Binary Large Object (BLOB)'");
+            ensureColumn(conn, stmt, "invoices", "invoice_text",
+                    "LONGTEXT NULL COMMENT 'Invoice/transaction log text stored as Character Large Object (CLOB)'");
+            ensureColumn(conn, stmt, "invoices", "transaction_log",
+                    "LONGTEXT NULL COMMENT 'Transaction log details stored as Character Large Object (CLOB)'");
+            ensureColumn(conn, stmt, "invoices", "created_at", "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP");
+        }
+
+        // CART_ITEMS
+        if (tableName.equals("cart_items")) {
+            ensureColumn(conn, stmt, "cart_items", "user_id", "INT NOT NULL");
+            ensureColumn(conn, stmt, "cart_items", "product_id", "INT NOT NULL");
+            ensureColumn(conn, stmt, "cart_items", "quantity_kg", "DOUBLE DEFAULT 1.0");
+            ensureColumn(conn, stmt, "cart_items", "created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+        }
+    }
+
+    private static void ensureColumn(Connection conn, Statement stmt, String tableName, String columnName,
+            String columnDefinition) throws Exception {
+        if (!columnExists(conn, tableName, columnName)) {
+            System.out.println("   [FIX] Adding missing column: " + tableName + "." + columnName);
+            stmt.execute("ALTER TABLE " + tableName + " ADD COLUMN " + columnName + " " + columnDefinition);
+        }
     }
 
     private static boolean columnExists(Connection conn, String tableName, String columnName) throws Exception {

@@ -271,41 +271,57 @@
 
 /* Topbar */
 .topbar {
-    -fx-background-color: rgba(15, 23, 42, 0.95);
-    -fx-border-color: rgba(255, 255, 255, 0.05);
+    -fx-background-color: rgba(15, 23, 42, 0.98);
+    -fx-border-color: rgba(99, 102, 241, 0.2);
     -fx-border-width: 0 0 1 0;
-    -fx-padding: 16 24;
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.2), 10, 0, 0, 2);
+    -fx-padding: 18 32;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 15, 0, 0, 4);
 }
 
 /* Brand */
 .brand {
     -fx-text-fill: white;
-    -fx-font-size: 18px;
-    -fx-font-weight: 800;
+    -fx-font-size: 22px;
+    -fx-font-weight: 900;
+    -fx-effect: dropshadow(gaussian, rgba(99, 102, 241, 0.3), 0, 0, 0, 1);
 }
 
 /* User box */
 .userbox {
-    -fx-padding: 8 12;
-    -fx-background-color: rgba(30, 41, 59, 0.4);
-    -fx-background-radius: 12;
+    -fx-padding: 10 16;
+    -fx-background-color: rgba(30, 41, 59, 0.8);
+    -fx-background-radius: 16;
+    -fx-border-radius: 16;
+    -fx-border-color: rgba(255, 255, 255, 0.1);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.2), 8, 0, 0, 2);
+}
+
+.userbox:hover {
+    -fx-background-color: rgba(30, 41, 59, 1);
+    -fx-border-color: rgba(99, 102, 241, 0.3);
 }
 
 /* Avatar */
 .avatar {
-    -fx-background-color: linear-gradient(to bottom right, #6366f1, #4f46e5);
+    -fx-background-color: linear-gradient(to bottom right, #6366f1, #8b5cf6);
     -fx-background-radius: 50%;
-    -fx-min-width: 40;
-    -fx-min-height: 40;
-    -fx-max-width: 40;
-    -fx-max-height: 40;
+    -fx-min-width: 44;
+    -fx-min-height: 44;
+    -fx-max-width: 44;
+    -fx-max-height: 44;
     -fx-alignment: center;
+    -fx-effect: dropshadow(gaussian, rgba(99, 102, 241, 0.4), 12, 0, 0, 4);
+}
+
+.avatar:hover {
+    -fx-effect: dropshadow(gaussian, rgba(99, 102, 241, 0.6), 16, 0, 0, 6);
+    -fx-scale-x: 1.05;
+    -fx-scale-y: 1.05;
 }
 
 .avatar-text {
     -fx-text-fill: white;
-    -fx-font-size: 16px;
+    -fx-font-size: 18px;
     -fx-font-weight: 800;
 }
 

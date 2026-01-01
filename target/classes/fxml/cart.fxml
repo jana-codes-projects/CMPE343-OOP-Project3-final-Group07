@@ -4,23 +4,67 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.shape.SVGPath?>
 
-<VBox spacing="24"
+<VBox spacing="0"
       styleClass="root"
       xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml"
       fx:controller="com.cmpe343.fx.controller.CartController">
       
-    <padding><Insets top="32" right="32" bottom="32" left="32"/></padding>
+    <!-- TOP BAR (Same as Customer Page) -->
+    <HBox alignment="CENTER_LEFT" spacing="18" styleClass="topbar">
+        <VBox spacing="2">
+            <Label text="Group7 GreenGrocer" styleClass="brand"/>
+            <Label fx:id="welcomeLabel" text="Welcome back" styleClass="muted"/>
+        </VBox>
 
-    <HBox spacing="16" alignment="CENTER_LEFT">
-        <Button onAction="#handleBack" styleClass="btn-outline">
-            <graphic>
-                <SVGPath content="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" fill="#cbd5e1"/>
-            </graphic>
-            <tooltip><Tooltip text="Back to Shop"/></tooltip>
-        </Button>
-        <Label text="Your Cart" styleClass="h1"/>
+        <Region HBox.hgrow="ALWAYS"/>
+
+        <!-- Search -->
+        <HBox alignment="CENTER_LEFT" styleClass="searchbar">
+            <SVGPath content="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"
+                     styleClass="icon-muted"/>
+            <TextField fx:id="searchField" promptText="Search vegetables &amp; fruits..."
+                       styleClass="searchField"/>
+            <Button text="Clear" onAction="#handleClearSearch" styleClass="btn-ghost"/>
+        </HBox>
+
+        <Region prefWidth="8"/>
+
+        <!-- User -->
+        <HBox alignment="CENTER" spacing="12" styleClass="userbox">
+            <StackPane styleClass="avatar">
+                <Label fx:id="avatarLetter" text="U" styleClass="avatar-text"/>
+            </StackPane>
+
+            <VBox spacing="0">
+                <Label fx:id="usernameLabel" text="User" styleClass="user-name"/>
+                <Label fx:id="resultInfoLabel" text="Shopping Cart" styleClass="muted tiny"/>
+            </VBox>
+
+            <Region prefWidth="6"/>
+
+            <!-- Cart -->
+            <StackPane onMouseClicked="#handleBack" styleClass="icon-btn-wrap">
+                <Button styleClass="icon-btn" mouseTransparent="true">
+                    <graphic>
+                        <SVGPath content="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.54-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"
+                                 styleClass="icon-white"/>
+                    </graphic>
+                </Button>
+
+                <Label fx:id="cartCountBadge" text="0" visible="false"
+                       styleClass="badge" mouseTransparent="true"
+                       StackPane.alignment="TOP_RIGHT">
+                    <StackPane.margin><Insets top="-6" right="-6"/></StackPane.margin>
+                </Label>
+            </StackPane>
+
+            <Button text="Log Out" onAction="#handleLogout" styleClass="btn-outline-small"/>
+        </HBox>
     </HBox>
+
+    <!-- BODY -->
+    <VBox spacing="24" style="-fx-padding: 32;">
 
     <HBox spacing="24" VBox.vgrow="ALWAYS">
         <!-- Cart Items Column -->
@@ -70,5 +114,6 @@
             </VBox>
         </VBox>
     </HBox>
+    </VBox>
 
 </VBox>

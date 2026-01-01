@@ -40,6 +40,20 @@ public class CartController {
     private Label totalLabel;
     @FXML
     private Button placeOrderButton;
+    
+    // Header fields (from customer page)
+    @FXML
+    private Label welcomeLabel;
+    @FXML
+    private Label avatarLetter;
+    @FXML
+    private Label usernameLabel;
+    @FXML
+    private Label resultInfoLabel;
+    @FXML
+    private Label cartCountBadge;
+    @FXML
+    private TextField searchField;
 
     private final CartDao cartDao = new CartDao();
     private final OrderDao orderDao = new OrderDao();
@@ -50,12 +64,34 @@ public class CartController {
         if (!Session.isLoggedIn())
             return;
 
+        // Initialize header
+        if (Session.isLoggedIn()) {
+            String username = Session.getUser().getUsername();
+            if (usernameLabel != null) {
+                usernameLabel.setText(username);
+            }
+            if (welcomeLabel != null) {
+                welcomeLabel.setText("Welcome back, " + username);
+            }
+            if (avatarLetter != null && !username.isEmpty()) {
+                avatarLetter.setText(username.substring(0, 1).toUpperCase());
+            }
+            if (resultInfoLabel != null) {
+                resultInfoLabel.setText("Shopping Cart");
+            }
+        }
+        
+        // Update cart badge
+        updateCartBadge();
+
         // Load CSS manually to avoid FXML warnings
         javafx.application.Platform.runLater(() -> {
             if (cartItemsContainer.getScene() != null) {
                 cartItemsContainer.getScene().getStylesheets().clear();
                 cartItemsContainer.getScene().getStylesheets()
                         .add(getClass().getResource("/css/base.css").toExternalForm());
+                cartItemsContainer.getScene().getStylesheets()
+                        .add(getClass().getResource("/css/customer.css").toExternalForm());
                 cartItemsContainer.getScene().getStylesheets()
                         .add(getClass().getResource("/css/cart.css").toExternalForm());
             }
@@ -131,6 +167,19 @@ public class CartController {
         }
         updateTotal();
         updatePlaceOrderButton();
+        updateCartBadge();
+    }
+    
+    private void updateCartBadge() {
+        if (cartCountBadge != null) {
+            int count = currentCartItems.size();
+            if (count > 0) {
+                cartCountBadge.setText(String.valueOf(count));
+                cartCountBadge.setVisible(true);
+            } else {
+                cartCountBadge.setVisible(false);
+            }
+        }
     }
 
     private void updatePlaceOrderButton() {
@@ -354,6 +403,28 @@ public class CartController {
             stage.setScene(scene);
             stage.setMinWidth(1000);
             stage.setMinHeight(700);
+            stage.centerOnScreen();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    
+    @FXML
+    private void handleClearSearch() {
+        if (searchField != null) {
+            searchField.clear();
+        }
+    }
+    
+    @FXML
+    private void handleLogout() {
+        Session.clear();
+        try {
+            Stage stage = (Stage) cartItemsContainer.getScene().getWindow();
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/login.fxml"));
+            Scene scene = new Scene(loader.load(), 1200, 800);
+            stage.setScene(scene);
+            stage.setTitle("Gr7Project3 - Login");
             stage.centerOnScreen();
         } catch (Exception e) {
             e.printStackTrace();

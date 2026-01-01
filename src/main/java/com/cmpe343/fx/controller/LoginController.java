@@ -24,7 +24,7 @@ public class LoginController {
     private PasswordField passwordField;
     @FXML
     private Button loginButton; // login.fxml'de fx:id="loginButton" olmalı
-    
+
     // Register fields (for register.fxml)
     @FXML
     private TextField registerUsernameField;
@@ -40,14 +40,21 @@ public class LoginController {
 
     @FXML
     public void initialize() {
-        // Enter ile login
-        usernameField.setOnAction(e -> handleLogin());
-        passwordField.setOnAction(e -> handleLogin());
+        // Login mode initialization
+        if (usernameField != null) {
+            usernameField.setOnAction(e -> handleLogin());
+            Platform.runLater(() -> usernameField.requestFocus());
+        }
+        if (passwordField != null) {
+            passwordField.setOnAction(e -> handleLogin());
+        }
 
-        Platform.runLater(() -> usernameField.requestFocus());
-
-        // İstersen ilk açılış test (sonra silebilirsin)
-        // Platform.runLater(() -> toastInfo("Toast hazır ✅"));
+        // Register mode initialization
+        if (registerUsernameField != null) {
+            Platform.runLater(() -> registerUsernameField.requestFocus());
+            // Optional: Add Enter key support for registration
+            // registerConfirmPasswordField.setOnAction(e -> handleRegisterSubmit());
+        }
     }
 
     @FXML
@@ -138,7 +145,8 @@ public class LoginController {
 
         String username = registerUsernameField.getText() == null ? "" : registerUsernameField.getText().trim();
         String password = registerPasswordField.getText() == null ? "" : registerPasswordField.getText();
-        String confirmPassword = registerConfirmPasswordField.getText() == null ? "" : registerConfirmPasswordField.getText();
+        String confirmPassword = registerConfirmPasswordField.getText() == null ? ""
+                : registerConfirmPasswordField.getText();
 
         if (username.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
             toastError("Please fill in all fields");
@@ -163,7 +171,7 @@ public class LoginController {
         try {
             // Register with default address and phone (can be enhanced later)
             boolean success = userDao.registerCustomer(username, password, "", "");
-            
+
             if (success) {
                 toastSuccess("Registration successful! You can now sign in.");
                 handleBackToLogin();
@@ -185,12 +193,12 @@ public class LoginController {
             } else if (stage == null && usernameField != null && usernameField.getScene() != null) {
                 stage = (Stage) usernameField.getScene().getWindow();
             }
-            
+
             if (stage == null) {
                 toastError("Stage not found");
                 return;
             }
-            
+
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/login.fxml"));
             Scene scene = new Scene(loader.load(), 640, 480);
             if (stage.getScene() != null) {
@@ -242,8 +250,8 @@ public class LoginController {
 
     // Toast wrappers (Toastify-style, ekrana etki etmez)
     private void toastInfo(String msg) {
-        javafx.scene.Scene scene = usernameField != null ? usernameField.getScene() : 
-                                   (registerUsernameField != null ? registerUsernameField.getScene() : null);
+        javafx.scene.Scene scene = usernameField != null ? usernameField.getScene()
+                : (registerUsernameField != null ? registerUsernameField.getScene() : null);
         if (scene != null) {
             ToastService.show(scene, msg, ToastService.Type.INFO,
                     ToastService.Position.BOTTOM_CENTER, Duration.seconds(2.2));
@@ -251,8 +259,8 @@ public class LoginController {
     }
 
     private void toastError(String msg) {
-        javafx.scene.Scene scene = usernameField != null ? usernameField.getScene() : 
-                                   (registerUsernameField != null ? registerUsernameField.getScene() : null);
+        javafx.scene.Scene scene = usernameField != null ? usernameField.getScene()
+                : (registerUsernameField != null ? registerUsernameField.getScene() : null);
         if (scene != null) {
             ToastService.show(scene, msg, ToastService.Type.ERROR,
                     ToastService.Position.BOTTOM_CENTER, Duration.seconds(2.8));
@@ -260,8 +268,8 @@ public class LoginController {
     }
 
     private void toastSuccess(String msg) {
-        javafx.scene.Scene scene = usernameField != null ? usernameField.getScene() : 
-                                   (registerUsernameField != null ? registerUsernameField.getScene() : null);
+        javafx.scene.Scene scene = usernameField != null ? usernameField.getScene()
+                : (registerUsernameField != null ? registerUsernameField.getScene() : null);
         if (scene != null) {
             ToastService.show(scene, msg, ToastService.Type.SUCCESS,
                     ToastService.Position.BOTTOM_CENTER, Duration.seconds(1.7));
