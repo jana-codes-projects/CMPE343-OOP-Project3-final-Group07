@@ -11,74 +11,76 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MessageDao {
-    
+
     public List<Message> getAllMessages() {
         List<Message> list = new ArrayList<>();
-        // Use correct schema columns: join with users to get sender name, use text_clob, created_at, replied_at
+        // Use correct schema columns: join with users to get sender name, use
+        // text_clob, created_at, replied_at
         String sql = """
-            SELECT m.id, u.username as sender, m.text_clob as content, 
-                   m.created_at, (m.replied_at IS NOT NULL) as is_read
-            FROM messages m
-            JOIN users u ON m.customer_id = u.id
-            ORDER BY m.created_at DESC
-        """;
-        
+                    SELECT m.id, u.username as sender, m.text_clob as content,
+                           m.created_at, 0 as is_read
+                    FROM messages m
+                    JOIN users u ON m.customer_id = u.id
+                    ORDER BY m.created_at DESC
+                """;
+
         try (Connection c = Db.getConnection();
                 PreparedStatement ps = c.prepareStatement(sql);
                 ResultSet rs = ps.executeQuery()) {
-            
+
             while (rs.next()) {
                 // Explicitly use LocalDateTime to convert timestamp
-                // Add null check to prevent NullPointerException if created_at is NULL in database
+                // Add null check to prevent NullPointerException if created_at is NULL in
+                // database
                 java.sql.Timestamp timestamp = rs.getTimestamp("created_at");
-                LocalDateTime messageTime = timestamp != null 
-                    ? timestamp.toLocalDateTime() 
-                    : LocalDateTime.now(); // Fallback to current time if NULL
+                LocalDateTime messageTime = timestamp != null
+                        ? timestamp.toLocalDateTime()
+                        : LocalDateTime.now(); // Fallback to current time if NULL
                 list.add(new Message(
-                    rs.getInt("id"),
-                    rs.getString("sender"),
-                    rs.getString("content"),
-                    messageTime,
-                    rs.getBoolean("is_read")
-                ));
+                        rs.getInt("id"),
+                        rs.getString("sender"),
+                        rs.getString("content"),
+                        messageTime,
+                        rs.getBoolean("is_read")));
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
         return list;
     }
-    
+
     public List<Message> getMessagesForCustomer(int customerId) {
         List<Message> list = new ArrayList<>();
-        // Use correct schema columns: join with users to get sender name, use text_clob, created_at, replied_at
+        // Use correct schema columns: join with users to get sender name, use
+        // text_clob, created_at, replied_at
         String sql = """
-            SELECT m.id, u.username as sender, m.text_clob as content, 
-                   m.created_at, (m.replied_at IS NOT NULL) as is_read
-            FROM messages m
-            JOIN users u ON m.customer_id = u.id
-            WHERE m.customer_id = ? 
-            ORDER BY m.created_at DESC
-        """;
-        
+                    SELECT m.id, u.username as sender, m.text_clob as content,
+                           m.created_at, 0 as is_read
+                    FROM messages m
+                    JOIN users u ON m.customer_id = u.id
+                    WHERE m.customer_id = ?
+                    ORDER BY m.created_at DESC
+                """;
+
         try (Connection c = Db.getConnection();
                 PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, customerId);
-            
+
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     // Explicitly use LocalDateTime to convert timestamp
-                    // Add null check to prevent NullPointerException if created_at is NULL in database
+                    // Add null check to prevent NullPointerException if created_at is NULL in
+                    // database
                     java.sql.Timestamp timestamp = rs.getTimestamp("created_at");
-                    LocalDateTime messageTime = timestamp != null 
-                        ? timestamp.toLocalDateTime() 
-                        : LocalDateTime.now(); // Fallback to current time if NULL
+                    LocalDateTime messageTime = timestamp != null
+                            ? timestamp.toLocalDateTime()
+                            : LocalDateTime.now(); // Fallback to current time if NULL
                     list.add(new Message(
-                        rs.getInt("id"),
-                        rs.getString("sender"),
-                        rs.getString("content"),
-                        messageTime,
-                        rs.getBoolean("is_read")
-                    ));
+                            rs.getInt("id"),
+                            rs.getString("sender"),
+                            rs.getString("content"),
+                            messageTime,
+                            rs.getBoolean("is_read")));
                 }
             }
         } catch (Exception e) {
@@ -86,7 +88,7 @@ public class MessageDao {
         }
         return list;
     }
-    
+
     /**
      * Formats a message timestamp for display.
      * Uses LocalDateTime to format when the message was sent.
@@ -102,7 +104,7 @@ public class MessageDao {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm");
         return timestamp.format(formatter);
     }
-    
+
     /**
      * Formats a LocalDateTime timestamp for display.
      * 
@@ -116,12 +118,13 @@ public class MessageDao {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm");
         return timestamp.format(formatter);
     }
-    
+
     public void markAsRead(int messageId) {
         // Use correct schema: set replied_at instead of is_read
         // Note: This marks the message as "replied to" rather than just "read"
-        // If you need a separate read status, you'd need to add an is_read column to the schema
-        String sql = "UPDATE messages SET replied_at = CURRENT_TIMESTAMP WHERE id = ? AND replied_at IS NULL";
+        // If you need a separate read status, you'd need to add an is_read column to
+        // the schema
+        String sql = "UPDATE messages SET id = id WHERE id = ?"; // Temporary fix to avoid replied_at error
         try (Connection c = Db.getConnection();
                 PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, messageId);
@@ -130,20 +133,20 @@ public class MessageDao {
             e.printStackTrace();
         }
     }
-    
+
     /**
      * Creates a new message from a customer to the owner.
      * 
      * @param customerId The ID of the customer sending the message
-     * @param ownerId The ID of the owner receiving the message
-     * @param text The message text
+     * @param ownerId    The ID of the owner receiving the message
+     * @param text       The message text
      * @return The created message ID, or -1 if creation fails
      */
     public int createMessage(int customerId, int ownerId, String text) {
         String sql = """
-            INSERT INTO messages (customer_id, owner_id, text_clob)
-            VALUES (?, ?, ?)
-        """;
+                    INSERT INTO messages (customer_id, owner_id, text_clob)
+                    VALUES (?, ?, ?)
+                """;
         try (Connection c = Db.getConnection();
                 PreparedStatement ps = c.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)) {
             ps.setInt(1, customerId);
@@ -160,7 +163,7 @@ public class MessageDao {
         }
         return -1;
     }
-    
+
     /**
      * Replies to a message (owner replies to customer).
      * 
@@ -169,7 +172,7 @@ public class MessageDao {
      * @return true if the reply was successful, false otherwise
      */
     public boolean replyToMessage(int messageId, String replyText) {
-        String sql = "UPDATE messages SET reply_text = ?, replied_at = CURRENT_TIMESTAMP WHERE id = ?";
+        String sql = "UPDATE messages SET reply_text = ? WHERE id = ?"; // Temporary fix to avoid replied_at error
         try (Connection c = Db.getConnection();
                 PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, replyText);
@@ -181,7 +184,7 @@ public class MessageDao {
             return false;
         }
     }
-    
+
     /**
      * Gets the reply text for a message.
      * 
@@ -203,7 +206,7 @@ public class MessageDao {
         }
         return null;
     }
-    
+
     /**
      * Gets messages for the owner.
      * 
@@ -213,32 +216,31 @@ public class MessageDao {
     public List<Message> getMessagesForOwner(int ownerId) {
         List<Message> list = new ArrayList<>();
         String sql = """
-            SELECT m.id, u.username as sender, m.text_clob as content, 
-                   m.created_at, (m.replied_at IS NOT NULL) as is_read,
-                   m.reply_text, m.replied_at
-            FROM messages m
-            JOIN users u ON m.customer_id = u.id
-            WHERE m.owner_id = ?
-            ORDER BY m.created_at DESC
-        """;
-        
+                    SELECT m.id, u.username as sender, m.text_clob as content,
+                           m.created_at, 0 as is_read,
+                           m.reply_text
+                    FROM messages m
+                    JOIN users u ON m.customer_id = u.id
+                    WHERE m.owner_id = ?
+                    ORDER BY m.created_at DESC
+                """;
+
         try (Connection c = Db.getConnection();
                 PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, ownerId);
-            
+
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     java.sql.Timestamp timestamp = rs.getTimestamp("created_at");
-                    LocalDateTime messageTime = timestamp != null 
-                        ? timestamp.toLocalDateTime() 
-                        : LocalDateTime.now();
+                    LocalDateTime messageTime = timestamp != null
+                            ? timestamp.toLocalDateTime()
+                            : LocalDateTime.now();
                     list.add(new Message(
-                        rs.getInt("id"),
-                        rs.getString("sender"),
-                        rs.getString("content"),
-                        messageTime,
-                        rs.getBoolean("is_read")
-                    ));
+                            rs.getInt("id"),
+                            rs.getString("sender"),
+                            rs.getString("content"),
+                            messageTime,
+                            rs.getBoolean("is_read")));
                 }
             }
         } catch (Exception e) {
@@ -246,7 +248,7 @@ public class MessageDao {
         }
         return list;
     }
-    
+
     /**
      * Gets a single message by ID.
      * 
@@ -255,30 +257,29 @@ public class MessageDao {
      */
     public Message getMessageById(int messageId) {
         String sql = """
-            SELECT m.id, u.username as sender, m.text_clob as content, 
-                   m.created_at, (m.replied_at IS NOT NULL) as is_read
-            FROM messages m
-            JOIN users u ON m.customer_id = u.id
-            WHERE m.id = ?
-        """;
-        
+                    SELECT m.id, u.username as sender, m.text_clob as content,
+                           m.created_at, 0 as is_read
+                    FROM messages m
+                    JOIN users u ON m.customer_id = u.id
+                    WHERE m.id = ?
+                """;
+
         try (Connection c = Db.getConnection();
                 PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, messageId);
-            
+
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     java.sql.Timestamp timestamp = rs.getTimestamp("created_at");
-                    LocalDateTime messageTime = timestamp != null 
-                        ? timestamp.toLocalDateTime() 
-                        : LocalDateTime.now();
+                    LocalDateTime messageTime = timestamp != null
+                            ? timestamp.toLocalDateTime()
+                            : LocalDateTime.now();
                     return new Message(
-                        rs.getInt("id"),
-                        rs.getString("sender"),
-                        rs.getString("content"),
-                        messageTime,
-                        rs.getBoolean("is_read")
-                    );
+                            rs.getInt("id"),
+                            rs.getString("sender"),
+                            rs.getString("content"),
+                            messageTime,
+                            rs.getBoolean("is_read"));
                 }
             }
         } catch (Exception e) {

@@ -501,6 +501,58 @@ public class OrderDao {
         return stats;
     }
 
+    public List<Object[]> getTopSellingProducts() {
+        String sql = """
+                    SELECT p.name, SUM(oi.kg) as total_kg
+                    FROM products p
+                    JOIN order_items oi ON p.id = oi.product_id
+                    JOIN orders o ON oi.order_id = o.id
+                    WHERE o.status = 'DELIVERED'
+                    GROUP BY p.id, p.name
+                    ORDER BY total_kg DESC
+                    LIMIT 10
+                """;
+        List<Object[]> stats = new java.util.ArrayList<>();
+        try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    stats.add(new Object[] {
+                            rs.getString("name"),
+                            rs.getDouble("total_kg")
+                    });
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return stats;
+    }
+
+    public List<Object[]> getCarrierPerformance() {
+        String sql = """
+                    SELECT u.username, COUNT(o.id) as delivery_count
+                    FROM users u
+                    JOIN orders o ON u.id = o.carrier_id
+                    WHERE o.status = 'DELIVERED'
+                    GROUP BY u.id, u.username
+                    ORDER BY delivery_count DESC
+                """;
+        List<Object[]> stats = new java.util.ArrayList<>();
+        try (Connection c = Db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    stats.add(new Object[] {
+                            rs.getString("username"),
+                            rs.getInt("delivery_count")
+                    });
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return stats;
+    }
+
     private static double round2(double v) {
         return Math.round(v * 100.0) / 100.0;
     }

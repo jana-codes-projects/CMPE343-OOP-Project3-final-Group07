@@ -2,7 +2,7 @@ package com.cmpe343.fx.controller;
 
 import com.cmpe343.dao.CartDao;
 import com.cmpe343.dao.ProductDao;
-import com.cmpe343.dao.UserDao;
+
 import com.cmpe343.fx.util.ToastService;
 import com.cmpe343.fx.Session;
 import com.cmpe343.model.Product;
