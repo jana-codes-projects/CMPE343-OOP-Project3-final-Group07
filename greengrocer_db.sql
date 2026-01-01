@@ -369,3 +369,11 @@ UNION ALL SELECT 'order_items', COUNT(*) FROM order_items
 UNION ALL SELECT 'messages', COUNT(*) FROM messages
 UNION ALL SELECT 'ratings', COUNT(*) FROM ratings
 UNION ALL SELECT 'invoices', COUNT(*) FROM invoices;
+
+ALTER TABLE users ADD COLUMN balance DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER phone;
+ALTER TABLE users ADD COLUMN loyalty_points DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER balance;
+
+UPDATE users SET balance = 500.00, loyalty_points = 50.00 WHERE id = 1;
+UPDATE users SET balance = 1000.00, loyalty_points = 100.00 WHERE id = 26;
+
+ALTER TABLE users ADD COLUMN rating DOUBLE DEFAULT 5.0 AFTER loyalty_points;
