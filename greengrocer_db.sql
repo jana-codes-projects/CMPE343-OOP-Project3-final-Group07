@@ -377,3 +377,14 @@ UPDATE users SET balance = 500.00, loyalty_points = 50.00 WHERE id = 1;
 UPDATE users SET balance = 1000.00, loyalty_points = 100.00 WHERE id = 26;
 
 ALTER TABLE users ADD COLUMN rating DOUBLE DEFAULT 5.0 AFTER loyalty_points;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS balance DECIMAL(10,2) DEFAULT 0.00;
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS wallet_balance DECIMAL(10,2) DEFAULT 0.00;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS loyalty_tier ENUM('BRONZE', 'SILVER', 'GOLD', 'PLATINUM') DEFAULT 'BRONZE';
+
+UPDATE users SET wallet_balance = 750.00 WHERE role = 'customer';
+
+UPDATE users SET rating = 5.0 WHERE role = 'carrier';
+
+INSERT INTO coupons (code, kind, value, min_cart, is_active) 
+VALUES ('LOYAL20', 'PERCENT', 20.00, 150.00, 1);

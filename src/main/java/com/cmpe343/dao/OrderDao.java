@@ -136,7 +136,7 @@ public class OrderDao {
 
     // --- BUSINESS ANALYTICS & REPORTS ---
 
-    /**
+    /*
      * Fetches top 5 selling products based on weight sold.
      */
     public List<Object[]> getTopSellingProducts() {
@@ -157,7 +157,7 @@ public class OrderDao {
         return report;
     }
 
-    /**
+    /*
      * Fetches delivery count per carrier for performance ranking.
      */
     public List<Object[]> getCarrierPerformance() {
@@ -178,7 +178,7 @@ public class OrderDao {
         return stats;
     }
 
-    /**
+    /*
      * Retrieves customer spending and order count for Loyalty Tiering.
      */
     public List<Object[]> getCustomerLoyaltyStats() {
@@ -279,6 +279,71 @@ public class OrderDao {
             }
         } catch (Exception e) { e.printStackTrace(); }
         return list;
+    }
+
+    /*
+     * Cancels an order, restores the stock levels for each product, and updates status.
+     */
+    public boolean cancelOrderAndRestoreStock(int orderId) {
+        String updateStatusSql = "UPDATE orders SET status = 'CANCELLED' WHERE id = ? AND status NOT IN ('DELIVERED', 'CANCELLED')";
+        String getItemsSql = "SELECT product_id, kg FROM order_items WHERE order_id = ?";
+        String restoreStockSql = "UPDATE products SET stock_kg = stock_kg + ? WHERE id = ?";
+        // ADDED: Refund query
+        String refundSql = "UPDATE users u JOIN orders o ON u.id = o.customer_id SET u.wallet_balance = u.wallet_balance + o.total_after_tax WHERE o.id = ?";
+
+        try (Connection c = Db.getConnection()) {
+            c.setAutoCommit(false); // Start Transaction
+
+            // 1. Update Order Status
+            try (PreparedStatement ps = c.prepareStatement(updateStatusSql)) {
+                ps.setInt(1, orderId);
+                if (ps.executeUpdate() == 0) {
+                    c.rollback();
+                    return false;
+                }
+            }
+
+            // 2. Restore Stock Levels
+            List<CartItem> itemsToRestore = new ArrayList<>();
+            try (PreparedStatement ps = c.prepareStatement(getItemsSql)) {
+                ps.setInt(1, orderId);
+                ResultSet rs = ps.executeQuery();
+                while (rs.next()) {
+                    Product p = new Product(rs.getInt("product_id"), "", "", 0.0, 0.0, 0.0);
+                    itemsToRestore.add(new CartItem(p, rs.getDouble("kg"), 0.0, 0.0));
+                }
+            }
+
+            try (PreparedStatement ps = c.prepareStatement(restoreStockSql)) {
+                for (CartItem item : itemsToRestore) {
+                    ps.setDouble(1, item.getQuantityKg());
+                    ps.setInt(2, item.getProduct().getId());
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+            }
+
+            // 3. REFUND MONEY TO WALLET (Crucial Step)
+            try (PreparedStatement ps = c.prepareStatement(refundSql)) {
+                ps.setInt(1, orderId);
+                ps.executeUpdate();
+            }
+
+            c.commit(); // Save everything
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public void updateOrderStatus(int orderId, Order.OrderStatus status) {
+        String sql = "UPDATE orders SET status = ? WHERE id = ?";
+        try (Connection conn = Db.getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, status.name());
+            pstmt.setInt(2, orderId);
+            pstmt.executeUpdate();
+        } catch (Exception e) { e.printStackTrace(); }
     }
 
     public List<Order> getOrdersByCarrier(int carrierId, OrderStatus status) {

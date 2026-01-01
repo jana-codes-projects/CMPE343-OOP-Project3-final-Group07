@@ -4,6 +4,8 @@ import java.io.FileInputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.util.Properties;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 
 public class Db {
     private static Properties props;
@@ -29,6 +31,22 @@ public class Db {
             );
         } catch (Exception e) {
             throw new RuntimeException("DB bağlantısı kurulamadı.", e);
+        }
+    }
+    public static boolean updateUserBalance(int userId, double amount) {
+        String sql = "UPDATE users SET balance = balance + ? WHERE id = ?";
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setDouble(1, amount);
+            pstmt.setInt(2, userId);
+
+            return pstmt.executeUpdate() > 0;
+
+        } catch (SQLException e) {
+            System.err.println("SQL Error during balance update: " + e.getMessage());
+            return false;
         }
     }
 }
