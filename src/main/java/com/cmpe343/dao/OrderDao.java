@@ -29,27 +29,30 @@ public class OrderDao {
         // Calculate original subtotal (before coupon)
         // Round each line total before summing to match order_items precision
         double originalSubtotal = items.stream()
-            .mapToDouble(item -> round2(item.getLineTotal()))
-            .sum();
-        
+                .mapToDouble(item -> round2(item.getLineTotal()))
+                .sum();
+
         // Apply coupon discount if provided
         // Validate coupon at order placement time to prevent race conditions
         double couponDiscount = 0.0;
         if (couponId != null) {
             Double discount = getCouponDiscount(couponId, originalSubtotal);
             if (discount == null) {
-                // Coupon is invalid (expired/deactivated/not found/min cart not met) - throw exception to inform user
-                throw new IllegalArgumentException("The selected coupon is no longer valid. Please remove it and try again.");
+                // Coupon is invalid (expired/deactivated/not found/min cart not met) - throw
+                // exception to inform user
+                throw new IllegalArgumentException(
+                        "The selected coupon is no longer valid. Please remove it and try again.");
             }
             couponDiscount = discount; // discount can be 0.0 for valid coupons with zero discount
         }
-        
+
         // Calculate post-coupon subtotal (this is what VAT is calculated on)
         double totalAfterCoupon = Math.max(0, originalSubtotal - couponDiscount);
         double vat = round2(totalAfterCoupon * VAT_RATE);
         double totalAfterTax = round2(totalAfterCoupon + vat);
-        
-        // Store the post-coupon subtotal in totalBeforeTax (since VAT is calculated on this)
+
+        // Store the post-coupon subtotal in totalBeforeTax (since VAT is calculated on
+        // this)
         // This ensures consistency: totalBeforeTax + VAT = totalAfterTax
         double totalBeforeTax = totalAfterCoupon;
 
@@ -156,7 +159,7 @@ public class OrderDao {
         }
         return list;
     }
-    
+
     public List<com.cmpe343.model.Order> getOrdersForCustomer(int customerId) {
         List<com.cmpe343.model.Order> list = new java.util.ArrayList<>();
         String sql = "SELECT * FROM orders WHERE customer_id = ? ORDER BY order_time DESC";
@@ -164,7 +167,7 @@ public class OrderDao {
         try (Connection c = Db.getConnection();
                 PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, customerId);
-            
+
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     com.cmpe343.model.Order order = mapOrder(rs);
@@ -178,45 +181,44 @@ public class OrderDao {
         }
         return list;
     }
-    
+
     public List<com.cmpe343.model.CartItem> getOrderItems(int orderId) {
         List<com.cmpe343.model.CartItem> items = new java.util.ArrayList<>();
         String sql = """
-            SELECT oi.product_id, oi.kg, oi.unit_price_applied, oi.line_total,
-                   p.name, p.type, p.price, p.stock_kg, p.threshold_kg, p.image_blob
-            FROM order_items oi
-            JOIN products p ON oi.product_id = p.id
-            WHERE oi.order_id = ?
-        """;
-        
+                    SELECT oi.product_id, oi.kg, oi.unit_price_applied, oi.line_total,
+                           p.name, p.type, p.price, p.stock_kg, p.threshold_kg, p.image_blob
+                    FROM order_items oi
+                    JOIN products p ON oi.product_id = p.id
+                    WHERE oi.order_id = ?
+                """;
+
         try (Connection c = Db.getConnection();
                 PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, orderId);
-            
+
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     // Use current product price (not historical) to maintain data integrity
                     // Historical pricing is stored separately in CartItem
-                    // Images are stored in BLOB, accessed via ProductDao.getProductImageBlob(productId)
+                    // Images are stored in BLOB, accessed via
+                    // ProductDao.getProductImageBlob(productId)
                     com.cmpe343.model.Product product = new com.cmpe343.model.Product(
-                        rs.getInt("product_id"),
-                        rs.getString("name"),
-                        rs.getString("type"),
-                        rs.getDouble("price"), // Current product price from products table
-                        rs.getDouble("stock_kg"),
-                        rs.getDouble("threshold_kg")
-                    );
+                            rs.getInt("product_id"),
+                            rs.getString("name"),
+                            rs.getString("type"),
+                            rs.getDouble("price"), // Current product price from products table
+                            rs.getDouble("stock_kg"),
+                            rs.getDouble("threshold_kg"));
                     // Store historical pricing separately to preserve order integrity
                     // This ensures CartItem.getUnitPrice() and getLineTotal() return the values
                     // that were applied at order creation time, not the current product price
                     double historicalUnitPrice = rs.getDouble("unit_price_applied");
                     double historicalLineTotal = rs.getDouble("line_total");
                     com.cmpe343.model.CartItem item = new com.cmpe343.model.CartItem(
-                        product, 
-                        rs.getDouble("kg"),
-                        historicalUnitPrice,
-                        historicalLineTotal
-                    );
+                            product,
+                            rs.getDouble("kg"),
+                            historicalUnitPrice,
+                            historicalLineTotal);
                     items.add(item);
                 }
             }
@@ -239,11 +241,12 @@ public class OrderDao {
         } catch (Exception e) {
         }
 
-        // Add null check to prevent NullPointerException if order_time is NULL in database
+        // Add null check to prevent NullPointerException if order_time is NULL in
+        // database
         java.sql.Timestamp orderTimeStamp = rs.getTimestamp("order_time");
-        LocalDateTime orderTime = orderTimeStamp != null 
-            ? orderTimeStamp.toLocalDateTime() 
-            : LocalDateTime.now(); // Fallback to current time if NULL
+        LocalDateTime orderTime = orderTimeStamp != null
+                ? orderTimeStamp.toLocalDateTime()
+                : LocalDateTime.now(); // Fallback to current time if NULL
         LocalDateTime requested = rs.getTimestamp("requested_delivery_time") != null
                 ? rs.getTimestamp("requested_delivery_time").toLocalDateTime()
                 : null;
@@ -283,12 +286,12 @@ public class OrderDao {
                     String kind = rs.getString("kind");
                     double value = rs.getDouble("value");
                     double minCart = rs.getDouble("min_cart");
-                    
+
                     // Check minimum cart requirement
                     if (cartTotal < minCart) {
                         return null; // Cart doesn't meet minimum requirement
                     }
-                    
+
                     // Calculate discount based on type
                     if ("AMOUNT".equals(kind)) {
                         return Math.min(value, cartTotal); // Don't discount more than cart total
@@ -300,18 +303,19 @@ public class OrderDao {
         } catch (Exception e) {
             System.err.println("Error fetching coupon: " + e.getMessage());
         }
-        // Coupon not found or invalid - return null to distinguish from valid coupon with 0 discount
+        // Coupon not found or invalid - return null to distinguish from valid coupon
+        // with 0 discount
         return null;
     }
-    
+
     public double getCouponDiscountForOrder(int orderId) {
         // Get the order's total_before_tax to calculate percentage discount correctly
         String sql = """
-            SELECT c.kind, c.value, o.total_before_tax
-            FROM orders o
-            JOIN coupons c ON o.coupon_id = c.id
-            WHERE o.id = ?
-        """;
+                    SELECT c.kind, c.value, o.total_before_tax
+                    FROM orders o
+                    JOIN coupons c ON o.coupon_id = c.id
+                    WHERE o.id = ?
+                """;
         try (Connection c = Db.getConnection();
                 PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, orderId);
@@ -320,7 +324,7 @@ public class OrderDao {
                     String kind = rs.getString("kind");
                     double value = rs.getDouble("value");
                     double totalBeforeTax = rs.getDouble("total_before_tax");
-                    
+
                     if ("AMOUNT".equals(kind)) {
                         return Math.min(value, totalBeforeTax);
                     } else if ("PERCENT".equals(kind)) {
@@ -337,11 +341,11 @@ public class OrderDao {
     public List<com.cmpe343.model.Order> getAvailableOrders() {
         List<com.cmpe343.model.Order> list = new java.util.ArrayList<>();
         String sql = "SELECT * FROM orders WHERE status = 'CREATED' AND carrier_id IS NULL ORDER BY order_time DESC";
-        
+
         try (Connection c = Db.getConnection();
                 Statement st = c.createStatement();
                 ResultSet rs = st.executeQuery(sql)) {
-            
+
             while (rs.next()) {
                 com.cmpe343.model.Order order = mapOrder(rs);
                 order.setItems(getOrderItems(order.getId()));
@@ -352,16 +356,16 @@ public class OrderDao {
         }
         return list;
     }
-    
+
     public List<com.cmpe343.model.Order> getOrdersByCarrier(int carrierId, com.cmpe343.model.Order.OrderStatus status) {
         List<com.cmpe343.model.Order> list = new java.util.ArrayList<>();
         String sql = "SELECT * FROM orders WHERE carrier_id = ? AND status = ? ORDER BY order_time DESC";
-        
+
         try (Connection c = Db.getConnection();
                 PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, carrierId);
             ps.setString(2, status.name());
-            
+
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     com.cmpe343.model.Order order = mapOrder(rs);
@@ -374,14 +378,14 @@ public class OrderDao {
         }
         return list;
     }
-    
+
     public boolean assignOrderToCarrier(int orderId, int carrierId) {
         String sql = """
-            UPDATE orders 
-            SET carrier_id = ?, status = 'ASSIGNED' 
-            WHERE id = ? AND status = 'CREATED' AND carrier_id IS NULL
-        """;
-        
+                    UPDATE orders
+                    SET carrier_id = ?, status = 'ASSIGNED'
+                    WHERE id = ? AND status = 'CREATED' AND carrier_id IS NULL
+                """;
+
         try (Connection c = Db.getConnection();
                 PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, carrierId);
@@ -393,14 +397,14 @@ public class OrderDao {
             return false;
         }
     }
-    
+
     public boolean markOrderDelivered(int orderId, LocalDateTime deliveredTime) {
         String sql = """
-            UPDATE orders 
-            SET status = 'DELIVERED', delivered_time = ? 
-            WHERE id = ? AND status = 'ASSIGNED'
-        """;
-        
+                    UPDATE orders
+                    SET status = 'DELIVERED', delivered_time = ?
+                    WHERE id = ? AND status = 'ASSIGNED'
+                """;
+
         try (Connection c = Db.getConnection();
                 PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setTimestamp(1, Timestamp.valueOf(deliveredTime));
@@ -414,78 +418,80 @@ public class OrderDao {
     }
 
     /**
-     * Gets customer loyalty statistics including order count, total spent, and purchase frequency.
+     * Gets customer loyalty statistics including order count, total spent, and
+     * purchase frequency.
      * 
-     * @return A list of customer loyalty data as Object arrays: [customerId, username, orderCount, totalSpent, daysSinceFirstOrder, avgDaysBetweenOrders]
+     * @return A list of customer loyalty data as Object arrays: [customerId,
+     *         username, orderCount, totalSpent, daysSinceFirstOrder,
+     *         avgDaysBetweenOrders]
      */
     public List<Object[]> getCustomerLoyaltyStats() {
         List<Object[]> stats = new java.util.ArrayList<>();
         String sql = """
-            SELECT 
-                u.id as customer_id,
-                u.username,
-                COUNT(o.id) as order_count,
-                COALESCE(SUM(o.total_after_tax), 0) as total_spent,
-                MIN(o.order_time) as first_order_date,
-                MAX(o.order_time) as last_order_date
-            FROM users u
-            LEFT JOIN orders o ON u.id = o.customer_id
-            WHERE u.role = 'customer' AND u.is_active = 1
-            GROUP BY u.id, u.username
-            HAVING order_count > 0
-            ORDER BY order_count DESC, total_spent DESC
-        """;
-        
+                    SELECT
+                        u.id as customer_id,
+                        u.username,
+                        COUNT(o.id) as order_count,
+                        COALESCE(SUM(o.total_after_tax), 0) as total_spent,
+                        MIN(o.order_time) as first_order_date,
+                        MAX(o.order_time) as last_order_date
+                    FROM users u
+                    LEFT JOIN orders o ON u.id = o.customer_id
+                    WHERE u.role = 'customer' AND u.is_active = 1
+                    GROUP BY u.id, u.username
+                    HAVING order_count > 0
+                    ORDER BY order_count DESC, total_spent DESC
+                """;
+
         try (Connection c = Db.getConnection();
                 Statement st = c.createStatement();
                 ResultSet rs = st.executeQuery(sql)) {
-            
+
             while (rs.next()) {
                 int customerId = rs.getInt("customer_id");
                 String username = rs.getString("username");
                 int orderCount = rs.getInt("order_count");
                 double totalSpent = rs.getDouble("total_spent");
-                
+
                 java.sql.Timestamp firstOrder = rs.getTimestamp("first_order_date");
                 java.sql.Timestamp lastOrder = rs.getTimestamp("last_order_date");
-                
+
                 // Calculate days since first order
                 long daysSinceFirstOrder = 0;
                 if (firstOrder != null) {
                     daysSinceFirstOrder = java.time.temporal.ChronoUnit.DAYS.between(
-                        firstOrder.toLocalDateTime().toLocalDate(),
-                        java.time.LocalDate.now()
-                    );
-                    if (daysSinceFirstOrder == 0) daysSinceFirstOrder = 1; // Avoid division by zero
+                            firstOrder.toLocalDateTime().toLocalDate(),
+                            java.time.LocalDate.now());
+                    if (daysSinceFirstOrder == 0)
+                        daysSinceFirstOrder = 1; // Avoid division by zero
                 }
-                
+
                 // Calculate average days between orders
                 double avgDaysBetweenOrders = 0.0;
                 if (orderCount > 1 && firstOrder != null && lastOrder != null) {
                     long totalDays = java.time.temporal.ChronoUnit.DAYS.between(
-                        firstOrder.toLocalDateTime().toLocalDate(),
-                        lastOrder.toLocalDateTime().toLocalDate()
-                    );
+                            firstOrder.toLocalDateTime().toLocalDate(),
+                            lastOrder.toLocalDateTime().toLocalDate());
                     if (totalDays > 0) {
                         avgDaysBetweenOrders = (double) totalDays / (orderCount - 1);
                     }
                 }
-                
+
                 // Calculate purchase frequency (orders per month)
                 double ordersPerMonth = 0.0;
                 if (daysSinceFirstOrder > 0) {
                     double months = daysSinceFirstOrder / 30.0;
                     ordersPerMonth = orderCount / Math.max(months, 0.1); // Avoid division by zero
                 }
-                
-                stats.add(new Object[]{
-                    customerId,
-                    username,
-                    orderCount,
-                    totalSpent,
-                    daysSinceFirstOrder,
-                    avgDaysBetweenOrders,
-                    ordersPerMonth
+
+                stats.add(new Object[] {
+                        customerId,
+                        username,
+                        orderCount,
+                        totalSpent,
+                        daysSinceFirstOrder,
+                        avgDaysBetweenOrders,
+                        ordersPerMonth
                 });
             }
         } catch (Exception e) {
@@ -494,8 +500,105 @@ public class OrderDao {
         }
         return stats;
     }
-    
+
     private static double round2(double v) {
         return Math.round(v * 100.0) / 100.0;
+    }
+
+    // ==================== ORDER CANCELLATION ====================
+
+    /**
+     * Result of order cancellation attempt.
+     */
+    public static class CancelResult {
+        public final boolean success;
+        public final String message;
+
+        public CancelResult(boolean success, String message) {
+            this.success = success;
+            this.message = message;
+        }
+    }
+
+    /**
+     * Cancels an order within 1 hour of creation.
+     * Only CREATED and ASSIGNED orders can be cancelled.
+     * Stock is restored when order is cancelled.
+     * 
+     * @param orderId    The order ID to cancel
+     * @param customerId The customer ID (for ownership verification)
+     * @return CancelResult with success status and message
+     */
+    public CancelResult cancelOrder(int orderId, int customerId) {
+        String checkSql = """
+                    SELECT customer_id, status, order_time
+                    FROM orders WHERE id = ?
+                """;
+
+        try (Connection c = Db.getConnection()) {
+            // Check order exists and belongs to customer
+            try (PreparedStatement ps = c.prepareStatement(checkSql)) {
+                ps.setInt(1, orderId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) {
+                        return new CancelResult(false, "Order not found.");
+                    }
+
+                    int orderCustomerId = rs.getInt("customer_id");
+                    String status = rs.getString("status");
+                    Timestamp orderTime = rs.getTimestamp("order_time");
+
+                    // Verify ownership
+                    if (orderCustomerId != customerId) {
+                        return new CancelResult(false, "You can only cancel your own orders.");
+                    }
+
+                    // Check status
+                    if (!status.equals("CREATED") && !status.equals("ASSIGNED")) {
+                        return new CancelResult(false, "Only CREATED or ASSIGNED orders can be cancelled.");
+                    }
+
+                    // Check 1 hour limit
+                    LocalDateTime orderDateTime = orderTime.toLocalDateTime();
+                    LocalDateTime oneHourLater = orderDateTime.plusHours(1);
+                    if (LocalDateTime.now().isAfter(oneHourLater)) {
+                        return new CancelResult(false, "Orders can only be cancelled within 1 hour of placement.");
+                    }
+                }
+            }
+
+            // Restore stock for all items in the order
+            String itemsSql = "SELECT product_id, quantity_kg FROM order_items WHERE order_id = ?";
+            try (PreparedStatement ps = c.prepareStatement(itemsSql)) {
+                ps.setInt(1, orderId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        int productId = rs.getInt("product_id");
+                        double qty = rs.getDouble("quantity_kg");
+
+                        // Restore stock
+                        String restoreSql = "UPDATE products SET stock_kg = stock_kg + ? WHERE id = ?";
+                        try (PreparedStatement restorePs = c.prepareStatement(restoreSql)) {
+                            restorePs.setDouble(1, qty);
+                            restorePs.setInt(2, productId);
+                            restorePs.executeUpdate();
+                        }
+                    }
+                }
+            }
+
+            // Update order status to CANCELLED
+            String cancelSql = "UPDATE orders SET status = 'CANCELLED' WHERE id = ?";
+            try (PreparedStatement ps = c.prepareStatement(cancelSql)) {
+                ps.setInt(1, orderId);
+                ps.executeUpdate();
+            }
+
+            return new CancelResult(true, "Order cancelled successfully. Stock has been restored.");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new CancelResult(false, "Error cancelling order: " + e.getMessage());
+        }
     }
 }

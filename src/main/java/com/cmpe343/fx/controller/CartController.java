@@ -67,12 +67,14 @@ public class CartController {
     }
 
     private void loadCoupons() {
-        if (couponComboBox == null) return;
+        if (couponComboBox == null)
+            return;
         couponComboBox.getItems().clear();
         couponComboBox.getItems().add("No Coupon");
         couponComboBox.setValue("No Coupon");
-        
-        java.util.List<com.cmpe343.model.Coupon> coupons = couponDao.getActiveCouponsForCustomer(Session.getUser().getId());
+
+        java.util.List<com.cmpe343.model.Coupon> coupons = couponDao
+                .getActiveCouponsForCustomer(Session.getUser().getId());
         for (com.cmpe343.model.Coupon coupon : coupons) {
             String display;
             if (coupon.getKind() == com.cmpe343.model.Coupon.CouponKind.AMOUNT) {
@@ -82,7 +84,7 @@ public class CartController {
             }
             couponComboBox.getItems().add(display);
         }
-        
+
         couponComboBox.setOnAction(e -> {
             String selected = couponComboBox.getValue();
             if (selected == null || selected.equals("No Coupon")) {
@@ -96,8 +98,8 @@ public class CartController {
                     selectedCouponId = coupon.getId();
                     // Calculate actual discount based on current cart total
                     double cartTotal = currentCartItems.stream()
-                        .mapToDouble(item -> Math.round(item.getLineTotal() * 100.0) / 100.0)
-                        .sum();
+                            .mapToDouble(item -> Math.round(item.getLineTotal() * 100.0) / 100.0)
+                            .sum();
                     double discount = coupon.calculateDiscount(cartTotal);
                     couponDiscountLabel.setText("Discount: -" + String.format("%.2f", discount) + " TL");
                 }
@@ -139,14 +141,17 @@ public class CartController {
 
         // 1. Image - fetch from BLOB using product ID
         Node imageNode;
-        // Reuse the ProductDao instance instead of creating a new one for each cart item
+        // Reuse the ProductDao instance instead of creating a new one for each cart
+        // item
         try {
             javafx.scene.image.Image image = null;
-            //byte[] imageBytes = productDao.getProductImageBlob(item.getProduct().getId());
-//            if (imageBytes != null) {
-//                image = new javafx.scene.image.Image(new java.io.ByteArrayInputStream(imageBytes));
-//            }
-            
+            // byte[] imageBytes =
+            // productDao.getProductImageBlob(item.getProduct().getId());
+            // if (imageBytes != null) {
+            // image = new javafx.scene.image.Image(new
+            // java.io.ByteArrayInputStream(imageBytes));
+            // }
+
             if (image != null) {
                 javafx.scene.image.ImageView iv = new javafx.scene.image.ImageView(image);
                 iv.setFitWidth(50);
@@ -215,8 +220,8 @@ public class CartController {
         // Round each line total before summing to match order_items precision
         // This ensures cart display matches order totals
         double subtotal = currentCartItems.stream()
-            .mapToDouble(item -> Math.round(item.getLineTotal() * 100.0) / 100.0)
-            .sum();
+                .mapToDouble(item -> Math.round(item.getLineTotal() * 100.0) / 100.0)
+                .sum();
         double discount = 0.0;
         if (selectedCouponId != null) {
             com.cmpe343.model.Coupon coupon = couponDao.getCouponById(selectedCouponId);
@@ -232,14 +237,14 @@ public class CartController {
         double totalAfterDiscount = Math.max(0, subtotal - discount);
         double vat = Math.round((totalAfterDiscount * 0.20) * 100.0) / 100.0;
         double finalTotal = totalAfterDiscount + vat;
-        
+
         // Display total with breakdown if discount is applied
         if (discount > 0) {
-            totalLabel.setText(String.format("Subtotal: %.2f ₺ | Discount: -%.2f ₺ | VAT: %.2f ₺ | Total: %.2f ₺", 
-                subtotal, discount, vat, finalTotal));
+            totalLabel.setText(String.format("Subtotal: %.2f ₺ | Discount: -%.2f ₺ | VAT: %.2f ₺ | Total: %.2f ₺",
+                    subtotal, discount, vat, finalTotal));
         } else {
-            totalLabel.setText(String.format("Subtotal: %.2f ₺ | VAT: %.2f ₺ | Total: %.2f ₺", 
-                subtotal, vat, finalTotal));
+            totalLabel.setText(String.format("Subtotal: %.2f ₺ | VAT: %.2f ₺ | Total: %.2f ₺",
+                    subtotal, vat, finalTotal));
         }
     }
 
@@ -269,13 +274,37 @@ public class CartController {
 
         try {
             LocalDate d = deliveryDatePicker.getValue();
-            LocalTime t = LocalTime.parse(deliveryTimeField.getText().trim());
+
+            // Validate time format before parsing
+            String timeText = deliveryTimeField.getText().trim();
+            LocalTime t;
+            try {
+                t = LocalTime.parse(timeText);
+            } catch (java.time.format.DateTimeParseException parseEx) {
+                ToastService.show(cartItemsContainer.getScene(),
+                        "Invalid time format! Please enter time as HH:mm (e.g., 14:30)",
+                        ToastService.Type.ERROR,
+                        ToastService.Position.BOTTOM_CENTER, Duration.seconds(3));
+                return;
+            }
+
             LocalDateTime requested = LocalDateTime.of(d, t);
 
-            // Basic check
+            // Basic check - cannot select past time
             if (requested.isBefore(LocalDateTime.now())) {
                 ToastService.show(cartItemsContainer.getScene(), "Cannot select past time.", ToastService.Type.ERROR,
                         ToastService.Position.BOTTOM_CENTER, Duration.seconds(2));
+                return;
+            }
+
+            // 48 HOUR MAXIMUM DELIVERY TIME CHECK
+            LocalDateTime maxDeliveryTime = LocalDateTime.now().plusHours(48);
+            if (requested.isAfter(maxDeliveryTime)) {
+                ToastService.show(cartItemsContainer.getScene(),
+                        "Delivery must be within 48 hours! Maximum: " + maxDeliveryTime
+                                .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")),
+                        ToastService.Type.ERROR,
+                        ToastService.Position.BOTTOM_CENTER, Duration.seconds(3));
                 return;
             }
 
@@ -284,7 +313,9 @@ public class CartController {
             if (selectedCouponId != null) {
                 com.cmpe343.model.Coupon coupon = couponDao.getCouponById(selectedCouponId);
                 if (coupon == null) {
-                    ToastService.show(cartItemsContainer.getScene(), "The selected coupon is no longer valid. Please remove it and try again.", ToastService.Type.ERROR,
+                    ToastService.show(cartItemsContainer.getScene(),
+                            "The selected coupon is no longer valid. Please remove it and try again.",
+                            ToastService.Type.ERROR,
                             ToastService.Position.BOTTOM_CENTER, Duration.seconds(3));
                     selectedCouponId = null;
                     couponComboBox.setValue("No Coupon");
@@ -293,8 +324,9 @@ public class CartController {
                     return;
                 }
             }
-            
-            int orderId = orderDao.createOrder(Session.getUser().getId(), currentCartItems, requested, selectedCouponId);
+
+            int orderId = orderDao.createOrder(Session.getUser().getId(), currentCartItems, requested,
+                    selectedCouponId);
 
             // Clear cart from DB after order
             cartDao.clear(Session.getUser().getId());

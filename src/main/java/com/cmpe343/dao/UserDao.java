@@ -144,7 +144,7 @@ public class UserDao {
                 address,
                 active);
     }
-    
+
     /**
      * Gets the owner user ID (first user with role 'OWNER').
      * 
@@ -163,29 +163,30 @@ public class UserDao {
         }
         return -1;
     }
-    
+
     /**
      * Creates a new customer user.
      * 
      * @param username The username
      * @param password The plain text password (will be hashed)
-     * @param phone The phone number
-     * @param address The address
-     * @return The created user ID, or -1 if creation fails (e.g., username already exists)
+     * @param phone    The phone number
+     * @param address  The address
+     * @return The created user ID, or -1 if creation fails (e.g., username already
+     *         exists)
      */
     public int createCustomer(String username, String password, String phone, String address) {
         String sql = """
-            INSERT INTO users (username, password_hash, role, phone, address, is_active)
-            VALUES (?, SHA2(?, 256), 'customer', ?, ?, 1)
-        """;
-        
+                    INSERT INTO users (username, password_hash, role, phone, address, is_active)
+                    VALUES (?, SHA2(?, 256), 'customer', ?, ?, 1)
+                """;
+
         try (Connection c = Db.getConnection();
                 PreparedStatement ps = c.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, username);
             ps.setString(2, password);
             ps.setString(3, phone);
             ps.setString(4, address);
-            
+
             int rowsAffected = ps.executeUpdate();
             if (rowsAffected > 0) {
                 try (ResultSet rs = ps.getGeneratedKeys()) {
@@ -203,7 +204,7 @@ public class UserDao {
         }
         return -1;
     }
-    
+
     /**
      * Checks if a username already exists.
      * 
@@ -224,5 +225,44 @@ public class UserDao {
             e.printStackTrace();
         }
         return false;
+    }
+
+    /**
+     * Creates a new carrier user (hire carrier).
+     * 
+     * @param username The username
+     * @param password The plain text password (will be hashed)
+     * @param phone    The phone number
+     * @param address  The address
+     * @return The created carrier ID, or -1 if creation fails
+     */
+    public int createCarrier(String username, String password, String phone, String address) {
+        String sql = """
+                    INSERT INTO users (username, password_hash, role, phone, address, is_active)
+                    VALUES (?, SHA2(?, 256), 'carrier', ?, ?, 1)
+                """;
+
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, username);
+            ps.setString(2, password);
+            ps.setString(3, phone);
+            ps.setString(4, address);
+
+            int rowsAffected = ps.executeUpdate();
+            if (rowsAffected > 0) {
+                try (ResultSet rs = ps.getGeneratedKeys()) {
+                    if (rs.next()) {
+                        return rs.getInt(1);
+                    }
+                }
+            }
+        } catch (java.sql.SQLIntegrityConstraintViolationException e) {
+            throw new RuntimeException("Username already exists", e);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("Failed to create carrier: " + e.getMessage(), e);
+        }
+        return -1;
     }
 }

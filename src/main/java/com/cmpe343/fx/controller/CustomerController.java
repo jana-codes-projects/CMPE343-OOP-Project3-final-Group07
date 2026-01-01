@@ -37,12 +37,13 @@ public class CustomerController {
     private Label vegetablesToggle;
     @FXML
     private Label fruitsToggle;
-    
+
     private boolean vegetablesVisible = true;
     private boolean fruitsVisible = true;
 
     private final ProductDao productDao = new ProductDao();
     private final CartDao cartDao = new CartDao();
+    private final com.cmpe343.dao.OrderDao orderDao = new com.cmpe343.dao.OrderDao();
 
     private FilteredList<Product> filteredProducts;
     private int currentCustomerId;
@@ -107,11 +108,12 @@ public class CustomerController {
         Node imageNode;
         try {
             javafx.scene.image.Image image = null;
-//            byte[] imageBytes = productDao.getProductImageBlob(p.getId());
-//            if (imageBytes != null) {
-//                image = new javafx.scene.image.Image(new java.io.ByteArrayInputStream(imageBytes));
-//            }
-            
+            // byte[] imageBytes = productDao.getProductImageBlob(p.getId());
+            // if (imageBytes != null) {
+            // image = new javafx.scene.image.Image(new
+            // java.io.ByteArrayInputStream(imageBytes));
+            // }
+
             if (image != null) {
                 javafx.scene.image.ImageView iv = new javafx.scene.image.ImageView(image);
                 iv.setFitWidth(80);
@@ -137,21 +139,35 @@ public class CustomerController {
         Label nameLbl = new Label(p.getName());
         nameLbl.getStyleClass().add("product-title");
 
-        Label priceLbl = new Label(p.getPrice() + " ₺ / kg");
-        priceLbl.getStyleClass().add("product-price");
-
-        // Calculate available stock (current stock - items in cart)
+        // Calculate available stock FIRST (current stock - items in cart)
         double cartQuantity = cartDao.getCartQuantity(currentCustomerId, p.getId());
         double availableStock = p.getStockKg() - cartQuantity;
-        
+
+        // THRESHOLD PRICE DOUBLING: If stock <= threshold, price is doubled
+        double displayPrice = p.getPrice();
+        boolean isLowStock = availableStock > 0 && availableStock <= p.getThresholdKg();
+        if (isLowStock) {
+            displayPrice = p.getPrice() * 2;
+        }
+
+        Label priceLbl = new Label(String.format("%.2f ₺ / kg", displayPrice));
+        priceLbl.getStyleClass().add("product-price");
+        if (isLowStock) {
+            priceLbl.setStyle("-fx-text-fill: #ef4444; -fx-font-weight: bold;");
+        }
+
         Label stockLbl;
         if (availableStock <= 0) {
             stockLbl = new Label("Out of Stock");
             stockLbl.getStyleClass().addAll("stock-tag", "stock-low");
             stockLbl.setStyle("-fx-text-fill: #ef4444; -fx-font-weight: bold;");
+        } else if (isLowStock) {
+            stockLbl = new Label(String.format("%.2f kg (Low Stock - 2x Price!)", availableStock));
+            stockLbl.getStyleClass().addAll("stock-tag", "stock-low");
+            stockLbl.setStyle("-fx-text-fill: #f59e0b; -fx-font-weight: bold;");
         } else {
             stockLbl = new Label(String.format("%.2f kg", availableStock));
-            stockLbl.getStyleClass().addAll("stock-tag", availableStock <= p.getThresholdKg() ? "stock-low" : "stock-ok");
+            stockLbl.getStyleClass().addAll("stock-tag", "stock-ok");
         }
 
         // Controls
@@ -180,18 +196,19 @@ public class CustomerController {
                 toast("Invalid amount", ToastService.Type.ERROR);
                 return;
             }
-            
+
             // Calculate available stock (current stock - items already in cart)
             double cartQuantity = cartDao.getCartQuantity(currentCustomerId, p.getId());
             double availableStock = p.getStockKg() - cartQuantity;
-            
+
             if (availableStock <= 0) {
                 toast("Out of stock!", ToastService.Type.ERROR);
                 return;
             }
-            
+
             if (kg > availableStock) {
-                toast("Insufficient stock! Available: " + String.format("%.2f", availableStock) + " kg", ToastService.Type.ERROR);
+                toast("Insufficient stock! Available: " + String.format("%.2f", availableStock) + " kg",
+                        ToastService.Type.ERROR);
                 return;
             }
 
@@ -218,7 +235,7 @@ public class CustomerController {
             cartCountBadge.setVisible(false);
         }
     }
-    
+
     private void refreshProductDisplay() {
         // Reload products from database to get updated stock
         ObservableList<Product> allProducts = FXCollections.observableArrayList(productDao.findAll());
@@ -253,7 +270,7 @@ public class CustomerController {
             toast("Failed to open cart", ToastService.Type.ERROR);
         }
     }
-    
+
     @FXML
     private void handleViewOrders() {
         try {
@@ -261,17 +278,17 @@ public class CustomerController {
             stage.setTitle("Order History");
             VBox root = new VBox(16);
             root.setStyle("-fx-padding: 24; -fx-background-color: #0f172a;");
-            
+
             Label title = new Label("Order History");
             title.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: white;");
-            
+
             ScrollPane scrollPane = new ScrollPane();
             VBox ordersContainer = new VBox(12);
             ordersContainer.setStyle("-fx-padding: 12;");
-            
+
             com.cmpe343.dao.OrderDao orderDao = new com.cmpe343.dao.OrderDao();
             java.util.List<com.cmpe343.model.Order> orders = orderDao.getOrdersForCustomer(currentCustomerId);
-            
+
             if (orders.isEmpty()) {
                 Label empty = new Label("No orders yet");
                 empty.setStyle("-fx-text-fill: #94a3b8; -fx-padding: 20;");
@@ -282,13 +299,13 @@ public class CustomerController {
                     ordersContainer.getChildren().add(orderCard);
                 }
             }
-            
+
             scrollPane.setContent(ordersContainer);
             scrollPane.setFitToWidth(true);
             scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
-            
+
             root.getChildren().addAll(title, scrollPane);
-            
+
             Scene scene = new Scene(root, 800, 600);
             scene.getStylesheets().addAll(searchField.getScene().getStylesheets());
             stage.setScene(scene);
@@ -299,40 +316,42 @@ public class CustomerController {
             toast("Failed to load orders", ToastService.Type.ERROR);
         }
     }
-    
+
     private VBox createOrderCard(com.cmpe343.model.Order order) {
         VBox card = new VBox(12);
         card.setStyle("-fx-background-color: #1e293b; -fx-background-radius: 8; -fx-padding: 16;");
-        
+
         HBox header = new HBox(16);
         header.setAlignment(Pos.CENTER_LEFT);
-        
+
         Label orderId = new Label("Order #" + order.getId());
         orderId.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: white;");
-        
+
         Label status = new Label(order.getStatus().name());
-        status.setStyle("-fx-padding: 4 12; -fx-background-color: #10b981; -fx-background-radius: 4; -fx-text-fill: white;");
-        
+        status.setStyle(
+                "-fx-padding: 4 12; -fx-background-color: #10b981; -fx-background-radius: 4; -fx-text-fill: white;");
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        
+
         Label total = new Label(String.format("%.2f ₺", order.getTotalAfterTax()));
         total.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: white;");
-        
+
         header.getChildren().addAll(orderId, status, spacer, total);
-        
-        Label date = new Label("Ordered: " + order.getOrderTime().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+
+        Label date = new Label("Ordered: "
+                + order.getOrderTime().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
         date.setStyle("-fx-text-fill: #94a3b8;");
-        
+
         card.getChildren().addAll(header, date);
-        
+
         // Add download PDF button if delivered
         if (order.getStatus() == com.cmpe343.model.Order.OrderStatus.DELIVERED) {
             HBox actions = new HBox(8);
             Button downloadBtn = new Button("Download Invoice");
             downloadBtn.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-padding: 6 12;");
             downloadBtn.setOnAction(e -> downloadInvoice(order));
-            
+
             // Check if rating exists
             com.cmpe343.dao.RatingDao ratingDao = new com.cmpe343.dao.RatingDao();
             if (!ratingDao.hasRatingForOrder(order.getId(), currentCustomerId)) {
@@ -341,29 +360,78 @@ public class CustomerController {
                 rateBtn.setOnAction(e -> showRatingDialog(order));
                 actions.getChildren().add(rateBtn);
             }
-            
+
             actions.getChildren().add(downloadBtn);
             card.getChildren().add(actions);
         }
-        
+
+        // ORDER CANCELLATION: Add cancel button for CREATED and ASSIGNED orders within
+        // 1 hour
+        if (order.getStatus() == com.cmpe343.model.Order.OrderStatus.CREATED ||
+                order.getStatus() == com.cmpe343.model.Order.OrderStatus.ASSIGNED) {
+
+            java.time.LocalDateTime orderTime = order.getOrderTime();
+            java.time.LocalDateTime cancellationDeadline = orderTime.plusHours(1);
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+
+            if (now.isBefore(cancellationDeadline)) {
+                // Calculate remaining time
+                long minutesRemaining = java.time.Duration.between(now, cancellationDeadline).toMinutes();
+
+                HBox cancelActions = new HBox(8);
+                cancelActions.setAlignment(Pos.CENTER_LEFT);
+
+                Button cancelBtn = new Button("Cancel Order");
+                cancelBtn.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-padding: 6 12;");
+                cancelBtn.setOnAction(e -> handleCancelOrder(order));
+
+                Label timeRemaining = new Label(String.format("(%d min left to cancel)", minutesRemaining));
+                timeRemaining.setStyle("-fx-text-fill: #f59e0b; -fx-font-size: 11px;");
+
+                cancelActions.getChildren().addAll(cancelBtn, timeRemaining);
+                card.getChildren().add(cancelActions);
+            }
+        }
+
         return card;
     }
-    
+
+    private void handleCancelOrder(com.cmpe343.model.Order order) {
+        javafx.scene.control.Alert confirmAlert = new javafx.scene.control.Alert(
+                javafx.scene.control.Alert.AlertType.CONFIRMATION);
+        confirmAlert.setTitle("Cancel Order");
+        confirmAlert.setHeaderText("Are you sure you want to cancel Order #" + order.getId() + "?");
+        confirmAlert.setContentText("Stock will be restored and this action cannot be undone.");
+
+        confirmAlert.showAndWait().ifPresent(response -> {
+            if (response == javafx.scene.control.ButtonType.OK) {
+                com.cmpe343.dao.OrderDao.CancelResult result = orderDao.cancelOrder(order.getId(), currentCustomerId);
+                if (result.success) {
+                    toast(result.message, ToastService.Type.SUCCESS);
+                    handleViewOrders(); // Refresh orders
+                } else {
+                    toast(result.message, ToastService.Type.ERROR);
+                }
+            }
+        });
+    }
+
     private void downloadInvoice(com.cmpe343.model.Order order) {
         try {
             com.cmpe343.service.PdfService pdfService = new com.cmpe343.service.PdfService();
             java.io.File pdfFile = pdfService.generateInvoice(order);
-            
+
             javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
             fileChooser.setTitle("Save Invoice");
             fileChooser.setInitialFileName("invoice_" + order.getId() + ".pdf");
             fileChooser.getExtensionFilters().add(new javafx.stage.FileChooser.ExtensionFilter("PDF Files", "*.pdf"));
-            
+
             Stage stage = (Stage) searchField.getScene().getWindow();
             java.io.File saveFile = fileChooser.showSaveDialog(stage);
-            
+
             if (saveFile != null) {
-                java.nio.file.Files.copy(pdfFile.toPath(), saveFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                java.nio.file.Files.copy(pdfFile.toPath(), saveFile.toPath(),
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
                 toast("Invoice downloaded successfully", ToastService.Type.SUCCESS);
             }
         } catch (Exception e) {
@@ -371,14 +439,15 @@ public class CustomerController {
             toast("Failed to download invoice: " + e.getMessage(), ToastService.Type.ERROR);
         }
     }
-    
+
     private void showRatingDialog(com.cmpe343.model.Order order) {
         javafx.scene.control.Dialog<java.util.Map<String, Object>> dialog = new javafx.scene.control.Dialog<>();
         dialog.setTitle("Rate Your Order");
         dialog.setHeaderText("How was your delivery experience?");
         dialog.setResizable(true);
 
-        javafx.scene.control.ButtonType submitButtonType = new javafx.scene.control.ButtonType("Submit", javafx.scene.control.ButtonBar.ButtonData.OK_DONE);
+        javafx.scene.control.ButtonType submitButtonType = new javafx.scene.control.ButtonType("Submit",
+                javafx.scene.control.ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(submitButtonType, javafx.scene.control.ButtonType.CANCEL);
 
         VBox content = new VBox(16);
@@ -398,7 +467,7 @@ public class CustomerController {
         content.getChildren().addAll(ratingLabel, ratingSpinner, commentLabel, commentArea);
         dialog.getDialogPane().setContent(content);
         dialog.getDialogPane().setPrefSize(600, 500);
-        
+
         dialog.setResultConverter(dialogButton -> {
             if (dialogButton == submitButtonType) {
                 java.util.Map<String, Object> result = new java.util.HashMap<>();
@@ -408,13 +477,14 @@ public class CustomerController {
             }
             return null;
         });
-        
+
         java.util.Optional<java.util.Map<String, Object>> result = dialog.showAndWait();
         result.ifPresent(r -> {
             try {
                 com.cmpe343.dao.RatingDao ratingDao = new com.cmpe343.dao.RatingDao();
                 if (order.getCarrierId() != null) {
-                    ratingDao.createRating(order.getCarrierId(), currentCustomerId, (Integer) r.get("rating"), (String) r.get("comment"));
+                    ratingDao.createRating(order.getCarrierId(), currentCustomerId, (Integer) r.get("rating"),
+                            (String) r.get("comment"));
                     toast("Thank you for your rating!", ToastService.Type.SUCCESS);
                 }
             } catch (Exception e) {
@@ -423,7 +493,7 @@ public class CustomerController {
             }
         });
     }
-    
+
     @FXML
     private void handleViewMessages() {
         try {
@@ -431,36 +501,36 @@ public class CustomerController {
             stage.setTitle("Messages");
             VBox root = new VBox(16);
             root.setStyle("-fx-padding: 24; -fx-background-color: #0f172a;");
-            
+
             Label title = new Label("Messages");
             title.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: white;");
-            
+
             ScrollPane scrollPane = new ScrollPane();
             VBox messagesContainer = new VBox(12);
             messagesContainer.setStyle("-fx-padding: 12;");
             messagesContainer.setId("messagesContainer"); // Add ID for lookup
-            
+
             com.cmpe343.dao.MessageDao messageDao = new com.cmpe343.dao.MessageDao();
             refreshMessagesList(messagesContainer, messageDao);
-            
+
             Button sendMessageBtn = new Button("Send New Message");
             sendMessageBtn.getStyleClass().add("btn-primary");
             sendMessageBtn.setOnAction(e -> {
                 handleSendMessage(stage, messagesContainer, messageDao);
             });
-            
+
             HBox titleBar = new HBox(12);
             titleBar.setAlignment(Pos.CENTER_LEFT);
             Region spacer = new Region();
             HBox.setHgrow(spacer, Priority.ALWAYS);
             titleBar.getChildren().addAll(title, spacer, sendMessageBtn);
-            
+
             scrollPane.setContent(messagesContainer);
             scrollPane.setFitToWidth(true);
             scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
-            
+
             root.getChildren().addAll(titleBar, scrollPane);
-            
+
             Scene scene = new Scene(root, 700, 500);
             scene.getStylesheets().addAll(searchField.getScene().getStylesheets());
             stage.setScene(scene);
@@ -470,69 +540,71 @@ public class CustomerController {
             toast("Failed to load messages", ToastService.Type.ERROR);
         }
     }
-    
+
     private VBox createMessageCard(com.cmpe343.model.Message msg, com.cmpe343.dao.MessageDao messageDao) {
         VBox card = new VBox(8);
-        card.setStyle("-fx-background-color: " + (msg.isRead() ? "#1e293b" : "#2563eb") + "; -fx-background-radius: 8; -fx-padding: 16;");
-        
+        card.setStyle("-fx-background-color: " + (msg.isRead() ? "#1e293b" : "#2563eb")
+                + "; -fx-background-radius: 8; -fx-padding: 16;");
+
         HBox header = new HBox(12);
         header.setAlignment(Pos.CENTER_LEFT);
-        
+
         Label sender = new Label("To: Owner");
         sender.setStyle("-fx-font-weight: bold; -fx-text-fill: white;");
-        
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        
-        Label date = new Label(msg.getTimestamp().format(java.time.format.DateTimeFormatter.ofPattern("MMM dd, HH:mm")));
+
+        Label date = new Label(
+                msg.getTimestamp().format(java.time.format.DateTimeFormatter.ofPattern("MMM dd, HH:mm")));
         date.setStyle("-fx-text-fill: #94a3b8;");
-        
+
         header.getChildren().addAll(sender, spacer, date);
-        
+
         Label content = new Label(msg.getContent());
         content.setWrapText(true);
         content.setStyle("-fx-text-fill: white;");
-        
+
         card.getChildren().addAll(header, content);
-        
+
         // Show reply if exists
         String replyText = messageDao.getReplyText(msg.getId());
         if (replyText != null && !replyText.trim().isEmpty()) {
             Separator replySep = new Separator();
             replySep.setStyle("-fx-opacity: 0.3; -fx-padding: 8 0;");
-            
+
             Label replyHeader = new Label("Owner's Reply:");
             replyHeader.setStyle("-fx-font-weight: bold; -fx-text-fill: #10b981; -fx-font-size: 12px;");
-            
+
             Label replyContent = new Label(replyText);
             replyContent.setWrapText(true);
             replyContent.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 12px;");
-            
+
             card.getChildren().addAll(replySep, replyHeader, replyContent);
         }
-        
+
         if (!msg.isRead()) {
             card.setOnMouseClicked(e -> {
                 messageDao.markAsRead(msg.getId());
                 card.setStyle("-fx-background-color: #1e293b; -fx-background-radius: 8; -fx-padding: 16;");
             });
         }
-        
+
         return card;
     }
-    
+
     private void handleSendMessage(Stage parentStage, VBox messagesContainer, com.cmpe343.dao.MessageDao messageDao) {
         Dialog<String> dialog = new Dialog<>();
         dialog.setTitle("Send Message to Owner");
         dialog.setHeaderText("Write your message");
         dialog.setResizable(true);
-        
+
         TextArea messageArea = new TextArea();
         messageArea.setPromptText("Enter your message...");
         messageArea.setWrapText(true);
         messageArea.setPrefRowCount(15);
         messageArea.getStyleClass().add("field");
-        
+
         VBox content = new VBox(10);
         content.setStyle("-fx-padding: 20; -fx-background-color: #0f172a;");
         Label label = new Label("Message:");
@@ -540,10 +612,10 @@ public class CustomerController {
         content.getChildren().addAll(label, messageArea);
         dialog.getDialogPane().setContent(content);
         dialog.getDialogPane().setPrefSize(800, 600);
-        
+
         ButtonType sendButton = new ButtonType("Send", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(sendButton, ButtonType.CANCEL);
-        
+
         // Style buttons
         Platform.runLater(() -> {
             javafx.scene.Node sendBtn = dialog.getDialogPane().lookupButton(sendButton);
@@ -555,30 +627,30 @@ public class CustomerController {
                 cancelBtn.getStyleClass().add("btn-outline");
             }
         });
-        
+
         dialog.setResultConverter(buttonType -> {
             if (buttonType == sendButton) {
                 return messageArea.getText().trim();
             }
             return null;
         });
-        
+
         java.util.Optional<String> result = dialog.showAndWait();
         result.ifPresent(messageText -> {
             if (messageText.isEmpty()) {
                 toast("Message cannot be empty", ToastService.Type.ERROR);
                 return;
             }
-            
+
             try {
                 com.cmpe343.dao.UserDao userDao = new com.cmpe343.dao.UserDao();
                 int ownerId = userDao.getOwnerId();
-                
+
                 if (ownerId == -1) {
                     toast("Owner not found", ToastService.Type.ERROR);
                     return;
                 }
-                
+
                 int messageId = messageDao.createMessage(currentCustomerId, ownerId, messageText);
                 if (messageId > 0) {
                     toast("Message sent successfully!", ToastService.Type.SUCCESS);
@@ -593,11 +665,11 @@ public class CustomerController {
             }
         });
     }
-    
+
     private void refreshMessagesList(VBox messagesContainer, com.cmpe343.dao.MessageDao messageDao) {
         messagesContainer.getChildren().clear();
         java.util.List<com.cmpe343.model.Message> messages = messageDao.getMessagesForCustomer(currentCustomerId);
-        
+
         if (messages.isEmpty()) {
             Label empty = new Label("No messages");
             empty.setStyle("-fx-text-fill: #94a3b8; -fx-padding: 20;");
@@ -617,7 +689,7 @@ public class CustomerController {
         vegetablesGrid.setManaged(vegetablesVisible);
         vegetablesToggle.setText(vegetablesVisible ? "▼" : "▶");
     }
-    
+
     @FXML
     private void toggleFruits() {
         fruitsVisible = !fruitsVisible;

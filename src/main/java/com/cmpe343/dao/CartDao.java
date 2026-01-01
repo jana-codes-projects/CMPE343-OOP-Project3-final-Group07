@@ -33,7 +33,8 @@ public class CartDao {
             s.execute(sql);
             // Add unit_price_applied column if it doesn't exist (for existing tables)
             try {
-                s.execute("ALTER TABLE cart_items ADD COLUMN unit_price_applied DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT 'Price at time of adding to cart'");
+                s.execute(
+                        "ALTER TABLE cart_items ADD COLUMN unit_price_applied DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT 'Price at time of adding to cart'");
             } catch (Exception e) {
                 // Column already exists, ignore
             }
@@ -46,7 +47,7 @@ public class CartDao {
     public void addToCart(int userId, int productId, double kg) {
         // Get current product price to store it
         double currentPrice = getProductPrice(productId);
-        
+
         // Upsert logic: If exists, add to current quantity (keep original price)
         String checkSql = "SELECT quantity_kg FROM cart_items WHERE user_id=? AND product_id=?";
         String insertSql = "INSERT INTO cart_items (user_id, product_id, quantity_kg, unit_price_applied) VALUES (?, ?, ?, ?)";
@@ -86,15 +87,23 @@ public class CartDao {
             throw new RuntimeException("Error adding to cart: " + e.getMessage(), e);
         }
     }
-    
+
     private double getProductPrice(int productId) {
-        String sql = "SELECT price FROM products WHERE id = ?";
+        // THRESHOLD PRICE DOUBLING: Check stock vs threshold
+        String sql = "SELECT price, stock_kg, threshold_kg FROM products WHERE id = ?";
         try (Connection c = Db.getConnection();
                 PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, productId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    return rs.getDouble("price");
+                    double price = rs.getDouble("price");
+                    double stock = rs.getDouble("stock_kg");
+                    double threshold = rs.getDouble("threshold_kg");
+                    // If stock <= threshold, double the price
+                    if (stock > 0 && stock <= threshold) {
+                        return price * 2;
+                    }
+                    return price;
                 }
             }
         } catch (Exception e) {
@@ -137,7 +146,7 @@ public class CartDao {
     public CartLoadResult getCartItemsWithStockCheck(int userId) {
         CartLoadResult result = new CartLoadResult();
         String sql = """
-                    SELECT ci.product_id, ci.quantity_kg, ci.unit_price_applied, 
+                    SELECT ci.product_id, ci.quantity_kg, ci.unit_price_applied,
                            p.name, p.type, p.price, p.stock_kg, p.threshold_kg, p.image_blob
                     FROM cart_items ci
                     JOIN products p ON ci.product_id = p.id
@@ -160,7 +169,8 @@ public class CartDao {
 
                     String pName = rs.getString("name");
                     String pType = rs.getString("type");
-                    // Use stored price from cart_items (price at time of addition), not current product price
+                    // Use stored price from cart_items (price at time of addition), not current
+                    // product price
                     double pPrice = rs.getDouble("unit_price_applied");
                     // Fallback to current price if unit_price_applied is 0 (for legacy data)
                     if (pPrice <= 0) {
@@ -193,14 +203,16 @@ public class CartDao {
 
                     // THRESHOLD CHECK - warn if stock is at or below threshold
                     if (stockKg <= thresholdKg) {
-                        result.warnings.add("Low stock warning: " + pName + " has only " + stockKg + " kg remaining (threshold: " + thresholdKg + " kg)");
+                        result.warnings.add("Low stock warning: " + pName + " has only " + stockKg
+                                + " kg remaining (threshold: " + thresholdKg + " kg)");
                     }
 
                     // Build Product & CartItem
                     // Use current product price for Product object (data integrity)
                     double currentProductPrice = rs.getDouble("price");
                     Product p = new Product(pId, pName, pType, currentProductPrice, stockKg, thresholdKg);
-                    // Use stored price from cart_items (price at time of addition) for CartItem pricing
+                    // Use stored price from cart_items (price at time of addition) for CartItem
+                    // pricing
                     // This ensures pricing consistency even if product price changes
                     double storedPrice = pPrice; // This is unit_price_applied from the query
                     // Round line total to match order_items precision (2 decimal places)
@@ -229,11 +241,11 @@ public class CartDao {
         }
         return 0;
     }
-    
+
     /**
      * Gets the quantity of a specific product in the user's cart.
      * 
-     * @param userId The user ID
+     * @param userId    The user ID
      * @param productId The product ID
      * @return The quantity in kg, or 0 if not in cart
      */

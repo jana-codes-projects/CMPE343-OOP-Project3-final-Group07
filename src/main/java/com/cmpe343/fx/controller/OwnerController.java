@@ -103,48 +103,52 @@ public class OwnerController {
             loadMessages();
         }
     }
-    
+
     // ==================== DASHBOARD ====================
-    
+
     private void loadDashboard() {
-        if (dashboardContainer == null) return;
+        if (dashboardContainer == null)
+            return;
         dashboardContainer.getChildren().clear();
-        
+
         String[] modules = {
-            "Products", "Carriers", "Orders", "Messages", 
-            "Coupons", "Ratings", "Loyalty", "Reports"
+                "Products", "Carriers", "Orders", "Messages",
+                "Coupons", "Ratings", "Loyalty", "Reports"
         };
-        
+
         for (String module : modules) {
             javafx.scene.layout.VBox card = createDashboardCard(module);
             dashboardContainer.getChildren().add(card);
         }
     }
-    
+
     private javafx.scene.layout.VBox createDashboardCard(String moduleName) {
         javafx.scene.layout.VBox card = new javafx.scene.layout.VBox(10);
-        card.setStyle("-fx-background-color: #1e293b; -fx-background-radius: 8; -fx-padding: 20; -fx-pref-width: 200; -fx-pref-height: 150;");
-        card.setOnMouseEntered(e -> card.setStyle("-fx-background-color: #2563eb; -fx-background-radius: 8; -fx-padding: 20; -fx-pref-width: 200; -fx-pref-height: 150; -fx-cursor: hand;"));
-        card.setOnMouseExited(e -> card.setStyle("-fx-background-color: #1e293b; -fx-background-radius: 8; -fx-padding: 20; -fx-pref-width: 200; -fx-pref-height: 150;"));
+        card.setStyle(
+                "-fx-background-color: #1e293b; -fx-background-radius: 8; -fx-padding: 20; -fx-pref-width: 200; -fx-pref-height: 150;");
+        card.setOnMouseEntered(e -> card.setStyle(
+                "-fx-background-color: #2563eb; -fx-background-radius: 8; -fx-padding: 20; -fx-pref-width: 200; -fx-pref-height: 150; -fx-cursor: hand;"));
+        card.setOnMouseExited(e -> card.setStyle(
+                "-fx-background-color: #1e293b; -fx-background-radius: 8; -fx-padding: 20; -fx-pref-width: 200; -fx-pref-height: 150;"));
         card.setOnMouseClicked(e -> openModuleTab(moduleName));
-        
+
         Label title = new Label(moduleName);
         title.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: white;");
-        
+
         Label desc = new Label(getModuleDescription(moduleName));
         desc.setStyle("-fx-font-size: 12px; -fx-text-fill: #94a3b8;");
         desc.setWrapText(true);
-        
+
         javafx.scene.layout.Region spacer = new javafx.scene.layout.Region();
         javafx.scene.layout.VBox.setVgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
-        
+
         Label clickLabel = new Label("Click to open →");
         clickLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #64748b;");
-        
+
         card.getChildren().addAll(title, desc, spacer, clickLabel);
         return card;
     }
-    
+
     private String getModuleDescription(String module) {
         return switch (module) {
             case "Products" -> "Manage product inventory, prices, and stock levels";
@@ -158,10 +162,11 @@ public class OwnerController {
             default -> "Module description";
         };
     }
-    
+
     private void openModuleTab(String moduleName) {
-        if (mainTabPane == null) return;
-        
+        if (mainTabPane == null)
+            return;
+
         javafx.scene.control.Tab targetTab = switch (moduleName) {
             case "Products" -> getTabByText("Products");
             case "Carriers" -> getTabByText("Carriers");
@@ -173,14 +178,15 @@ public class OwnerController {
             case "Reports" -> getTabByText("Reports");
             default -> null;
         };
-        
+
         if (targetTab != null) {
             mainTabPane.getSelectionModel().select(targetTab);
         }
     }
-    
+
     private javafx.scene.control.Tab getTabByText(String text) {
-        if (mainTabPane == null) return null;
+        if (mainTabPane == null)
+            return null;
         for (javafx.scene.control.Tab tab : mainTabPane.getTabs()) {
             if (tab.getText().equals(text)) {
                 return tab;
@@ -194,7 +200,7 @@ public class OwnerController {
     private void loadProducts() {
         productsListContainer.getChildren().clear();
         productDetailContainer.getChildren().clear();
-        
+
         // Preserve the currently selected product ID before clearing
         Integer selectedProductId = selectedProduct != null ? selectedProduct.getId() : null;
 
@@ -212,13 +218,13 @@ public class OwnerController {
             HBox listItem = createProductListItem(product);
             if (listItem != null)
                 productsListContainer.getChildren().add(listItem);
-            
+
             // Check if this is the previously selected product
             if (selectedProductId != null && product.getId() == selectedProductId) {
                 productToSelect = product;
             }
         }
-        
+
         // Restore the detail view if the product still exists
         if (productToSelect != null) {
             showProductDetail(productToSelect);
@@ -251,7 +257,8 @@ public class OwnerController {
         HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
 
         item.getChildren().addAll(nameLabel, typeLabel, priceLabel, stockLabel, spacer);
-        // Fix lambda capture: create final copy to avoid capturing loop variable by reference
+        // Fix lambda capture: create final copy to avoid capturing loop variable by
+        // reference
         final Product finalProduct = product;
         item.setOnMouseClicked(e -> showProductDetail(finalProduct));
         return item;
@@ -310,7 +317,7 @@ public class OwnerController {
     private void loadCarriers() {
         carriersListContainer.getChildren().clear();
         carrierDetailContainer.getChildren().clear();
-        
+
         // Preserve the currently selected carrier ID before clearing
         Integer selectedCarrierId = selectedCarrier != null ? selectedCarrier.getId() : null;
 
@@ -334,17 +341,18 @@ public class OwnerController {
             status.getStyleClass().addAll("badge", c.isActive() ? "badge-success" : "badge-danger");
 
             item.getChildren().addAll(name, status);
-            // Fix lambda capture: create final copy to avoid capturing loop variable by reference
+            // Fix lambda capture: create final copy to avoid capturing loop variable by
+            // reference
             final User finalCarrier = c;
             item.setOnMouseClicked(e -> showCarrierDetail(finalCarrier));
             carriersListContainer.getChildren().add(item);
-            
+
             // Check if this is the previously selected carrier
             if (selectedCarrierId != null && c.getId() == selectedCarrierId) {
                 carrierToSelect = c;
             }
         }
-        
+
         // Restore the detail view if the carrier still exists
         if (carrierToSelect != null) {
             showCarrierDetail(carrierToSelect);
@@ -365,7 +373,7 @@ public class OwnerController {
         card.getChildren().add(header);
         card.getChildren().add(createDetailRow("Phone", carrier.getPhone() != null ? carrier.getPhone() : "-"));
         card.getChildren().add(createDetailRow("Address", carrier.getAddress() != null ? carrier.getAddress() : "-"));
-        
+
         // Add status display
         Label statusLabel = new Label(carrier.isActive() ? "Active" : "Inactive");
         statusLabel.getStyleClass().addAll("badge", carrier.isActive() ? "badge-success" : "badge-danger");
@@ -390,38 +398,122 @@ public class OwnerController {
 
         carrierDetailContainer.getChildren().add(card);
     }
+    
+    @FXML
+    private void handleHireCarrier() {
+        Dialog<User> dialog = new Dialog<>();
+        dialog.setTitle("Hire New Carrier");
+        dialog.setHeaderText("Enter carrier details
 
-    // ==================== ORDER MANAGEMENT ====================
+        ButtonType hireButtonType = new ButtonType("Hire", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(hireButtonType, ButtonType.CANCEL);
+        
+        VBox content = new VBox(12);
+        content.setStyle("-fx-padding: 20;");
+        
+        TextField usernameField = new TextField();
+        usernameField.setPromptText("Username");
+        usernameField.getStyleClass().add("field");
+        
+        PasswordField passwordField = new PasswordField();
+        passwordField.setPromptText("Password (min 6 characters)");
+        passwordField.getStyleClass().add("field");
+        
+        TextField phoneField = new TextField();
+        phoneField.setPromptText("Phone Number");
+        phoneField.getStyleClass().add("field");
+        
+        TextField addressField = new TextField();
+        addressField.setPromptText("Address");
+        addressField.getStyleClass().add("field");
+        
+        content.getChildren().addAll(
+            new Label("Username:"), usernameField,
+            new Label("Password:"), passwordField,
+            new Label("Phone:"), phoneField,
+            new Label("Address:"), addressField
+        );
+        
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().setStyle("-fx-background-color: #0f172a;");
+        
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == hireButtonType) {
+                String username = usernameField.getText().trim();
+                String password = passwordField.getText();
+                String phone = phoneField.getText().trim();
+                String address = addressField.getText().trim();
+                
+                if (username.isEmpty()) {
+                    showError("Username is required.");
+                    return null;
+                }
+                if (password.length() < 6) {
+                    showError("Password must be at least 6 characters.");
+                    return null;
+                }
+            // 
+                if (userDAO.usernameExists(username)) {
+                    showError("Username already exists.");
+                    return null;
 
-    private void loadOrders() {
+                
+                try {
+                    int carrierId = userDAO.createCarrier(username, password, phone, address);
+                    if (carrierId > 0) {
+         
+
+                        return new User(carrierId, username, "carrier", phone, address, true);
+                    }
+                } catch (Exception e) {
+                    showError("Failed to hire carrier: " + e.getMessage());
+                }
+            }
+            return null;
+        });
+        
+        dialog.showAndWait();
+    }
+    
+    @FXML
+    private void handleRefreshCarriers() {
+        loadCarriers();
+    }
+
+    // ==================== ORDER MANA
+
+        ate void loadOrders() {
         ordersListContainer.getChildren().clear();
         orderDetailContainer.getChildren().clear();
         
         // Preserve the currently selected order ID before clearing
         Integer selectedOrderId = selectedOrder != null ? selectedOrder.getId() : null;
 
+                
         List<Order> orders = orderDAO.getAllOrders();
         if (orders.isEmpty()) {
+                    
             ordersListContainer.getChildren().add(createPlaceholder("No orders found."));
             if (ordersCountLabel != null)
                 ordersCountLabel.setText("All Orders (0)");
+                    
             selectedOrder = null;
             return;
-        }
 
+        
         if (ordersCountLabel != null)
             ordersCountLabel.setText("All Orders (" + orders.size() + ")");
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("MMM dd HH:mm");
 
         Order orderToSelect = null;
         for (Order o : orders) {
-            HBox item = createListItemBase();
-            item.setUserData(o.getId());
+
+                .setUserData(o.getId());
 
             Label id = new Label("#" + o.getId());
-            id.getStyleClass().addAll("badge", "badge-info");
-            id.setPrefWidth(60);
+            id.getStyleClass().addAll("badge", "badge-i
 
+                
             Label status = new Label(o.getStatus().name());
             String badgeClass = switch (o.getStatus()) {
                 case CREATED -> "badge-info";
@@ -433,23 +525,23 @@ public class OwnerController {
             status.getStyleClass().addAll("badge", badgeClass);
             status.setPrefWidth(100);
 
-            Label date = new Label(o.getOrderTime().format(fmt));
-            date.getStyleClass().add("muted");
+         
 
+        
             Region spacer = new Region();
             HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
 
             Label total = new Label(formatPrice(o.getTotalAfterTax()));
             total.getStyleClass().add("detail-value");
 
-            item.getChildren().addAll(id, status, date, spacer, total);
-            // Fix lambda capture: create final copy to avoid capturing loop variable by reference
-            final Order finalOrder = o;
+            item.getChildren().addAll(id, status,
+
+                    der finalOrder = o;
             item.setOnMouseClicked(e -> showOrderDetail(finalOrder));
             ordersListContainer.getChildren().add(item);
             
-            // Check if this is the previously selected order
-            if (selectedOrderId != null && o.getId() == selectedOrderId) {
+
+                    ctedOrderId != null && o.getId() == selectedOrderId) {
                 orderToSelect = o;
             }
         }
@@ -473,35 +565,36 @@ public class OwnerController {
 
         card.getChildren().add(title);
         
-        // Order Basic Info
-        VBox orderInfo = new VBox(5);
+        /
+
         orderInfo.getChildren().add(createDetailRow("Status", order.getStatus().name()));
         orderInfo.getChildren().add(createDetailRow("Total", formatPrice(order.getTotalAfterTax())));
         orderInfo.getChildren().add(createDetailRow("Subtotal", formatPrice(order.getTotalBeforeTax())));
         orderInfo.getChildren().add(createDetailRow("VAT (20%)", formatPrice(order.getVat())));
-        orderInfo.getChildren().add(createDetailRow("Order Date", order.getOrderTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))));
-        if (order.getRequestedDeliveryTime() != null) {
+        orderInfo.getChildren().add(creat
+
             orderInfo.getChildren().add(createDetailRow("Requested Delivery", order.getRequestedDeliveryTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))));
         }
         if (order.getDeliveredTime() != null) {
-            orderInfo.getChildren().add(createDetailRow("Delivered", order.getDeliveredTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))));
-        }
-        card.getChildren().add(orderInfo);
+            orderInfo.getChildren().add(createDe
+
+            .getChildren().add(orderInfo);
         
         // Customer Information
         try {
-            User customer = userDAO.getUserById(order.getCustomerId());
-            if (customer != null) {
+                        
+
+                customer != null) {
                 Separator sep1 = new Separator();
-                sep1.setStyle("-fx-opacity: 0.3; -fx-padding: 10 0;");
+
                 card.getChildren().add(sep1);
                 
                 Label customerHeader = new Label("Customer Information");
                 customerHeader.getStyleClass().add("field-label");
-                customerHeader.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+
                 card.getChildren().add(customerHeader);
                 
-                VBox customerInfo = new VBox(5);
+
                 customerInfo.getChildren().add(createDetailRow("Name", customer.getUsername()));
                 if (customer.getPhone() != null && !customer.getPhone().isEmpty()) {
                     customerInfo.getChildren().add(createDetailRow("Phone", customer.getPhone()));
@@ -511,12 +604,12 @@ public class OwnerController {
                 }
                 card.getChildren().add(customerInfo);
             }
-        } catch (Exception e) {
+
             System.err.println("Error loading customer info: " + e.getMessage());
         }
         
         // Carrier Information (if assigned)
-        if (order.getCarrierId() != null) {
+
             try {
                 User carrier = userDAO.getUserById(order.getCarrierId());
                 if (carrier != null) {
@@ -530,7 +623,7 @@ public class OwnerController {
                     card.getChildren().add(carrierHeader);
                     
                     VBox carrierInfo = new VBox(5);
-                    carrierInfo.getChildren().add(createDetailRow("Name", carrier.getUsername()));
+
                     if (carrier.getPhone() != null && !carrier.getPhone().isEmpty()) {
                         carrierInfo.getChildren().add(createDetailRow("Phone", carrier.getPhone()));
                     }
@@ -546,27 +639,29 @@ public class OwnerController {
         if (order.getItems() == null) {
             // Load items if not already loaded
             try {
-                order.setItems(orderDAO.getOrderItems(order.getId()));
+
                 // Recursive call to refresh with items - but only if items was null
                 showOrderDetail(order);
                 return;
-            } catch (Exception e) {
-                System.err.println("Error loading order items: " + e.getMessage());
+
+                System.err.println("Er
+                    ror loading order items: " + e.getMessage());
             }
-        }
-        
+
+            
         // Display items if they exist (even if empty list)
-        if (order.getItems() != null && !order.getItems().isEmpty()) {
-            Separator sep3 = new Separator();
+        if (order.getItems() != null && 
+
             sep3.setStyle("-fx-opacity: 0.3; -fx-padding: 10 0;");
             card.getChildren().add(sep3);
             
             Label itemsHeader = new Label("Order Items");
             itemsHeader.getStyleClass().add("field-label");
             itemsHeader.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
-            card.getChildren().add(itemsHeader);
-            
+            c
+
             VBox itemsContainer = new VBox(8);
+            // 
             for (CartItem item : order.getItems()) {
                 VBox itemCard = new VBox(5);
                 itemCard.setStyle("-fx-background-color: rgba(30, 41, 59, 0.5); -fx-background-radius: 4; -fx-padding: 10;");
@@ -575,87 +670,86 @@ public class OwnerController {
                 productName.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
                 
                 HBox itemDetails = new HBox(15);
-                itemDetails.getChildren().add(new Label("Type: " + item.getProduct().getType().name()));
-                itemDetails.getChildren().add(new Label("Quantity: " + String.format("%.2f kg", item.getQuantityKg())));
-                itemDetails.getChildren().add(new Label("Unit Price: " + formatPrice(item.getUnitPrice())));
-                
+               
+
+                itemDetails.getChildren().add(new Label("U
+
                 Label lineTotal = new Label("Line Total: " + formatPrice(item.getLineTotal()));
                 lineTotal.setStyle("-fx-font-weight: bold;");
                 
                 itemCard.getChildren().addAll(productName, itemDetails, lineTotal);
-                itemsContainer.getChildren().add(itemCard);
-            }
+         
+
             card.getChildren().add(itemsContainer);
         } else if (order.getItems() != null && order.getItems().isEmpty()) {
             // Items were loaded but order has no items
             Separator sep3 = new Separator();
             sep3.setStyle("-fx-opacity: 0.3; -fx-padding: 10 0;");
             card.getChildren().add(sep3);
-            
-            Label itemsHeader = new Label("Order Items");
+     
+
             itemsHeader.getStyleClass().add("field-label");
             itemsHeader.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
             card.getChildren().add(itemsHeader);
             
-            Label noItemsLabel = new Label("This order has no items.");
+
             noItemsLabel.getStyleClass().add("muted");
             card.getChildren().add(noItemsLabel);
-        }
 
+        
         orderDetailContainer.getChildren().add(card);
     }
+                
+                =============== MESSAGE MANAGEMENT ====================
+                at
 
-    // ==================== MESSAGE MANAGEMENT ====================
-
-    private void loadMessages() {
-        messagesListContainer.getChildren().clear();
         messageDetailContainer.getChildren().clear();
         
-        // Preserve the currently selected message ID before clearing
+
         Integer selectedMessageId = selectedMessage != null ? selectedMessage.getId() : null;
 
         List<Message> msgs = messageDAO.getAllMessages();
-        if (msgs.isEmpty()) {
+
             messagesListContainer.getChildren().add(createPlaceholder("No messages."));
             selectedMessage = null;
             return;
         }
 
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm");
+
         Message messageToSelect = null;
-        for (Message m : msgs) {
+
             HBox item = createListItemBase();
             item.setUserData(m.getId());
             
             Label sender = new Label(m.getSender());
             sender.getStyleClass().add("detail-value");
-            sender.setPrefWidth(150);
+
             
             Label content = new Label(m.getContent().length() > 50 ? m.getContent().substring(0, 50) + "..." : m.getContent());
             content.getStyleClass().add("muted");
-            
+
             Label timestamp = new Label(m.getTimestamp().format(formatter));
             timestamp.getStyleClass().add("muted");
             timestamp.setPrefWidth(150);
             
             if (!m.isRead()) {
-                Label unreadBadge = new Label("NEW");
+
                 unreadBadge.getStyleClass().addAll("badge", "badge-info");
                 item.getChildren().addAll(sender, content, timestamp, unreadBadge);
             } else {
                 item.getChildren().addAll(sender, content, timestamp);
             }
-            
+
             // Fix lambda capture: create final copy to avoid capturing loop variable by reference
             final Message finalMessage = m;
             item.setOnMouseClicked(e -> {
-                selectedMessage = finalMessage;
+
                 showMessageDetail(finalMessage);
                 if (!finalMessage.isRead()) {
                     messageDAO.markAsRead(finalMessage.getId());
                     loadMessages(); // Refresh to update read status
                 }
-            });
+
             
             messagesListContainer.getChildren().add(item);
             
@@ -663,30 +757,34 @@ public class OwnerController {
             if (selectedMessageId != null && m.getId() == selectedMessageId) {
                 messageToSelect = m;
             }
+                            
         }
         
-        // Restore the detail view if the message still exists
-        if (messageToSelect != null) {
+
+                ageToSelect != null) {
             showMessageDetail(messageToSelect);
         } else {
             selectedMessage = null;
+                                
         }
     }
     
+                                
     private void showMessageDetail(Message message) {
         messageDetailContainer.getChildren().clear();
         VBox card = new VBox(10);
         card.getStyleClass().add("detail-card");
+                            
         
-        Label header = new Label("Message from: " + message.getSender());
-        header.getStyleClass().add("detail-header");
-        
+        Label h
+
+            
         VBox meta = new VBox(5);
-        LocalDateTime messageTime = message.getTimestamp();
-        meta.getChildren().addAll(
+        LocalDateTime messageTime = message.getTimestamp(
+
             createDetailRow("Sender", message.getSender()),
-            createDetailRow("Timestamp", messageTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))),
-            createDetailRow("Status", message.isRead() ? "Replied" : "Unread")
+         
+
         );
         
         Separator sep = new Separator();
@@ -700,14 +798,14 @@ public class OwnerController {
         contentArea.setEditable(false);
         contentArea.setWrapText(true);
         contentArea.setPrefRowCount(5);
-        contentArea.setStyle("-fx-background-color: rgba(30, 41, 59, 0.5); -fx-text-fill: white;");
+
         
         card.getChildren().addAll(header, meta, sep, contentLabel, contentArea);
         
         // Check if there's already a reply
         String existingReply = messageDAO.getReplyText(message.getId());
         if (existingReply != null && !existingReply.trim().isEmpty()) {
-            Separator replySep = new Separator();
+
             replySep.setStyle("-fx-opacity: 0.3; -fx-padding: 10 0;");
             
             Label replyHeader = new Label("Your Reply:");
@@ -717,13 +815,13 @@ public class OwnerController {
             TextArea replyArea = new TextArea(existingReply);
             replyArea.setEditable(false);
             replyArea.setWrapText(true);
-            replyArea.setPrefRowCount(4);
-            replyArea.setStyle("-fx-background-color: rgba(16, 185, 129, 0.1); -fx-text-fill: #94a3b8;");
+            replyArea.setPrefRowCount(4)
+
             
             card.getChildren().addAll(replySep, replyHeader, replyArea);
         } else {
-            // Add reply section for new replies
-            Separator replySep = new Separator();
+            // Add reply section fo
+
             replySep.setStyle("-fx-opacity: 0.3; -fx-padding: 10 0;");
             
             Label replyLabel = new Label("Reply:");
@@ -732,78 +830,77 @@ public class OwnerController {
             
             TextArea replyArea = new TextArea();
             replyArea.setPromptText("Type your reply here...");
-            replyArea.setWrapText(true);
-            replyArea.setPrefRowCount(4);
+            replyArea.setWrapText(true)
+
             replyArea.getStyleClass().add("field");
             
             Button sendReplyBtn = new Button("Send Reply");
-            sendReplyBtn.getStyleClass().add("btn-primary");
-            sendReplyBtn.setStyle("-fx-font-size: 12px; -fx-padding: 8 16;");
+            sendReplyBtn.getStyleCla
+
             sendReplyBtn.setOnAction(e -> {
                 String replyText = replyArea.getText().trim();
-                if (replyText.isEmpty()) {
+
                     ToastService.show(messageDetailContainer.getScene(), "Reply cannot be empty", ToastService.Type.ERROR);
                     return;
+            // 
                 }
                 
                 try {
-                    boolean success = messageDAO.replyToMessage(message.getId(), replyText);
+
                     if (success) {
                         ToastService.show(messageDetailContainer.getScene(), "Reply sent successfully!", ToastService.Type.SUCCESS);
                         loadMessages(); // Refresh to show updated status
                     } else {
-                        ToastService.show(messageDetailContainer.getScene(), "Failed to send reply", ToastService.Type.ERROR);
-                    }
+         
+
                 } catch (Exception ex) {
                     ex.printStackTrace();
                     ToastService.show(messageDetailContainer.getScene(), "Error: " + ex.getMessage(), ToastService.Type.ERROR);
                 }
             });
             
-            HBox replyActions = new HBox(10);
-            replyActions.setAlignment(Pos.CENTER_RIGHT);
+     
+
             replyActions.getChildren().add(sendReplyBtn);
             
             card.getChildren().addAll(replySep, replyLabel, replyArea, replyActions);
         }
         
-        messageDetailContainer.getChildren().add(card);
-    }
 
-    @FXML
-    private void handleRefreshMessages() {
+        
+
+
+        ate void handleRefreshMessages() {
         loadMessages();
     }
 
     // ==================== COUPON MANAGEMENT ====================
 
-    private void loadCoupons() {
-        couponsListContainer.getChildren().clear();
-        couponDetailContainer.getChildren().clear();
-        
-        // Preserve the currently selected coupon ID before clearing
-        Integer selectedCouponId = selectedCoupon != null ? selectedCoupon.getId() : null;
+    priva
 
+        couponDetailContainer.getChildren().clear();
+                
+                reserve the cu
+
+        
         // Load ALL coupons from database (not just valid ones)
         List<Coupon> allCoupons = couponDAO.getAllCoupons();
         allCoupons.sort((c1, c2) -> c1.getCode().compareToIgnoreCase(c2.getCode()));
         
         if (allCoupons.isEmpty()) {
-            couponsListContainer.getChildren().add(createPlaceholder("No coupons available."));
-            selectedCoupon = null;
-            return;
+            couponsListContainer.getChildren().add(createPlaceholder("No coupons ava  
+
         }
 
         Coupon couponToSelect = null;
-        for (Coupon c : allCoupons) {
-            HBox item = createListItemBase();
-            item.setUserData(c.getId());
+                    pon c : allCoupo
+                     item = createListItemBase();item.setUserData(c.getId());
             
-            Label code = new Label(c.getCode());
-            code.getStyleClass().add("detail-value");
+                    de = new Label(c.getCode());
+                    StyleClass().add("detail-value");
             code.setStyle("-fx-font-weight: bold;");
-            code.setPrefWidth(150);
-            
+         
+
             String discountText;
             if (c.getKind() == Coupon.CouponKind.AMOUNT) {
                 discountText = "-" + formatPrice(c.getValue()) + " TL";
@@ -818,7 +915,7 @@ public class OwnerController {
             Label status = new Label(c.isActive() ? "Active" : "Inactive");
             status.getStyleClass().addAll("badge", c.isActive() ? "badge-success" : "badge-danger");
             status.setPrefWidth(80);
-            
+
             Region spacer = new Region();
             HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
             
@@ -828,17 +925,17 @@ public class OwnerController {
             item.setOnMouseClicked(e -> showCouponDetail(finalCoupon));
             couponsListContainer.getChildren().add(item);
             
-            // Check if this is the previously selected coupon
-            if (selectedCouponId != null && c.getId() == selectedCouponId) {
+            // Check if this is the 
+
                 couponToSelect = c;
             }
-        }
+
         
         // Restore the detail view if the coupon still exists
         if (couponToSelect != null) {
             showCouponDetail(couponToSelect);
         } else {
-            selectedCoupon = null;
+
         }
     }
     
@@ -848,27 +945,27 @@ public class OwnerController {
         VBox card = new VBox(10);
         card.getStyleClass().add("detail-card");
         
-        Label header = new Label("Coupon: " + coupon.getCode());
-        header.getStyleClass().add("detail-header");
+        Label header = new Label("Coupon: " + coupon.ge
+
         
-        VBox meta = new VBox(5);
+        VBox meta = new VBo
+                x(5);
         String discountText;
-        if (coupon.getKind() == Coupon.CouponKind.AMOUNT) {
-            discountText = formatPrice(coupon.getValue()) + " TL (Fixed Amount)";
+        if (coupon.getKind() == Coupon.CouponKind.
+
         } else {
-            discountText = coupon.getValue() + "% (Percentage)";
-        }
-        
-        String expiryDateText = coupon.getExpiresAt() != null 
-            ? coupon.getExpiresAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
-            : "No expiry";
-        
+                discountText = coupon
+                
+                
+                ng expiryDateText = coupon.
+                ? coupon.getExpiresAt().fo
+                : "No expir
         meta.getChildren().addAll(
                 createDetailRow("Code", coupon.getCode()),
                 createDetailRow("Type", coupon.getKind().name()),
                 createDetailRow("Discount", discountText),
-                createDetailRow("Min Cart", formatPrice(coupon.getMinCart()) + " TL"),
-                createDetailRow("Expiry Date", expiryDateText),
+                createDetailRow("Min Cart", formatPri
+
                 createDetailRow("Status", coupon.isActive() ? "Active" : "Inactive")
         );
         
@@ -899,14 +996,14 @@ public class OwnerController {
         TextField codeField = new TextField();
         codeField.setPromptText("Coupon Code");
         
-        ComboBox<String> kindCombo = new ComboBox<>();
-        kindCombo.getItems().addAll("AMOUNT", "PERCENT");
-        kindCombo.setValue("AMOUNT");
+        ComboBox<Stri
+
+                    tValue("AMOUNT");
 
         TextField valueField = new TextField();
-        valueField.setPromptText("Discount Value");
+        valueField.se
 
-        TextField minCartField = new TextField();
+                    nCartField = new TextField();
         minCartField.setPromptText("Minimum Cart (TL)");
         minCartField.setText("0.0");
         
@@ -946,42 +1043,42 @@ public class OwnerController {
         form.setPrefWidth(500);
 
         dialog.getDialogPane().setContent(form);
-        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-        dialog.getDialogPane().setPrefSize(600, 550);
+        dialog.getDialogPane().getButtonTypes()
+
         
         Platform.runLater(() -> {
             javafx.scene.Node okBtn = dialog.getDialogPane().lookupButton(ButtonType.OK);
             if (okBtn != null) {
-                okBtn.getStyleClass().add("btn-primary");
-            }
+         
+
         });
 
         dialog.setResultConverter(buttonType -> {
             if (buttonType == ButtonType.OK) {
-                try {
+
                     String code = codeField.getText().trim().toUpperCase();
                     String kindStr = kindCombo.getValue();
-                    double value = Double.parseDouble(valueField.getText().trim());
-                    double minCart = Double.parseDouble(minCartField.getText().trim());
+                    double value = Double.parseDouble(valueField.getText().trim())
+
                     LocalDate expiry = expiryPicker.getValue();
                     boolean active = activeCheck.isSelected();
 
                     if (code.isEmpty()) {
                         showError("Coupon code cannot be empty.");
-                        return null;
+
                     }
 
-                    if (expiry == null) {
+
                         showError("Please select an expiry date.");
-                        return null;
+
                     }
 
                     if (value <= 0) {
                         showError("Discount value must be greater than 0.");
                         return null;
                     }
-                    
-                    if (minCart < 0) {
+             
+
                         showError("Minimum cart value must be non-negative.");
                         return null;
                     }
@@ -993,52 +1090,55 @@ public class OwnerController {
 
                     // Check if code already exists
                     if (couponDAO.getCouponByCode(code) != null) {
-                        showError("A coupon with this code already exists.");
+                        showError("A 
+            oupon with this code already exists.");
                         return null;
-                    }
 
-                    Coupon.CouponKind kind = Coupon.CouponKind.valueOf(kindStr);
-                    LocalDateTime expiresAt = expiry.atStartOfDay();
+        
+                    Coupon.CouponKind kind = Coupon.CouponKind.valueOf(kindSt
 
+            
                     int couponId = couponDAO.createCoupon(code, kind, value, minCart, expiresAt, active);
                     if (couponId > 0) {
                         showSuccess("Coupon added successfully!");
                         loadCoupons();
                         return new Coupon(couponId, code, kind, value, minCart, active, expiresAt);
-                    }
-                } catch (NumberFormatException e) {
+             
+
                     showError("Please enter valid numbers for value and minimum cart.");
                 } catch (Exception e) {
                     showError("Failed to add coupon: " + e.getMessage());
                 }
-            }
+
             return null;
         });
 
         dialog.showAndWait();
     }
 
-    @FXML
-    private void handleRefreshCoupons() {
-        loadCoupons();
-    }
-
-    // ==================== RATINGS ====================
-
-    private void loadCarrierRatings() {
-        ratingsContainer.getChildren().clear();
-        
-        List<Rating> ratings = ratingDAO.getAllRatings();
-        if (ratings.isEmpty()) {
-            ratingsContainer.getChildren().add(createPlaceholder("No ratings available."));
-            return;
-        }
-        
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm");
-        for (Rating rating : ratings) {
-            VBox ratingCard = new VBox(8);
-            ratingCard.setStyle("-fx-background-color: #1e293b; -fx-background-radius: 8; -fx-padding: 15;");
             
+    private void handleRefreshCo
+                    upons() {
+
+            
+
+
+            
+                     loadCarrierR
+                    ontainer.getChildren().clear();
+                    
+                    ing> ratings = ratingDAO.getAllRatings();
+                    ngs.isEmpty()) {
+                            ra
+
+            
+
+            TimeFormatter formatter = DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm");
+        for (Rating rating : ratings) {
+            VBox ratingCard = ne
+                    w VBox(8);
+            ratingCard.setStyle("-fx-background-color: #1e2
+
             HBox header = new HBox(10);
             Label carrierLabel = new Label("Carrier ID: " + rating.getCarrierId());
             carrierLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: white;");
@@ -1047,11 +1147,12 @@ public class OwnerController {
             scoreLabel.getStyleClass().addAll("badge", "badge-success");
             
             Region spacer = new Region();
-            HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
-            
+
+                
+                        
             Label dateLabel = new Label(rating.getTimestamp().format(formatter));
-            dateLabel.getStyleClass().add("muted");
-            
+            d
+
             header.getChildren().addAll(carrierLabel, scoreLabel, spacer, dateLabel);
             
             if (rating.getComment() != null && !rating.getComment().isEmpty()) {
@@ -1059,46 +1160,48 @@ public class OwnerController {
                 commentLabel.setStyle("-fx-text-fill: #cbd5e1; -fx-wrap-text: true;");
                 ratingCard.getChildren().addAll(header, commentLabel);
             } else {
-                ratingCard.getChildren().add(header);
-            }
+     
+
             
-            ratingsContainer.getChildren().add(ratingCard);
+            ldren().add(ratingCard);
         }
     }
+                
 
-    @FXML
+        L
     private void handleRefreshRatings() {
-        loadCarrierRatings();
-    }
 
-    @FXML
-    private void handleRefreshLoyalty() {
+        
+
+
+        ate void handleRefreshLoyalty() {
         if (loyaltyContainer == null) return;
         loyaltyContainer.getChildren().clear();
-        
+
         try {
-            List<Object[]> loyaltyStats = orderDAO.getCustomerLoyaltyStats();
-            
+            List<Object[]> loyaltyStats =
+                 orderDAO.getCustomerLoyaltyStats();
+                
             if (loyaltyStats.isEmpty()) {
-                Label info = new Label("No customer purchase data available.");
+
                 info.getStyleClass().add("muted");
-                info.setStyle("-fx-padding: 20; -fx-font-size: 14px;");
-                loyaltyContainer.getChildren().add(info);
+                info.setStyle("-fx-padding: 20; -fx-font-size: 14px
+
                 return;
-            }
+
             
             // Header
-            Label header = new Label("Customer Loyalty Program - Purchase Frequency");
-            header.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: white; -fx-padding: 0 0 20 0;");
-            loyaltyContainer.getChildren().add(header);
-            
-            // Summary statistics
-            int totalCustomers = loyaltyStats.size();
-            int totalOrders = loyaltyStats.stream().mapToInt(s -> (Integer) s[2]).sum();
+                Label header = new Label("Customer Loyalty Program - Purchas
+                header.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-tex
+                loyaltyContainer.getChildren().add(header);
+                
+                // Summary statistics
+                          
+
             double totalRevenue = loyaltyStats.stream().mapToDouble(s -> (Double) s[3]).sum();
             double avgOrdersPerCustomer = totalOrders / (double) totalCustomers;
-            
-            VBox summaryBox = new VBox(8);
+     
+
             summaryBox.setStyle("-fx-background-color: #1e293b; -fx-background-radius: 8; -fx-padding: 16; -fx-margin: 0 0 20 0;");
             
             Label summaryTitle = new Label("Summary Statistics");
@@ -1109,8 +1212,8 @@ public class OwnerController {
                 createLoyaltySummaryRow("Total Active Customers", String.valueOf(totalCustomers)),
                 createLoyaltySummaryRow("Total Orders", String.valueOf(totalOrders)),
                 createLoyaltySummaryRow("Total Revenue", String.format("%.2f ₺", totalRevenue)),
-                createLoyaltySummaryRow("Average Orders per Customer", String.format("%.2f", avgOrdersPerCustomer))
-            );
+     
+
             
             loyaltyContainer.getChildren().add(summaryBox);
             
@@ -1118,21 +1221,21 @@ public class OwnerController {
             Label listHeader = new Label("Customer Loyalty Rankings");
             listHeader.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: white; -fx-padding: 20 0 10 0;");
             loyaltyContainer.getChildren().add(listHeader);
-            
-            for (Object[] stat : loyaltyStats) {
+     
+
                 int customerId = (Integer) stat[0];
                 String username = (String) stat[1];
-                int orderCount = (Integer) stat[2];
-                double totalSpent = (Double) stat[3];
+                int orderCount = (Integer)
+
                 long daysSinceFirst = (Long) stat[4];
                 double avgDaysBetween = (Double) stat[5];
-                double ordersPerMonth = (Double) stat[6];
+
                 
-                VBox card = createLoyaltyCard(username, orderCount, totalSpent, daysSinceFirst, avgDaysBetween, ordersPerMonth);
-                loyaltyContainer.getChildren().add(card);
+                VBox card = createLoyaltyCard(username, orderCount, totalSpent, daysSinceFirst,
+
             }
             
-            showInfo("Loyalty data refreshed successfully.");
+
         } catch (Exception e) {
             e.printStackTrace();
             Label error = new Label("Error loading loyalty data: " + e.getMessage());
@@ -1142,47 +1245,48 @@ public class OwnerController {
     }
     
     private VBox createLoyaltyCard(String username, int orderCount, double totalSpent, 
-                                   long daysSinceFirst, double avgDaysBetween, double ordersPerMonth) {
-        VBox card = new VBox(12);
+     
+
         card.setStyle("-fx-background-color: #1e293b; -fx-background-radius: 8; -fx-padding: 16; -fx-margin: 0 0 10 0;");
         
         HBox header = new HBox(12);
-        header.setAlignment(Pos.CENTER_LEFT);
-        
+        header.setAlignment(Pos.CE
+
         Label nameLabel = new Label(username);
         nameLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: white;");
         
         // Determine loyalty tier based on purchase frequency
-        String loyaltyTier = getLoyaltyTier(ordersPerMonth, orderCount);
+
         String tierColor = getTierColor(loyaltyTier);
         
-        Label tierLabel = new Label(loyaltyTier);
-        tierLabel.setStyle(String.format("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: %s; -fx-padding: 4 12; -fx-background-color: %s; -fx-background-radius: 12;", 
+        Label tierLabel = new Label(loyaltyTier)
+
             tierColor, tierColor + "20"));
         tierLabel.getStyleClass().add("badge");
         
+                
         Region spacer = new Region();
         HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
         
         header.getChildren().addAll(nameLabel, spacer, tierLabel);
         
-        VBox details = new VBox(6);
-        details.getChildren().addAll(
+        V
+
             createDetailRow("Total Orders", String.valueOf(orderCount)),
             createDetailRow("Total Spent", String.format("%.2f ₺", totalSpent)),
-            createDetailRow("Days Since First Order", String.valueOf(daysSinceFirst)),
-            createDetailRow("Purchase Frequency", String.format("%.2f orders/month", ordersPerMonth)),
+            createDetailRow("Days Since First Ord
+
             createDetailRow("Avg Days Between Orders", avgDaysBetween > 0 ? String.format("%.1f days", avgDaysBetween) : "N/A")
         );
         
-        card.getChildren().addAll(header, new Separator(), details);
+
         return card;
     }
     
-    private String getLoyaltyTier(double ordersPerMonth, int totalOrders) {
+
         if (ordersPerMonth >= 4 || totalOrders >= 20) {
             return "VIP";
-        } else if (ordersPerMonth >= 2 || totalOrders >= 10) {
+
             return "Gold";
         } else if (ordersPerMonth >= 1 || totalOrders >= 5) {
             return "Silver";
@@ -1193,19 +1297,18 @@ public class OwnerController {
     
     private String getTierColor(String tier) {
         return switch (tier) {
-            case "VIP" -> "#fbbf24"; // Gold
+
             case "Gold" -> "#f59e0b"; // Orange
             case "Silver" -> "#94a3b8"; // Gray
             default -> "#10b981"; // Green
         };
     }
-    
-    private HBox createLoyaltySummaryRow(String label, String value) {
+    ate HBox createLoyaltySummaryRow(String label, String value) {
         HBox row = new HBox(12);
-        row.setAlignment(Pos.CENTER_LEFT);
+
         
         Label labelLbl = new Label(label + ":");
-        labelLbl.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 13px;");
+
         
         Label valueLbl = new Label(value);
         valueLbl.setStyle("-fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: bold;");
@@ -1217,8 +1320,8 @@ public class OwnerController {
         return row;
     }
 
-    // ==================== COMMON ====================
 
+        
     @FXML
     private void handleAddProduct() {
         showProductDialog(null);
@@ -1226,18 +1329,18 @@ public class OwnerController {
     
     private void showProductDialog(Product product) {
         Dialog<Product> dialog = new Dialog<>();
-        dialog.setTitle(product == null ? "Add Product" : "Edit Product");
-        dialog.setResizable(true);
+
+                    sizable(true);
         
         // Style dialog pane to match project theme
-        dialog.getDialogPane().setStyle("-fx-background-color: #0f172a;");
-        dialog.getDialogPane().getStylesheets().add(getClass().getResource("/css/base.css").toExternalForm());
-        dialog.getDialogPane().getStylesheets().add(getClass().getResource("/css/owner.css").toExternalForm());
+        dialog.getDia
+
+                    alogPane().getStylesheets().add(getClass().getResource("/css/owner.css").toExternalForm());
         
         TextField nameField = new TextField(product != null ? product.getName() : "");
-        nameField.getStyleClass().add("field");
-        nameField.setPromptText("Product name");
-        
+        nameField.get
+
+                    
         ComboBox<String> typeCombo = new ComboBox<>();
         typeCombo.getItems().addAll("VEG", "FRUIT");
         typeCombo.setStyle("-fx-background-color: rgba(30, 41, 59, 0.6); -fx-text-fill: white; -fx-background-radius: 8; -fx-border-color: #334155; -fx-border-radius: 8;");
@@ -1248,15 +1351,16 @@ public class OwnerController {
             typeCombo.setValue("FRUIT");
         }
         
+                                
         TextField priceField = new TextField(product != null ? String.valueOf(product.getPrice()) : "");
         priceField.getStyleClass().add("field");
         priceField.setPromptText("Price per kg");
         
         TextField stockField = new TextField(product != null ? String.valueOf(product.getStockKg()) : "");
         stockField.getStyleClass().add("field");
-        stockField.setPromptText("Stock in kg");
-        
-        TextField thresholdField = new TextField(product != null ? String.valueOf(product.getThresholdKg()) : "");
+                                    ("Stock in kg");
+                                    
+                                     = new TextField(product != null ? String.valueOf(product.getThresholdKg()) : "");
         thresholdField.getStyleClass().add("field");
         thresholdField.setPromptText("Threshold in kg");
         
@@ -1274,8 +1378,8 @@ public class OwnerController {
         Label thresholdLabel = new Label("Threshold (kg):");
         thresholdLabel.getStyleClass().add("field-label");
         
-        content.getChildren().addAll(
-                nameLabel, nameField,
+        con
+
                 typeLabel, typeCombo,
                 priceLabel, priceField,
                 stockLabel, stockField,
@@ -1294,17 +1398,17 @@ public class OwnerController {
             }
             javafx.scene.Node cancelBtn = dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
             if (cancelBtn != null) {
-                cancelBtn.getStyleClass().add("btn-outline");
-            }
-        });
-        
+                    cancelBtn.getStyleClass().add("btn-outline");
+                    
+
+            
         dialog.setResultConverter(buttonType -> {
-            if (buttonType == saveButton) {
-                try {
-                    String name = nameField.getText().trim();
+                    buttonType == saveButton) {
+                    try {
+
                     String typeDbValue = typeCombo.getValue(); // This will be "VEG" or "FRUIT"
-                    double price = Double.parseDouble(priceField.getText().trim());
-                    double stock = Double.parseDouble(stockField.getText().trim());
+                    double price = Double.parseDouble(priceFiel
+
                     double threshold = Double.parseDouble(thresholdField.getText().trim());
                     
                     if (name.isEmpty()) {
@@ -1312,7 +1416,7 @@ public class OwnerController {
                         return null;
                     }
                     
-                    if (price < 0 || stock < 0 || threshold < 0) {
+
                         showError("Price, stock, and threshold must be non-negative values.");
                         return null;
                     }
@@ -1323,8 +1427,8 @@ public class OwnerController {
                         if (productId > 0) {
                             showSuccess("Product added successfully!");
                             loadProducts();
-                            return null;
-                        }
+                 
+
                     } else {
                         // Update existing product
                         boolean success = productDAO.updateProduct(product.getId(), name, typeDbValue, price, stock, threshold);
@@ -1333,66 +1437,65 @@ public class OwnerController {
                             loadProducts();
                             // Refresh the detail view
                             List<Product> products = productDAO.findAll();
-                            Product updatedProduct = products.stream()
-                                .filter(p -> p.getId() == product.getId())
+                     
+
                                 .findFirst()
                                 .orElse(null);
-                            if (updatedProduct != null) {
-                                showProductDetail(updatedProduct);
-                            }
-                            return null;
+                            if (updatedProduct
+                                    showProductDetail(updatedProduct);
+                 
+
                         } else {
                             showError("Failed to update product.");
                             return null;
                         }
                     }
                 } catch (NumberFormatException e) {
-                    showError("Please enter valid numbers for price, stock, and threshold.");
-                } catch (Exception e) {
-                    showError("Error: " + e.getMessage());
-                    e.printStackTrace();
+
+                        (Exception e) {
+                    showError("Error: " + e.getMessage(
+                                tackTrace();
                 }
-            }
+                                
             return null;
         });
         
-        dialog.showAndWait();
-    }
 
-    @FXML
-    private void handleRefreshProducts() {
-        loadProducts();
-    }
+            
+
+                    
+                     handleR
+
+            
 
     @FXML
     private void handleRefreshOrders() {
-        loadOrders();
-    }
 
-    @FXML
-    private void handleGenerateReport() {
+            
+
+
+            void handleGenerateReport() {
         try {
             List<Order> allOrders = orderDAO.getAllOrders();
-            List<Order> deliveredOrders = allOrders.stream()
+
                 .filter(o -> o.getStatus() == OrderStatus.DELIVERED)
-                .collect(java.util.stream.Collectors.toList());
-            
-            // Calculate summary statistics
-            double totalRevenue = deliveredOrders.stream()
-                .mapToDouble(Order::getTotalAfterTax)
-                .sum();
-            
-            long totalOrdersCount = allOrders.size();
+                .collect(java.util.stream.Coll
+                    
+                    alculate summary statistics
+                    le totalRevenue = deliveredOrders.stream()
+                    .mapToDouble(Order::getTotalAfterTax)
+                    .sum();
+
             long deliveredOrdersCount = deliveredOrders.size();
-            
+
             // Calculate total items sold (kg) and product sales by revenue and quantity
             double totalItemsSoldKg = 0.0;
-            Map<String, Double> productRevenue = new java.util.HashMap<>();
-            Map<String, Double> productQuantityKg = new java.util.HashMap<>();
+            Map<String, Double> productRevenue = n
+
             Map<String, Double> revenueByDate = new java.util.HashMap<>();
             LocalDate minDate = null;
             LocalDate maxDate = null;
-            
+
             // Process all delivered orders
             for (Order order : deliveredOrders) {
                 // Load order items if not already loaded
@@ -1400,29 +1503,29 @@ public class OwnerController {
                     try {
                         order.setItems(orderDAO.getOrderItems(order.getId()));
                     } catch (Exception e) {
-                        System.err.println("Error loading items for order " + order.getId() + ": " + e.getMessage());
+
                         continue;
                     }
-                }
-                
-                // Track date range
-                if (order.getOrderTime() != null) {
-                    LocalDate orderDate = order.getOrderTime().toLocalDate();
-                    if (minDate == null || orderDate.isBefore(minDate)) {
-                        minDate = orderDate;
                     }
+                    
+                        rack date range
+                    if (order.getOrderTime() != null) {
+                    LocalDate orderDate = order.getOrd
+
+                        minDate = orderDate;
+
                     if (maxDate == null || orderDate.isAfter(maxDate)) {
                         maxDate = orderDate;
                     }
-                    
+
                     // Revenue by date
                     String dateKey = orderDate.toString();
                     revenueByDate.put(dateKey, 
-                        revenueByDate.getOrDefault(dateKey, 0.0) + order.getTotalAfterTax());
+
                 }
                 
                 // Process items
-                if (order.getItems() != null && !order.getItems().isEmpty()) {
+
                     for (CartItem item : order.getItems()) {
                         String productName = item.getProduct().getName();
                         double quantityKg = item.getQuantityKg();
@@ -1430,8 +1533,8 @@ public class OwnerController {
                         
                         totalItemsSoldKg += quantityKg;
                         productRevenue.put(productName, 
-                            productRevenue.getOrDefault(productName, 0.0) + lineTotal);
-                        productQuantityKg.put(productName, 
+                            productRevenue.ge
+
                             productQuantityKg.getOrDefault(productName, 0.0) + quantityKg);
                     }
                 }
@@ -1441,58 +1544,58 @@ public class OwnerController {
             String periodStr = (minDate != null && maxDate != null) 
                 ? minDate.toString() + " to " + maxDate.toString()
                 : "N/A";
-            
+
             // Create report dialog
-            Dialog<Void> reportDialog = new Dialog<>();
+
             reportDialog.setTitle("Sales Reports & Analytics");
             reportDialog.setResizable(true);
             
-            VBox reportContent = new VBox(25);
+
             reportContent.setStyle("-fx-padding: 30;");
             
             // Summary Statistics Section
-            Label summaryTitle = new Label("Summary Statistics");
+
             summaryTitle.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #1e293b;");
             
-            VBox summaryStats = new VBox(10);
-            summaryStats.getChildren().addAll(
-                createSummaryRow("Total Revenue", formatPrice(totalRevenue) + " TL"),
-                createSummaryRow("Total Orders", String.valueOf(totalOrdersCount)),
-                createSummaryRow("Average Order Value", formatPrice(averageOrderValue) + " TL"),
-                createSummaryRow("Total Items Sold", String.format("%.2f kg", totalItemsSoldKg)),
+                     summaryStats = new VBox(10);
+                    aryStats.getChildren().addAll
+                    createSummaryRow("T
+                        teSummaryRow("Total Orders", String.valueOf(totalOrdersCount)),
+                    cre
+
                 createSummaryRow("Period", periodStr)
             );
             
-            reportContent.getChildren().addAll(summaryTitle, summaryStats);
-            
+            reportContent.getChildren().addAll(s
+
             Separator sep1 = new Separator();
-            sep1.setStyle("-fx-opacity: 0.3; -fx-padding: 15 0;");
+
             reportContent.getChildren().add(sep1);
             
             // Revenue by Product (Bar Chart)
-            Label chartLabel1 = new Label("Revenue by Product");
-            chartLabel1.setStyle("-fx-font-weight: bold; -fx-font-size: 16px; -fx-text-fill: #1e293b;");
+            Label chartLabel1 = new Label
+
             
             CategoryAxis xAxis = new CategoryAxis();
             NumberAxis yAxis = new NumberAxis();
-            yAxis.setLabel("Revenue (TL)");
+
             BarChart<String, Number> revenueChart = new BarChart<>(xAxis, yAxis);
             revenueChart.setTitle("Revenue by Product");
             revenueChart.setLegendVisible(false);
             revenueChart.setPrefSize(700, 400);
             
             XYChart.Series<String, Number> revenueSeries = new XYChart.Series<>();
-            productRevenue.entrySet().stream()
-                .sorted((e1, e2) -> Double.compare(e2.getValue(), e1.getValue()))
+            pro
+
                 .forEach(entry -> {
-                    revenueSeries.getData().add(new XYChart.Data<>(entry.getKey(), entry.getValue()));
+
                 });
             revenueChart.getData().add(revenueSeries);
             
             reportContent.getChildren().addAll(chartLabel1, revenueChart);
             
-            Separator sep2 = new Separator();
-            sep2.setStyle("-fx-opacity: 0.3; -fx-padding: 15 0;");
+     
+
             reportContent.getChildren().add(sep2);
             
             // Revenue by Time (Last 30 Days) - Line Chart
@@ -1553,16 +1656,16 @@ public class OwnerController {
             scrollPane.setPrefWidth(800);
             
             reportDialog.getDialogPane().setContent(scrollPane);
-            reportDialog.getDialogPane().setPrefSize(1400, 1000);
-            reportDialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+     
+
             
-            // Make report dialog open maximized by getting the stage after showing
+
             reportDialog.setOnShown(e -> {
                 javafx.stage.Window window = reportDialog.getDialogPane().getScene().getWindow();
                 if (window instanceof Stage) {
                     ((Stage) window).setMaximized(true);
-                }
-            });
+     
+
             
             reportDialog.showAndWait();
             
@@ -1573,8 +1676,8 @@ public class OwnerController {
         }
     }
     
-    private HBox createSummaryRow(String label, String value) {
-        HBox row = new HBox(15);
+    p
+
         Label labelLbl = new Label(label + ":");
         labelLbl.setStyle("-fx-font-size: 14px; -fx-text-fill: #64748b; -fx-pref-width: 180;");
         Label valueLbl = new Label(value);
