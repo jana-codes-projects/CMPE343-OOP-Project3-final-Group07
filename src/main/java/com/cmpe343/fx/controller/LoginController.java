@@ -1,19 +1,23 @@
 package com.cmpe343.fx.controller;
 
 import com.cmpe343.fx.Session;
-
 import com.cmpe343.fx.util.ToastService;
 import com.cmpe343.model.User;
 import com.cmpe343.service.AuthService;
+import com.cmpe343.dao.UserDao;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.PasswordField;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import java.util.*;
 
 public class LoginController {
 
@@ -25,6 +29,33 @@ public class LoginController {
     private Button loginButton; // login.fxml'de fx:id="loginButton" olmalı
 
     private final AuthService authService = new AuthService();
+    private final UserDao userDao = new UserDao();
+    
+    // Country-City mapping
+    private static final Map<String, List<String>> COUNTRY_CITIES = new LinkedHashMap<>();
+    static {
+        COUNTRY_CITIES.put("Turkey", Arrays.asList("Istanbul", "Ankara", "Izmir", "Bursa", "Antalya", "Adana", "Gaziantep", "Konya", "Kayseri", "Mersin"));
+        COUNTRY_CITIES.put("USA", Arrays.asList("New York", "Los Angeles", "Chicago", "Houston", "Phoenix", "Philadelphia", "San Antonio", "San Diego", "Dallas", "San Jose"));
+        COUNTRY_CITIES.put("UK", Arrays.asList("London", "Manchester", "Birmingham", "Leeds", "Glasgow", "Liverpool", "Newcastle", "Sheffield", "Bristol", "Edinburgh"));
+        COUNTRY_CITIES.put("Germany", Arrays.asList("Berlin", "Munich", "Hamburg", "Frankfurt", "Cologne", "Stuttgart", "Düsseldorf", "Dortmund", "Essen", "Leipzig"));
+        COUNTRY_CITIES.put("France", Arrays.asList("Paris", "Marseille", "Lyon", "Toulouse", "Nice", "Nantes", "Strasbourg", "Montpellier", "Bordeaux", "Lille"));
+        COUNTRY_CITIES.put("Italy", Arrays.asList("Rome", "Milan", "Naples", "Turin", "Palermo", "Genoa", "Bologna", "Florence", "Bari", "Catania"));
+    }
+    
+    // Country codes for phone numbers
+    private static final Map<String, String> COUNTRY_CODES = new LinkedHashMap<>();
+    static {
+        COUNTRY_CODES.put("Turkey (+90)", "+90");
+        COUNTRY_CODES.put("USA (+1)", "+1");
+        COUNTRY_CODES.put("UK (+44)", "+44");
+        COUNTRY_CODES.put("Germany (+49)", "+49");
+        COUNTRY_CODES.put("France (+33)", "+33");
+        COUNTRY_CODES.put("Italy (+39)", "+39");
+        COUNTRY_CODES.put("Spain (+34)", "+34");
+        COUNTRY_CODES.put("Netherlands (+31)", "+31");
+        COUNTRY_CODES.put("Belgium (+32)", "+32");
+        COUNTRY_CODES.put("Switzerland (+41)", "+41");
+    }
 
     @FXML
     public void initialize() {
@@ -77,6 +108,9 @@ public class LoginController {
                 return;
             }
 
+            // Check if login window was fullscreen (to preserve that state)
+            boolean wasFullScreen = stage.isFullScreen();
+
             FXMLLoader loader = new FXMLLoader(getClass().getResource(fxml));
             Scene newScene = new Scene(loader.load(), 900, 600);
 
@@ -88,7 +122,14 @@ public class LoginController {
 
             stage.setScene(newScene);
             stage.setTitle("Gr7Project3 - " + user.getRole() + " (" + user.getUsername() + ")");
-            stage.centerOnScreen();
+            
+            // If login was fullscreen, keep it fullscreen; otherwise make customer/carrier/owner UIs maximized (fullscreen)
+            if (wasFullScreen) {
+                stage.setFullScreen(true);
+            } else {
+                // Make customer/carrier/owner UIs open in maximized (fullscreen) mode
+                stage.setMaximized(true);
+            }
 
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -103,6 +144,200 @@ public class LoginController {
         Stage stage = getStage();
         if (stage != null)
             stage.close();
+    }
+    
+    @FXML
+    private void handleRegister() {
+        Dialog<Map<String, String>> dialog = new Dialog<>();
+        dialog.setTitle("Register New Customer");
+        dialog.setHeaderText("Create your account");
+        dialog.setResizable(true);
+        
+        // Create form fields
+        TextField usernameField = new TextField();
+        usernameField.setPromptText("Username");
+        
+        PasswordField passwordField = new PasswordField();
+        passwordField.setPromptText("Password");
+        
+        Label passwordStrengthLabel = new Label();
+        passwordStrengthLabel.setStyle("-fx-font-size: 11px; -fx-padding: 4 0 0 0;");
+        passwordField.textProperty().addListener((obs, oldVal, newVal) -> {
+            String strength = calculatePasswordStrength(newVal);
+            passwordStrengthLabel.setText("Password strength: " + strength);
+            switch (strength.toLowerCase()) {
+                case "weak":
+                    passwordStrengthLabel.setTextFill(Color.web("#ef4444")); // red
+                    break;
+                case "good":
+                    passwordStrengthLabel.setTextFill(Color.web("#f59e0b")); // amber
+                    break;
+                case "strong":
+                    passwordStrengthLabel.setTextFill(Color.web("#10b981")); // green
+                    break;
+            }
+        });
+        
+        ComboBox<String> countryCombo = new ComboBox<>();
+        countryCombo.getItems().addAll(COUNTRY_CITIES.keySet());
+        countryCombo.setPromptText("Select Country");
+        
+        ComboBox<String> cityCombo = new ComboBox<>();
+        cityCombo.setPromptText("Select City");
+        countryCombo.setOnAction(e -> {
+            String selectedCountry = countryCombo.getValue();
+            if (selectedCountry != null) {
+                cityCombo.getItems().clear();
+                cityCombo.getItems().addAll(COUNTRY_CITIES.get(selectedCountry));
+            }
+        });
+        
+        TextField addressField = new TextField();
+        addressField.setPromptText("Maslak Mah. Büyükdere Cd. No:12 Şişli/Istanbul");
+        addressField.setStyle("-fx-prompt-text-fill: #64748b;");
+        
+        Label addressExample = new Label("Example: Maslak Mah. Büyükdere Cd. No:12 Şişli/Istanbul");
+        addressExample.setStyle("-fx-font-size: 11px; -fx-text-fill: #64748b;");
+        
+        ComboBox<String> phoneCodeCombo = new ComboBox<>();
+        phoneCodeCombo.getItems().addAll(COUNTRY_CODES.keySet());
+        phoneCodeCombo.setPromptText("Country Code");
+        
+        TextField phoneField = new TextField();
+        phoneField.setPromptText("532 101 10 01");
+        phoneField.setStyle("-fx-prompt-text-fill: #64748b;");
+        
+        Label phoneExample = new Label("Example: +90 532 101 10 01");
+        phoneExample.setStyle("-fx-font-size: 11px; -fx-text-fill: #64748b;");
+        
+        VBox form = new VBox(10);
+        form.setStyle("-fx-padding: 20; -fx-background-color: #0f172a;");
+        
+        Label usernameLabel = new Label("Username:");
+        usernameLabel.getStyleClass().add("field-label");
+        Label passwordLabel = new Label("Password:");
+        passwordLabel.getStyleClass().add("field-label");
+        Label countryLabel = new Label("Country:");
+        countryLabel.getStyleClass().add("field-label");
+        Label cityLabel = new Label("City:");
+        cityLabel.getStyleClass().add("field-label");
+        Label addressLabel = new Label("Address:");
+        addressLabel.getStyleClass().add("field-label");
+        Label phoneLabel = new Label("Phone Number:");
+        phoneLabel.getStyleClass().add("field-label");
+        
+        usernameField.getStyleClass().add("field");
+        passwordField.getStyleClass().add("field");
+        countryCombo.setStyle("-fx-background-color: rgba(30, 41, 59, 0.6); -fx-text-fill: white; -fx-background-radius: 8; -fx-border-color: #334155; -fx-border-radius: 8;");
+        cityCombo.setStyle("-fx-background-color: rgba(30, 41, 59, 0.6); -fx-text-fill: white; -fx-background-radius: 8; -fx-border-color: #334155; -fx-border-radius: 8;");
+        addressField.getStyleClass().add("field");
+        phoneCodeCombo.setStyle("-fx-background-color: rgba(30, 41, 59, 0.6); -fx-text-fill: white; -fx-background-radius: 8; -fx-border-color: #334155; -fx-border-radius: 8;");
+        phoneField.getStyleClass().add("field");
+        
+        HBox phoneBox = new HBox(8);
+        phoneBox.getChildren().addAll(phoneCodeCombo, phoneField);
+        
+        form.getChildren().addAll(
+            usernameLabel, usernameField,
+            passwordLabel, passwordField, passwordStrengthLabel,
+            countryLabel, countryCombo,
+            cityLabel, cityCombo,
+            addressLabel, addressField, addressExample,
+            phoneLabel, phoneBox, phoneExample
+        );
+        
+        dialog.getDialogPane().setContent(form);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        dialog.getDialogPane().setPrefSize(600, 700);
+        
+        // Style buttons
+        Platform.runLater(() -> {
+            javafx.scene.Node okBtn = dialog.getDialogPane().lookupButton(ButtonType.OK);
+            if (okBtn != null) {
+                okBtn.getStyleClass().add("btn-primary");
+            }
+        });
+        
+        dialog.setResultConverter(buttonType -> {
+            if (buttonType == ButtonType.OK) {
+                Map<String, String> result = new HashMap<>();
+                result.put("username", usernameField.getText().trim());
+                result.put("password", passwordField.getText());
+                result.put("country", countryCombo.getValue());
+                result.put("city", cityCombo.getValue());
+                result.put("address", addressField.getText().trim());
+                result.put("phoneCode", phoneCodeCombo.getValue() != null ? COUNTRY_CODES.get(phoneCodeCombo.getValue()) : "");
+                result.put("phone", phoneField.getText().trim());
+                return result;
+            }
+            return null;
+        });
+        
+        java.util.Optional<Map<String, String>> result = dialog.showAndWait();
+        result.ifPresent(data -> {
+            String username = data.get("username");
+            String password = data.get("password");
+            String country = data.get("country");
+            String city = data.get("city");
+            String address = data.get("address");
+            String phoneCode = data.get("phoneCode");
+            String phone = data.get("phone");
+            
+            // Validation
+            if (username.isEmpty() || password.isEmpty() || country == null || city == null || 
+                address.isEmpty() || phoneCode.isEmpty() || phone.isEmpty()) {
+                toastError("Please fill in all fields.");
+                return;
+            }
+            
+            // Check username existence
+            if (userDao.usernameExists(username)) {
+                toastError("Username already exists. Please choose another.");
+                return;
+            }
+            
+            // Build full address and phone
+            String fullAddress = address + ", " + city + ", " + country;
+            String fullPhone = phoneCode + " " + phone;
+            
+            try {
+                int userId = userDao.createCustomer(username, password, fullPhone, fullAddress);
+                if (userId > 0) {
+                    toastSuccess("Registration successful! You can now login.");
+                    usernameField.setText(username);
+                    passwordField.clear();
+                } else {
+                    toastError("Registration failed. Please try again.");
+                }
+            } catch (RuntimeException e) {
+                if (e.getMessage().contains("Username already exists")) {
+                    toastError("Username already exists. Please choose another.");
+                } else {
+                    toastError("Registration failed: " + e.getMessage());
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                toastError("Registration failed: " + e.getMessage());
+            }
+        });
+    }
+    
+    private String calculatePasswordStrength(String password) {
+        if (password == null || password.isEmpty()) {
+            return "weak";
+        }
+        
+        int score = 0;
+        if (password.length() >= 8) score++;
+        if (password.length() >= 12) score++;
+        if (password.matches(".*[a-z].*")) score++;
+        if (password.matches(".*[A-Z].*")) score++;
+        if (password.matches(".*[0-9].*")) score++;
+        if (password.matches(".*[^a-zA-Z0-9].*")) score++;
+        
+        if (score <= 2) return "weak";
+        if (score <= 4) return "good";
+        return "strong";
     }
 
     // ---------------- Helpers ----------------

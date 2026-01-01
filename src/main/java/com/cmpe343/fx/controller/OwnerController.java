@@ -7,6 +7,7 @@ import com.cmpe343.model.Product.ProductType;
 import com.cmpe343.fx.Session;
 import com.cmpe343.fx.util.ToastService;
 
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Pos;
@@ -22,8 +23,15 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import javafx.scene.control.Separator;
+import javafx.scene.chart.BarChart;
+import javafx.scene.chart.CategoryAxis;
+import javafx.scene.chart.NumberAxis;
+import javafx.scene.chart.PieChart;
+import javafx.scene.chart.LineChart;
+import javafx.scene.chart.XYChart;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 
 public class OwnerController {
     @FXML
@@ -228,7 +236,7 @@ public class OwnerController {
         nameLabel.setStyle("-fx-font-weight: bold;");
         nameLabel.setPrefWidth(200);
 
-        Label typeLabel = new Label(product.getType().name());
+        Label typeLabel = new Label(product.getTypeDisplayName());
         typeLabel.getStyleClass().addAll("badge",
                 product.getType() == ProductType.FRUIT ? "badge-warning" : "badge-success");
 
@@ -261,7 +269,7 @@ public class OwnerController {
 
         VBox meta = new VBox(5);
         meta.getChildren().addAll(
-                createDetailRow("Type", product.getType().name()),
+                createDetailRow("Type", product.getTypeDisplayName()),
                 createDetailRow("Price", formatPrice(product.getPrice())),
                 createDetailRow("Stock", String.format("%.2f kg", product.getStockKg())),
                 createDetailRow("Threshold", String.format("%.2f kg", product.getThresholdKg())));
@@ -322,10 +330,10 @@ public class OwnerController {
             name.getStyleClass().add("detail-value");
             name.setPrefWidth(200);
 
-            Label role = new Label("CARRIER");
-            role.getStyleClass().addAll("badge", "badge-info");
+            Label status = new Label(c.isActive() ? "Active" : "Inactive");
+            status.getStyleClass().addAll("badge", c.isActive() ? "badge-success" : "badge-danger");
 
-            item.getChildren().addAll(name, role);
+            item.getChildren().addAll(name, status);
             // Fix lambda capture: create final copy to avoid capturing loop variable by reference
             final User finalCarrier = c;
             item.setOnMouseClicked(e -> showCarrierDetail(finalCarrier));
@@ -357,6 +365,15 @@ public class OwnerController {
         card.getChildren().add(header);
         card.getChildren().add(createDetailRow("Phone", carrier.getPhone() != null ? carrier.getPhone() : "-"));
         card.getChildren().add(createDetailRow("Address", carrier.getAddress() != null ? carrier.getAddress() : "-"));
+        
+        // Add status display
+        Label statusLabel = new Label(carrier.isActive() ? "Active" : "Inactive");
+        statusLabel.getStyleClass().addAll("badge", carrier.isActive() ? "badge-success" : "badge-danger");
+        HBox statusRow = new HBox(10);
+        Label statusHeader = new Label("Status:");
+        statusHeader.getStyleClass().add("detail-label");
+        statusRow.getChildren().addAll(statusHeader, statusLabel);
+        card.getChildren().add(statusRow);
 
         Button toggleBtn = new Button(carrier.isActive() ? "Deactivate" : "Activate");
         toggleBtn.getStyleClass().add("btn-outline");
@@ -669,13 +686,13 @@ public class OwnerController {
         meta.getChildren().addAll(
             createDetailRow("Sender", message.getSender()),
             createDetailRow("Timestamp", messageTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))),
-            createDetailRow("Status", message.isRead() ? "Read" : "Unread")
+            createDetailRow("Status", message.isRead() ? "Replied" : "Unread")
         );
         
         Separator sep = new Separator();
         sep.setStyle("-fx-opacity: 0.3; -fx-padding: 10 0;");
         
-        Label contentLabel = new Label("Content:");
+        Label contentLabel = new Label("Message Content:");
         contentLabel.getStyleClass().add("field-label");
         contentLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
         
@@ -686,6 +703,70 @@ public class OwnerController {
         contentArea.setStyle("-fx-background-color: rgba(30, 41, 59, 0.5); -fx-text-fill: white;");
         
         card.getChildren().addAll(header, meta, sep, contentLabel, contentArea);
+        
+        // Check if there's already a reply
+        String existingReply = messageDAO.getReplyText(message.getId());
+        if (existingReply != null && !existingReply.trim().isEmpty()) {
+            Separator replySep = new Separator();
+            replySep.setStyle("-fx-opacity: 0.3; -fx-padding: 10 0;");
+            
+            Label replyHeader = new Label("Your Reply:");
+            replyHeader.getStyleClass().add("field-label");
+            replyHeader.setStyle("-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #10b981;");
+            
+            TextArea replyArea = new TextArea(existingReply);
+            replyArea.setEditable(false);
+            replyArea.setWrapText(true);
+            replyArea.setPrefRowCount(4);
+            replyArea.setStyle("-fx-background-color: rgba(16, 185, 129, 0.1); -fx-text-fill: #94a3b8;");
+            
+            card.getChildren().addAll(replySep, replyHeader, replyArea);
+        } else {
+            // Add reply section for new replies
+            Separator replySep = new Separator();
+            replySep.setStyle("-fx-opacity: 0.3; -fx-padding: 10 0;");
+            
+            Label replyLabel = new Label("Reply:");
+            replyLabel.getStyleClass().add("field-label");
+            replyLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+            
+            TextArea replyArea = new TextArea();
+            replyArea.setPromptText("Type your reply here...");
+            replyArea.setWrapText(true);
+            replyArea.setPrefRowCount(4);
+            replyArea.getStyleClass().add("field");
+            
+            Button sendReplyBtn = new Button("Send Reply");
+            sendReplyBtn.getStyleClass().add("btn-primary");
+            sendReplyBtn.setStyle("-fx-font-size: 12px; -fx-padding: 8 16;");
+            sendReplyBtn.setOnAction(e -> {
+                String replyText = replyArea.getText().trim();
+                if (replyText.isEmpty()) {
+                    ToastService.show(messageDetailContainer.getScene(), "Reply cannot be empty", ToastService.Type.ERROR);
+                    return;
+                }
+                
+                try {
+                    boolean success = messageDAO.replyToMessage(message.getId(), replyText);
+                    if (success) {
+                        ToastService.show(messageDetailContainer.getScene(), "Reply sent successfully!", ToastService.Type.SUCCESS);
+                        loadMessages(); // Refresh to show updated status
+                    } else {
+                        ToastService.show(messageDetailContainer.getScene(), "Failed to send reply", ToastService.Type.ERROR);
+                    }
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    ToastService.show(messageDetailContainer.getScene(), "Error: " + ex.getMessage(), ToastService.Type.ERROR);
+                }
+            });
+            
+            HBox replyActions = new HBox(10);
+            replyActions.setAlignment(Pos.CENTER_RIGHT);
+            replyActions.getChildren().add(sendReplyBtn);
+            
+            card.getChildren().addAll(replySep, replyLabel, replyArea, replyActions);
+        }
+        
         messageDetailContainer.getChildren().add(card);
     }
 
@@ -703,21 +784,18 @@ public class OwnerController {
         // Preserve the currently selected coupon ID before clearing
         Integer selectedCouponId = selectedCoupon != null ? selectedCoupon.getId() : null;
 
-        // Load only valid (active and not expired) coupons
+        // Load ALL coupons from database (not just valid ones)
         List<Coupon> allCoupons = couponDAO.getAllCoupons();
-        List<Coupon> validCoupons = allCoupons.stream()
-                .filter(c -> c.isActive() && !c.getExpiryDate().isBefore(LocalDate.now()))
-                .sorted((c1, c2) -> c1.getCode().compareToIgnoreCase(c2.getCode()))
-                .collect(Collectors.toList());
+        allCoupons.sort((c1, c2) -> c1.getCode().compareToIgnoreCase(c2.getCode()));
         
-        if (validCoupons.isEmpty()) {
-            couponsListContainer.getChildren().add(createPlaceholder("No valid coupons available."));
+        if (allCoupons.isEmpty()) {
+            couponsListContainer.getChildren().add(createPlaceholder("No coupons available."));
             selectedCoupon = null;
             return;
         }
 
         Coupon couponToSelect = null;
-        for (Coupon c : validCoupons) {
+        for (Coupon c : allCoupons) {
             HBox item = createListItemBase();
             item.setUserData(c.getId());
             
@@ -726,17 +804,25 @@ public class OwnerController {
             code.setStyle("-fx-font-weight: bold;");
             code.setPrefWidth(150);
             
-            Label discount = new Label("-" + formatPrice(c.getDiscountAmount()));
+            String discountText;
+            if (c.getKind() == Coupon.CouponKind.AMOUNT) {
+                discountText = "-" + formatPrice(c.getValue()) + " TL";
+            } else {
+                discountText = "-" + c.getValue() + "%";
+            }
+            Label discount = new Label(discountText);
             discount.getStyleClass().addAll("badge", "badge-success");
             discount.setPrefWidth(100);
             
-            Label expiry = new Label("Expires: " + c.getExpiryDate().format(DateTimeFormatter.ofPattern("MMM dd, yyyy")));
-            expiry.getStyleClass().add("muted");
+            // Show status badge
+            Label status = new Label(c.isActive() ? "Active" : "Inactive");
+            status.getStyleClass().addAll("badge", c.isActive() ? "badge-success" : "badge-danger");
+            status.setPrefWidth(80);
             
             Region spacer = new Region();
             HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
             
-            item.getChildren().addAll(code, discount, expiry, spacer);
+            item.getChildren().addAll(code, discount, status, spacer);
             // Fix lambda capture: create final copy to avoid capturing loop variable by reference
             final Coupon finalCoupon = c;
             item.setOnMouseClicked(e -> showCouponDetail(finalCoupon));
@@ -766,19 +852,37 @@ public class OwnerController {
         header.getStyleClass().add("detail-header");
         
         VBox meta = new VBox(5);
+        String discountText;
+        if (coupon.getKind() == Coupon.CouponKind.AMOUNT) {
+            discountText = formatPrice(coupon.getValue()) + " TL (Fixed Amount)";
+        } else {
+            discountText = coupon.getValue() + "% (Percentage)";
+        }
+        
+        String expiryDateText = coupon.getExpiresAt() != null 
+            ? coupon.getExpiresAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+            : "No expiry";
+        
         meta.getChildren().addAll(
                 createDetailRow("Code", coupon.getCode()),
-                createDetailRow("Discount", formatPrice(coupon.getDiscountAmount())),
-                createDetailRow("Expiry Date", coupon.getExpiryDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))),
+                createDetailRow("Type", coupon.getKind().name()),
+                createDetailRow("Discount", discountText),
+                createDetailRow("Min Cart", formatPrice(coupon.getMinCart()) + " TL"),
+                createDetailRow("Expiry Date", expiryDateText),
                 createDetailRow("Status", coupon.isActive() ? "Active" : "Inactive")
         );
         
         // Calculate days until expiry
-        long daysUntilExpiry = java.time.temporal.ChronoUnit.DAYS.between(LocalDate.now(), coupon.getExpiryDate());
-        String expiryStatus = daysUntilExpiry > 0 
-                ? daysUntilExpiry + " days remaining" 
-                : "Expired";
-        meta.getChildren().add(createDetailRow("Validity", expiryStatus));
+        if (coupon.getExpiresAt() != null) {
+            long daysUntilExpiry = java.time.temporal.ChronoUnit.DAYS.between(
+                LocalDate.now(), 
+                coupon.getExpiresAt().toLocalDate()
+            );
+            String expiryStatus = daysUntilExpiry > 0 
+                    ? daysUntilExpiry + " days remaining" 
+                    : "Expired";
+            meta.getChildren().add(createDetailRow("Validity", expiryStatus));
+        }
         
         card.getChildren().addAll(header, meta);
         couponDetailContainer.getChildren().add(card);
@@ -789,13 +893,22 @@ public class OwnerController {
         Dialog<Coupon> dialog = new Dialog<>();
         dialog.setTitle("Add New Coupon");
         dialog.setHeaderText("Enter coupon details");
+        dialog.setResizable(true);
 
         // Create form fields
         TextField codeField = new TextField();
         codeField.setPromptText("Coupon Code");
         
-        TextField discountField = new TextField();
-        discountField.setPromptText("Discount Amount (TL)");
+        ComboBox<String> kindCombo = new ComboBox<>();
+        kindCombo.getItems().addAll("AMOUNT", "PERCENT");
+        kindCombo.setValue("AMOUNT");
+
+        TextField valueField = new TextField();
+        valueField.setPromptText("Discount Value");
+
+        TextField minCartField = new TextField();
+        minCartField.setPromptText("Minimum Cart (TL)");
+        minCartField.setText("0.0");
         
         DatePicker expiryPicker = new DatePicker();
         expiryPicker.setValue(LocalDate.now().plusDays(30)); // Default to 30 days from now
@@ -804,22 +917,52 @@ public class OwnerController {
         activeCheck.setSelected(true);
 
         VBox form = new VBox(10);
+        form.setStyle("-fx-padding: 20; -fx-background-color: #0f172a;");
+        
+        Label codeLabel = new Label("Code:");
+        codeLabel.getStyleClass().add("field-label");
+        Label kindLabel = new Label("Type:");
+        kindLabel.getStyleClass().add("field-label");
+        Label valueLabel = new Label("Discount Value:");
+        valueLabel.getStyleClass().add("field-label");
+        Label minCartLabel = new Label("Minimum Cart (TL):");
+        minCartLabel.getStyleClass().add("field-label");
+        Label expiryLabel = new Label("Expiry Date:");
+        expiryLabel.getStyleClass().add("field-label");
+        
+        codeField.getStyleClass().add("field");
+        kindCombo.setStyle("-fx-background-color: rgba(30, 41, 59, 0.6); -fx-text-fill: white; -fx-background-radius: 8; -fx-border-color: #334155; -fx-border-radius: 8;");
+        valueField.getStyleClass().add("field");
+        minCartField.getStyleClass().add("field");
+        
         form.getChildren().addAll(
-            new Label("Code:"), codeField,
-            new Label("Discount Amount (TL):"), discountField,
-            new Label("Expiry Date:"), expiryPicker,
+            codeLabel, codeField,
+            kindLabel, kindCombo,
+            valueLabel, valueField,
+            minCartLabel, minCartField,
+            expiryLabel, expiryPicker,
             activeCheck
         );
-        form.setPrefWidth(400);
+        form.setPrefWidth(500);
 
         dialog.getDialogPane().setContent(form);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        dialog.getDialogPane().setPrefSize(600, 550);
+        
+        Platform.runLater(() -> {
+            javafx.scene.Node okBtn = dialog.getDialogPane().lookupButton(ButtonType.OK);
+            if (okBtn != null) {
+                okBtn.getStyleClass().add("btn-primary");
+            }
+        });
 
         dialog.setResultConverter(buttonType -> {
             if (buttonType == ButtonType.OK) {
                 try {
                     String code = codeField.getText().trim().toUpperCase();
-                    double discount = Double.parseDouble(discountField.getText().trim());
+                    String kindStr = kindCombo.getValue();
+                    double value = Double.parseDouble(valueField.getText().trim());
+                    double minCart = Double.parseDouble(minCartField.getText().trim());
                     LocalDate expiry = expiryPicker.getValue();
                     boolean active = activeCheck.isSelected();
 
@@ -833,8 +976,18 @@ public class OwnerController {
                         return null;
                     }
 
-                    if (discount <= 0) {
-                        showError("Discount amount must be greater than 0.");
+                    if (value <= 0) {
+                        showError("Discount value must be greater than 0.");
+                        return null;
+                    }
+                    
+                    if (minCart < 0) {
+                        showError("Minimum cart value must be non-negative.");
+                        return null;
+                    }
+                    
+                    if ("PERCENT".equals(kindStr) && value > 100) {
+                        showError("Percentage discount cannot exceed 100%.");
                         return null;
                     }
 
@@ -844,14 +997,17 @@ public class OwnerController {
                         return null;
                     }
 
-                    int couponId = couponDAO.createCoupon(code, discount, expiry, active);
+                    Coupon.CouponKind kind = Coupon.CouponKind.valueOf(kindStr);
+                    LocalDateTime expiresAt = expiry.atStartOfDay();
+
+                    int couponId = couponDAO.createCoupon(code, kind, value, minCart, expiresAt, active);
                     if (couponId > 0) {
                         showSuccess("Coupon added successfully!");
                         loadCoupons();
-                        return new Coupon(couponId, code, discount, expiry, active);
+                        return new Coupon(couponId, code, kind, value, minCart, active, expiresAt);
                     }
                 } catch (NumberFormatException e) {
-                    showError("Please enter a valid discount amount.");
+                    showError("Please enter valid numbers for value and minimum cart.");
                 } catch (Exception e) {
                     showError("Failed to add coupon: " + e.getMessage());
                 }
@@ -920,83 +1076,286 @@ public class OwnerController {
         if (loyaltyContainer == null) return;
         loyaltyContainer.getChildren().clear();
         
-        // Placeholder implementation - loyalty feature not yet fully implemented
-        Label info = new Label("Loyalty program settings will be available here.");
-        info.getStyleClass().add("muted");
-        info.setStyle("-fx-padding: 20; -fx-font-size: 14px;");
-        loyaltyContainer.getChildren().add(info);
+        try {
+            List<Object[]> loyaltyStats = orderDAO.getCustomerLoyaltyStats();
+            
+            if (loyaltyStats.isEmpty()) {
+                Label info = new Label("No customer purchase data available.");
+                info.getStyleClass().add("muted");
+                info.setStyle("-fx-padding: 20; -fx-font-size: 14px;");
+                loyaltyContainer.getChildren().add(info);
+                return;
+            }
+            
+            // Header
+            Label header = new Label("Customer Loyalty Program - Purchase Frequency");
+            header.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: white; -fx-padding: 0 0 20 0;");
+            loyaltyContainer.getChildren().add(header);
+            
+            // Summary statistics
+            int totalCustomers = loyaltyStats.size();
+            int totalOrders = loyaltyStats.stream().mapToInt(s -> (Integer) s[2]).sum();
+            double totalRevenue = loyaltyStats.stream().mapToDouble(s -> (Double) s[3]).sum();
+            double avgOrdersPerCustomer = totalOrders / (double) totalCustomers;
+            
+            VBox summaryBox = new VBox(8);
+            summaryBox.setStyle("-fx-background-color: #1e293b; -fx-background-radius: 8; -fx-padding: 16; -fx-margin: 0 0 20 0;");
+            
+            Label summaryTitle = new Label("Summary Statistics");
+            summaryTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #10b981;");
+            
+            summaryBox.getChildren().addAll(
+                summaryTitle,
+                createLoyaltySummaryRow("Total Active Customers", String.valueOf(totalCustomers)),
+                createLoyaltySummaryRow("Total Orders", String.valueOf(totalOrders)),
+                createLoyaltySummaryRow("Total Revenue", String.format("%.2f ₺", totalRevenue)),
+                createLoyaltySummaryRow("Average Orders per Customer", String.format("%.2f", avgOrdersPerCustomer))
+            );
+            
+            loyaltyContainer.getChildren().add(summaryBox);
+            
+            // Customer loyalty list
+            Label listHeader = new Label("Customer Loyalty Rankings");
+            listHeader.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: white; -fx-padding: 20 0 10 0;");
+            loyaltyContainer.getChildren().add(listHeader);
+            
+            for (Object[] stat : loyaltyStats) {
+                int customerId = (Integer) stat[0];
+                String username = (String) stat[1];
+                int orderCount = (Integer) stat[2];
+                double totalSpent = (Double) stat[3];
+                long daysSinceFirst = (Long) stat[4];
+                double avgDaysBetween = (Double) stat[5];
+                double ordersPerMonth = (Double) stat[6];
+                
+                VBox card = createLoyaltyCard(username, orderCount, totalSpent, daysSinceFirst, avgDaysBetween, ordersPerMonth);
+                loyaltyContainer.getChildren().add(card);
+            }
+            
+            showInfo("Loyalty data refreshed successfully.");
+        } catch (Exception e) {
+            e.printStackTrace();
+            Label error = new Label("Error loading loyalty data: " + e.getMessage());
+            error.setStyle("-fx-text-fill: #ef4444; -fx-padding: 20;");
+            loyaltyContainer.getChildren().add(error);
+        }
+    }
+    
+    private VBox createLoyaltyCard(String username, int orderCount, double totalSpent, 
+                                   long daysSinceFirst, double avgDaysBetween, double ordersPerMonth) {
+        VBox card = new VBox(12);
+        card.setStyle("-fx-background-color: #1e293b; -fx-background-radius: 8; -fx-padding: 16; -fx-margin: 0 0 10 0;");
         
-        showInfo("Loyalty settings refreshed. (Feature in development)");
+        HBox header = new HBox(12);
+        header.setAlignment(Pos.CENTER_LEFT);
+        
+        Label nameLabel = new Label(username);
+        nameLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: white;");
+        
+        // Determine loyalty tier based on purchase frequency
+        String loyaltyTier = getLoyaltyTier(ordersPerMonth, orderCount);
+        String tierColor = getTierColor(loyaltyTier);
+        
+        Label tierLabel = new Label(loyaltyTier);
+        tierLabel.setStyle(String.format("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: %s; -fx-padding: 4 12; -fx-background-color: %s; -fx-background-radius: 12;", 
+            tierColor, tierColor + "20"));
+        tierLabel.getStyleClass().add("badge");
+        
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
+        
+        header.getChildren().addAll(nameLabel, spacer, tierLabel);
+        
+        VBox details = new VBox(6);
+        details.getChildren().addAll(
+            createDetailRow("Total Orders", String.valueOf(orderCount)),
+            createDetailRow("Total Spent", String.format("%.2f ₺", totalSpent)),
+            createDetailRow("Days Since First Order", String.valueOf(daysSinceFirst)),
+            createDetailRow("Purchase Frequency", String.format("%.2f orders/month", ordersPerMonth)),
+            createDetailRow("Avg Days Between Orders", avgDaysBetween > 0 ? String.format("%.1f days", avgDaysBetween) : "N/A")
+        );
+        
+        card.getChildren().addAll(header, new Separator(), details);
+        return card;
+    }
+    
+    private String getLoyaltyTier(double ordersPerMonth, int totalOrders) {
+        if (ordersPerMonth >= 4 || totalOrders >= 20) {
+            return "VIP";
+        } else if (ordersPerMonth >= 2 || totalOrders >= 10) {
+            return "Gold";
+        } else if (ordersPerMonth >= 1 || totalOrders >= 5) {
+            return "Silver";
+        } else {
+            return "Bronze";
+        }
+    }
+    
+    private String getTierColor(String tier) {
+        return switch (tier) {
+            case "VIP" -> "#fbbf24"; // Gold
+            case "Gold" -> "#f59e0b"; // Orange
+            case "Silver" -> "#94a3b8"; // Gray
+            default -> "#10b981"; // Green
+        };
+    }
+    
+    private HBox createLoyaltySummaryRow(String label, String value) {
+        HBox row = new HBox(12);
+        row.setAlignment(Pos.CENTER_LEFT);
+        
+        Label labelLbl = new Label(label + ":");
+        labelLbl.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 13px;");
+        
+        Label valueLbl = new Label(value);
+        valueLbl.setStyle("-fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: bold;");
+        
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
+        
+        row.getChildren().addAll(labelLbl, spacer, valueLbl);
+        return row;
     }
 
     // ==================== COMMON ====================
 
     @FXML
     private void handleAddProduct() {
+        showProductDialog(null);
+    }
+    
+    private void showProductDialog(Product product) {
         Dialog<Product> dialog = new Dialog<>();
-        dialog.setTitle("Add New Product");
-        dialog.setHeaderText("Enter product details");
-
-        // Create form fields
-        TextField nameField = new TextField();
-        nameField.setPromptText("Product Name");
+        dialog.setTitle(product == null ? "Add Product" : "Edit Product");
+        dialog.setResizable(true);
+        
+        // Style dialog pane to match project theme
+        dialog.getDialogPane().setStyle("-fx-background-color: #0f172a;");
+        dialog.getDialogPane().getStylesheets().add(getClass().getResource("/css/base.css").toExternalForm());
+        dialog.getDialogPane().getStylesheets().add(getClass().getResource("/css/owner.css").toExternalForm());
+        
+        TextField nameField = new TextField(product != null ? product.getName() : "");
+        nameField.getStyleClass().add("field");
+        nameField.setPromptText("Product name");
         
         ComboBox<String> typeCombo = new ComboBox<>();
-        typeCombo.getItems().addAll("FRUIT", "VEGETABLE", "OTHER");
-        typeCombo.setValue("FRUIT");
+        typeCombo.getItems().addAll("VEG", "FRUIT");
+        typeCombo.setStyle("-fx-background-color: rgba(30, 41, 59, 0.6); -fx-text-fill: white; -fx-background-radius: 8; -fx-border-color: #334155; -fx-border-radius: 8;");
+        if (product != null) {
+            // Convert enum to database format for display (VEG/FRUIT)
+            typeCombo.setValue(product.getTypeAsDbString());
+        } else {
+            typeCombo.setValue("FRUIT");
+        }
         
-        TextField priceField = new TextField();
+        TextField priceField = new TextField(product != null ? String.valueOf(product.getPrice()) : "");
+        priceField.getStyleClass().add("field");
         priceField.setPromptText("Price per kg");
         
-        TextField stockField = new TextField();
-        stockField.setPromptText("Stock (kg)");
+        TextField stockField = new TextField(product != null ? String.valueOf(product.getStockKg()) : "");
+        stockField.getStyleClass().add("field");
+        stockField.setPromptText("Stock in kg");
         
-        TextField thresholdField = new TextField();
-        thresholdField.setPromptText("Threshold (kg)");
-
-        VBox form = new VBox(10);
-        form.getChildren().addAll(
-            new Label("Name:"), nameField,
-            new Label("Type:"), typeCombo,
-            new Label("Price (TL/kg):"), priceField,
-            new Label("Stock (kg):"), stockField,
-            new Label("Threshold (kg):"), thresholdField
+        TextField thresholdField = new TextField(product != null ? String.valueOf(product.getThresholdKg()) : "");
+        thresholdField.getStyleClass().add("field");
+        thresholdField.setPromptText("Threshold in kg");
+        
+        VBox content = new VBox(15);
+        content.setStyle("-fx-background-color: #0f172a; -fx-padding: 20;");
+        
+        Label nameLabel = new Label("Name:");
+        nameLabel.getStyleClass().add("field-label");
+        Label typeLabel = new Label("Type:");
+        typeLabel.getStyleClass().add("field-label");
+        Label priceLabel = new Label("Price (TL/kg):");
+        priceLabel.getStyleClass().add("field-label");
+        Label stockLabel = new Label("Stock (kg):");
+        stockLabel.getStyleClass().add("field-label");
+        Label thresholdLabel = new Label("Threshold (kg):");
+        thresholdLabel.getStyleClass().add("field-label");
+        
+        content.getChildren().addAll(
+                nameLabel, nameField,
+                typeLabel, typeCombo,
+                priceLabel, priceField,
+                stockLabel, stockField,
+                thresholdLabel, thresholdField
         );
-        form.setPrefWidth(400);
-
-        dialog.getDialogPane().setContent(form);
-        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-
+        dialog.getDialogPane().setContent(content);
+        
+        ButtonType saveButton = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(saveButton, ButtonType.CANCEL);
+        
+        // Style buttons to match project theme
+        javafx.application.Platform.runLater(() -> {
+            javafx.scene.Node saveBtn = dialog.getDialogPane().lookupButton(saveButton);
+            if (saveBtn != null) {
+                saveBtn.getStyleClass().add("btn-primary");
+            }
+            javafx.scene.Node cancelBtn = dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
+            if (cancelBtn != null) {
+                cancelBtn.getStyleClass().add("btn-outline");
+            }
+        });
+        
         dialog.setResultConverter(buttonType -> {
-            if (buttonType == ButtonType.OK) {
+            if (buttonType == saveButton) {
                 try {
                     String name = nameField.getText().trim();
-                    String type = typeCombo.getValue();
+                    String typeDbValue = typeCombo.getValue(); // This will be "VEG" or "FRUIT"
                     double price = Double.parseDouble(priceField.getText().trim());
                     double stock = Double.parseDouble(stockField.getText().trim());
                     double threshold = Double.parseDouble(thresholdField.getText().trim());
-
+                    
                     if (name.isEmpty()) {
                         showError("Product name cannot be empty.");
                         return null;
                     }
-
-                    int productId = productDAO.createProduct(name, type, price, stock, threshold);
-                    if (productId > 0) {
-                        showSuccess("Product added successfully!");
-                        loadProducts();
-                        // Image can be added later via BLOB
-                        return new Product(productId, name, type, price, stock, threshold);
+                    
+                    if (price < 0 || stock < 0 || threshold < 0) {
+                        showError("Price, stock, and threshold must be non-negative values.");
+                        return null;
+                    }
+                    
+                    if (product == null) {
+                        // Create new product - typeDbValue is already in database format (VEG/FRUIT)
+                        int productId = productDAO.createProduct(name, typeDbValue, price, stock, threshold);
+                        if (productId > 0) {
+                            showSuccess("Product added successfully!");
+                            loadProducts();
+                            return null;
+                        }
+                    } else {
+                        // Update existing product
+                        boolean success = productDAO.updateProduct(product.getId(), name, typeDbValue, price, stock, threshold);
+                        if (success) {
+                            showSuccess("Product updated successfully!");
+                            loadProducts();
+                            // Refresh the detail view
+                            List<Product> products = productDAO.findAll();
+                            Product updatedProduct = products.stream()
+                                .filter(p -> p.getId() == product.getId())
+                                .findFirst()
+                                .orElse(null);
+                            if (updatedProduct != null) {
+                                showProductDetail(updatedProduct);
+                            }
+                            return null;
+                        } else {
+                            showError("Failed to update product.");
+                            return null;
+                        }
                     }
                 } catch (NumberFormatException e) {
                     showError("Please enter valid numbers for price, stock, and threshold.");
                 } catch (Exception e) {
-                    showError("Failed to add product: " + e.getMessage());
+                    showError("Error: " + e.getMessage());
+                    e.printStackTrace();
                 }
             }
             return null;
         });
-
+        
         dialog.showAndWait();
     }
 
@@ -1014,90 +1373,197 @@ public class OwnerController {
     private void handleGenerateReport() {
         try {
             List<Order> allOrders = orderDAO.getAllOrders();
-            
-            // Calculate statistics
-            double totalRevenue = allOrders.stream()
+            List<Order> deliveredOrders = allOrders.stream()
                 .filter(o -> o.getStatus() == OrderStatus.DELIVERED)
+                .collect(java.util.stream.Collectors.toList());
+            
+            // Calculate summary statistics
+            double totalRevenue = deliveredOrders.stream()
                 .mapToDouble(Order::getTotalAfterTax)
                 .sum();
             
-            long totalOrders = allOrders.size();
-            long deliveredOrders = allOrders.stream()
-                .filter(o -> o.getStatus() == OrderStatus.DELIVERED)
-                .count();
-            long pendingOrders = allOrders.stream()
-                .filter(o -> o.getStatus() == OrderStatus.CREATED || o.getStatus() == OrderStatus.ASSIGNED)
-                .count();
+            long totalOrdersCount = allOrders.size();
+            long deliveredOrdersCount = deliveredOrders.size();
             
-            // Group by product
-            Map<String, Double> productSales = new java.util.HashMap<>();
-            for (Order order : allOrders) {
-                // Load order items if not already loaded (getAllOrders() doesn't load items)
+            // Calculate total items sold (kg) and product sales by revenue and quantity
+            double totalItemsSoldKg = 0.0;
+            Map<String, Double> productRevenue = new java.util.HashMap<>();
+            Map<String, Double> productQuantityKg = new java.util.HashMap<>();
+            Map<String, Double> revenueByDate = new java.util.HashMap<>();
+            LocalDate minDate = null;
+            LocalDate maxDate = null;
+            
+            // Process all delivered orders
+            for (Order order : deliveredOrders) {
+                // Load order items if not already loaded
                 if (order.getItems() == null) {
                     try {
                         order.setItems(orderDAO.getOrderItems(order.getId()));
                     } catch (Exception e) {
                         System.err.println("Error loading items for order " + order.getId() + ": " + e.getMessage());
-                        continue; // Skip this order if items can't be loaded
+                        continue;
                     }
                 }
                 
+                // Track date range
+                if (order.getOrderTime() != null) {
+                    LocalDate orderDate = order.getOrderTime().toLocalDate();
+                    if (minDate == null || orderDate.isBefore(minDate)) {
+                        minDate = orderDate;
+                    }
+                    if (maxDate == null || orderDate.isAfter(maxDate)) {
+                        maxDate = orderDate;
+                    }
+                    
+                    // Revenue by date
+                    String dateKey = orderDate.toString();
+                    revenueByDate.put(dateKey, 
+                        revenueByDate.getOrDefault(dateKey, 0.0) + order.getTotalAfterTax());
+                }
+                
+                // Process items
                 if (order.getItems() != null && !order.getItems().isEmpty()) {
                     for (CartItem item : order.getItems()) {
                         String productName = item.getProduct().getName();
-                        productSales.put(productName, 
-                            productSales.getOrDefault(productName, 0.0) + item.getLineTotal());
+                        double quantityKg = item.getQuantityKg();
+                        double lineTotal = item.getLineTotal();
+                        
+                        totalItemsSoldKg += quantityKg;
+                        productRevenue.put(productName, 
+                            productRevenue.getOrDefault(productName, 0.0) + lineTotal);
+                        productQuantityKg.put(productName, 
+                            productQuantityKg.getOrDefault(productName, 0.0) + quantityKg);
                     }
                 }
             }
             
+            double averageOrderValue = deliveredOrdersCount > 0 ? totalRevenue / deliveredOrdersCount : 0.0;
+            String periodStr = (minDate != null && maxDate != null) 
+                ? minDate.toString() + " to " + maxDate.toString()
+                : "N/A";
+            
             // Create report dialog
             Dialog<Void> reportDialog = new Dialog<>();
-            reportDialog.setTitle("Sales Report");
-            reportDialog.setHeaderText("Revenue and Order Statistics");
+            reportDialog.setTitle("Sales Reports & Analytics");
+            reportDialog.setResizable(true);
             
-            VBox reportContent = new VBox(15);
-            reportContent.setStyle("-fx-padding: 20;");
+            VBox reportContent = new VBox(25);
+            reportContent.setStyle("-fx-padding: 30;");
             
-            Label revenueLabel = new Label("Total Revenue: " + formatPrice(totalRevenue));
-            revenueLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #10b981;");
+            // Summary Statistics Section
+            Label summaryTitle = new Label("Summary Statistics");
+            summaryTitle.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #1e293b;");
             
-            VBox stats = new VBox(8);
-            stats.getChildren().addAll(
-                createDetailRow("Total Orders", String.valueOf(totalOrders)),
-                createDetailRow("Delivered Orders", String.valueOf(deliveredOrders)),
-                createDetailRow("Pending Orders", String.valueOf(pendingOrders))
+            VBox summaryStats = new VBox(10);
+            summaryStats.getChildren().addAll(
+                createSummaryRow("Total Revenue", formatPrice(totalRevenue) + " TL"),
+                createSummaryRow("Total Orders", String.valueOf(totalOrdersCount)),
+                createSummaryRow("Average Order Value", formatPrice(averageOrderValue) + " TL"),
+                createSummaryRow("Total Items Sold", String.format("%.2f kg", totalItemsSoldKg)),
+                createSummaryRow("Period", periodStr)
             );
             
-            Separator sep = new Separator();
-            sep.setStyle("-fx-opacity: 0.3; -fx-padding: 10 0;");
+            reportContent.getChildren().addAll(summaryTitle, summaryStats);
             
-            Label topProductsLabel = new Label("Top Products by Revenue:");
-            topProductsLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+            Separator sep1 = new Separator();
+            sep1.setStyle("-fx-opacity: 0.3; -fx-padding: 15 0;");
+            reportContent.getChildren().add(sep1);
             
-            VBox productsList = new VBox(5);
-            productSales.entrySet().stream()
+            // Revenue by Product (Bar Chart)
+            Label chartLabel1 = new Label("Revenue by Product");
+            chartLabel1.setStyle("-fx-font-weight: bold; -fx-font-size: 16px; -fx-text-fill: #1e293b;");
+            
+            CategoryAxis xAxis = new CategoryAxis();
+            NumberAxis yAxis = new NumberAxis();
+            yAxis.setLabel("Revenue (TL)");
+            BarChart<String, Number> revenueChart = new BarChart<>(xAxis, yAxis);
+            revenueChart.setTitle("Revenue by Product");
+            revenueChart.setLegendVisible(false);
+            revenueChart.setPrefSize(700, 400);
+            
+            XYChart.Series<String, Number> revenueSeries = new XYChart.Series<>();
+            productRevenue.entrySet().stream()
                 .sorted((e1, e2) -> Double.compare(e2.getValue(), e1.getValue()))
-                .limit(10)
                 .forEach(entry -> {
-                    HBox row = new HBox(10);
-                    Label name = new Label(entry.getKey());
-                    Label revenue = new Label(formatPrice(entry.getValue()));
-                    revenue.setStyle("-fx-font-weight: bold;");
-                    Region spacer = new Region();
-                    HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
-                    row.getChildren().addAll(name, spacer, revenue);
-                    productsList.getChildren().add(row);
+                    revenueSeries.getData().add(new XYChart.Data<>(entry.getKey(), entry.getValue()));
+                });
+            revenueChart.getData().add(revenueSeries);
+            
+            reportContent.getChildren().addAll(chartLabel1, revenueChart);
+            
+            Separator sep2 = new Separator();
+            sep2.setStyle("-fx-opacity: 0.3; -fx-padding: 15 0;");
+            reportContent.getChildren().add(sep2);
+            
+            // Revenue by Time (Last 30 Days) - Line Chart
+            Label chartLabel2 = new Label("Revenue by Time (Last 30 Days)");
+            chartLabel2.setStyle("-fx-font-weight: bold; -fx-font-size: 16px; -fx-text-fill: #1e293b;");
+            
+            // Get last 30 days of data, sorted by date
+            LocalDate endDate = maxDate != null ? maxDate : LocalDate.now();
+            LocalDate startDate = endDate.minusDays(29);
+            
+            CategoryAxis xAxisTime = new CategoryAxis();
+            NumberAxis yAxisTime = new NumberAxis();
+            yAxisTime.setLabel("Revenue (TL)");
+            LineChart<String, Number> timeChart = new LineChart<>(xAxisTime, yAxisTime);
+            timeChart.setTitle("Daily Revenue (Last 30 Days)");
+            timeChart.setLegendVisible(false);
+            timeChart.setPrefSize(700, 400);
+            timeChart.setCreateSymbols(true);
+            
+            XYChart.Series<String, Number> timeSeries = new XYChart.Series<>();
+            LocalDate currentDate = startDate;
+            while (!currentDate.isAfter(endDate)) {
+                String dateKey = currentDate.toString();
+                double revenue = revenueByDate.getOrDefault(dateKey, 0.0);
+                timeSeries.getData().add(new XYChart.Data<>(dateKey, revenue));
+                currentDate = currentDate.plusDays(1);
+            }
+            timeChart.getData().add(timeSeries);
+            
+            reportContent.getChildren().addAll(chartLabel2, timeChart);
+            
+            Separator sep3 = new Separator();
+            sep3.setStyle("-fx-opacity: 0.3; -fx-padding: 15 0;");
+            reportContent.getChildren().add(sep3);
+            
+            // Product Sales Quantity (Pie Chart)
+            Label chartLabel3 = new Label("Product Sales Quantity");
+            chartLabel3.setStyle("-fx-font-weight: bold; -fx-font-size: 16px; -fx-text-fill: #1e293b;");
+            
+            ObservableList<PieChart.Data> quantityPieData = FXCollections.observableArrayList();
+            productQuantityKg.entrySet().stream()
+                .sorted((e1, e2) -> Double.compare(e2.getValue(), e1.getValue()))
+                .limit(10) // Top 10 products
+                .forEach(entry -> {
+                    quantityPieData.add(new PieChart.Data(entry.getKey(), entry.getValue()));
                 });
             
-            reportContent.getChildren().addAll(revenueLabel, stats, sep, topProductsLabel, productsList);
+            PieChart quantityChart = new PieChart(quantityPieData);
+            quantityChart.setTitle("Top Products by Sales Quantity (kg)");
+            quantityChart.setLabelsVisible(true);
+            quantityChart.setPrefSize(600, 400);
+            
+            reportContent.getChildren().addAll(chartLabel3, quantityChart);
             
             ScrollPane scrollPane = new ScrollPane(reportContent);
             scrollPane.setFitToWidth(true);
-            scrollPane.setPrefHeight(400);
+            scrollPane.setPrefHeight(700);
+            scrollPane.setPrefWidth(800);
             
             reportDialog.getDialogPane().setContent(scrollPane);
+            reportDialog.getDialogPane().setPrefSize(1400, 1000);
             reportDialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+            
+            // Make report dialog open maximized by getting the stage after showing
+            reportDialog.setOnShown(e -> {
+                javafx.stage.Window window = reportDialog.getDialogPane().getScene().getWindow();
+                if (window instanceof Stage) {
+                    ((Stage) window).setMaximized(true);
+                }
+            });
+            
             reportDialog.showAndWait();
             
             showSuccess("Report generated successfully!");
@@ -1105,6 +1571,16 @@ public class OwnerController {
             showError("Failed to generate report: " + e.getMessage());
             e.printStackTrace();
         }
+    }
+    
+    private HBox createSummaryRow(String label, String value) {
+        HBox row = new HBox(15);
+        Label labelLbl = new Label(label + ":");
+        labelLbl.setStyle("-fx-font-size: 14px; -fx-text-fill: #64748b; -fx-pref-width: 180;");
+        Label valueLbl = new Label(value);
+        valueLbl.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #1e293b;");
+        row.getChildren().addAll(labelLbl, valueLbl);
+        return row;
     }
 
     @FXML
@@ -1121,16 +1597,9 @@ public class OwnerController {
 
     // ==================== HANDLERS ====================
 
+    @FXML
     private void handleEditProduct(Product product) {
-        // Placeholder for edit logic
-        System.out.println("Edit product: " + product.getName());
-        // In a real app, show a dialog to edit fields
-        // For now, just show an alert
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Edit Product");
-        alert.setHeaderText("Edit Feature");
-        alert.setContentText("Editing product " + product.getName() + " is not yet implemented.");
-        alert.showAndWait();
+        showProductDialog(product);
     }
 
     private void handleRemoveProduct(Product product) {

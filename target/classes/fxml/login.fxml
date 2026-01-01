@@ -41,6 +41,8 @@
         <HBox alignment="CENTER" spacing="12">
             <Hyperlink text="Forgot password?" styleClass="link"/>
             <Label text="•" styleClass="muted"/>
+            <Hyperlink text="Register" onAction="#handleRegister" styleClass="link"/>
+            <Label text="•" styleClass="muted"/>
             <Hyperlink text="Exit" onAction="#handleExit" styleClass="link"/>
         </HBox>
 

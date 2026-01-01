@@ -130,4 +130,160 @@ public class MessageDao {
             e.printStackTrace();
         }
     }
+    
+    /**
+     * Creates a new message from a customer to the owner.
+     * 
+     * @param customerId The ID of the customer sending the message
+     * @param ownerId The ID of the owner receiving the message
+     * @param text The message text
+     * @return The created message ID, or -1 if creation fails
+     */
+    public int createMessage(int customerId, int ownerId, String text) {
+        String sql = """
+            INSERT INTO messages (customer_id, owner_id, text_clob)
+            VALUES (?, ?, ?)
+        """;
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)) {
+            ps.setInt(1, customerId);
+            ps.setInt(2, ownerId);
+            ps.setString(3, text);
+            ps.executeUpdate();
+            try (ResultSet rs = ps.getGeneratedKeys()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return -1;
+    }
+    
+    /**
+     * Replies to a message (owner replies to customer).
+     * 
+     * @param messageId The ID of the message to reply to
+     * @param replyText The reply text
+     * @return true if the reply was successful, false otherwise
+     */
+    public boolean replyToMessage(int messageId, String replyText) {
+        String sql = "UPDATE messages SET reply_text = ?, replied_at = CURRENT_TIMESTAMP WHERE id = ?";
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, replyText);
+            ps.setInt(2, messageId);
+            int rowsAffected = ps.executeUpdate();
+            return rowsAffected > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+    
+    /**
+     * Gets the reply text for a message.
+     * 
+     * @param messageId The ID of the message
+     * @return The reply text, or null if no reply exists
+     */
+    public String getReplyText(int messageId) {
+        String sql = "SELECT reply_text FROM messages WHERE id = ?";
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, messageId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("reply_text");
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+    
+    /**
+     * Gets messages for the owner.
+     * 
+     * @param ownerId The ID of the owner
+     * @return List of messages sent to this owner
+     */
+    public List<Message> getMessagesForOwner(int ownerId) {
+        List<Message> list = new ArrayList<>();
+        String sql = """
+            SELECT m.id, u.username as sender, m.text_clob as content, 
+                   m.created_at, (m.replied_at IS NOT NULL) as is_read,
+                   m.reply_text, m.replied_at
+            FROM messages m
+            JOIN users u ON m.customer_id = u.id
+            WHERE m.owner_id = ?
+            ORDER BY m.created_at DESC
+        """;
+        
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, ownerId);
+            
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    java.sql.Timestamp timestamp = rs.getTimestamp("created_at");
+                    LocalDateTime messageTime = timestamp != null 
+                        ? timestamp.toLocalDateTime() 
+                        : LocalDateTime.now();
+                    list.add(new Message(
+                        rs.getInt("id"),
+                        rs.getString("sender"),
+                        rs.getString("content"),
+                        messageTime,
+                        rs.getBoolean("is_read")
+                    ));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+    
+    /**
+     * Gets a single message by ID.
+     * 
+     * @param messageId The ID of the message
+     * @return The message, or null if not found
+     */
+    public Message getMessageById(int messageId) {
+        String sql = """
+            SELECT m.id, u.username as sender, m.text_clob as content, 
+                   m.created_at, (m.replied_at IS NOT NULL) as is_read
+            FROM messages m
+            JOIN users u ON m.customer_id = u.id
+            WHERE m.id = ?
+        """;
+        
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, messageId);
+            
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    java.sql.Timestamp timestamp = rs.getTimestamp("created_at");
+                    LocalDateTime messageTime = timestamp != null 
+                        ? timestamp.toLocalDateTime() 
+                        : LocalDateTime.now();
+                    return new Message(
+                        rs.getInt("id"),
+                        rs.getString("sender"),
+                        rs.getString("content"),
+                        messageTime,
+                        rs.getBoolean("is_read")
+                    );
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
 }

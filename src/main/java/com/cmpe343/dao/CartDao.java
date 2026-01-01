@@ -229,4 +229,28 @@ public class CartDao {
         }
         return 0;
     }
+    
+    /**
+     * Gets the quantity of a specific product in the user's cart.
+     * 
+     * @param userId The user ID
+     * @param productId The product ID
+     * @return The quantity in kg, or 0 if not in cart
+     */
+    public double getCartQuantity(int userId, int productId) {
+        String sql = "SELECT quantity_kg FROM cart_items WHERE user_id = ? AND product_id = ?";
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            ps.setInt(2, productId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getDouble("quantity_kg");
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 0.0;
+    }
 }

@@ -74,7 +74,12 @@ public class CartController {
         
         java.util.List<com.cmpe343.model.Coupon> coupons = couponDao.getActiveCouponsForCustomer(Session.getUser().getId());
         for (com.cmpe343.model.Coupon coupon : coupons) {
-            String display = coupon.getCode() + " (-" + coupon.getDiscountAmount() + " TL)";
+            String display;
+            if (coupon.getKind() == com.cmpe343.model.Coupon.CouponKind.AMOUNT) {
+                display = coupon.getCode() + " (-" + coupon.getValue() + " TL)";
+            } else {
+                display = coupon.getCode() + " (-" + coupon.getValue() + "%)";
+            }
             couponComboBox.getItems().add(display);
         }
         
@@ -89,7 +94,12 @@ public class CartController {
                 com.cmpe343.model.Coupon coupon = couponDao.getCouponByCode(code);
                 if (coupon != null) {
                     selectedCouponId = coupon.getId();
-                    couponDiscountLabel.setText("Discount: -" + coupon.getDiscountAmount() + " TL");
+                    // Calculate actual discount based on current cart total
+                    double cartTotal = currentCartItems.stream()
+                        .mapToDouble(item -> Math.round(item.getLineTotal() * 100.0) / 100.0)
+                        .sum();
+                    double discount = coupon.calculateDiscount(cartTotal);
+                    couponDiscountLabel.setText("Discount: -" + String.format("%.2f", discount) + " TL");
                 }
             }
             updateTotal();
@@ -211,7 +221,7 @@ public class CartController {
         if (selectedCouponId != null) {
             com.cmpe343.model.Coupon coupon = couponDao.getCouponById(selectedCouponId);
             if (coupon != null) {
-                discount = coupon.getDiscountAmount();
+                discount = coupon.calculateDiscount(subtotal);
             } else {
                 // Coupon became invalid - clear selection
                 selectedCouponId = null;
@@ -305,6 +315,7 @@ public class CartController {
     private void handleBack() {
         try {
             Stage stage = (Stage) cartItemsContainer.getScene().getWindow();
+            boolean wasMaximized = stage.isMaximized();
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/customer.fxml"));
             Scene scene = new Scene(loader.load(), 900, 600);
 
@@ -314,6 +325,9 @@ public class CartController {
             }
 
             stage.setScene(scene);
+            if (wasMaximized) {
+                stage.setMaximized(true);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }

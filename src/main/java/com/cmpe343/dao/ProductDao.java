@@ -91,4 +91,38 @@ public class ProductDao {
         }
         return -1;
     }
+    
+    /**
+     * Updates an existing product.
+     * 
+     * @param productId The ID of the product to update
+     * @param name The new product name
+     * @param type The new product type (VEG/FRUIT)
+     * @param price The new price
+     * @param stockKg The new stock in kg
+     * @param thresholdKg The new threshold in kg
+     * @return true if the update was successful, false otherwise
+     */
+    public boolean updateProduct(int productId, String name, String type, double price, double stockKg, double thresholdKg) {
+        String sql = """
+            UPDATE products
+            SET name = ?, type = ?, price = ?, stock_kg = ?, threshold_kg = ?
+            WHERE id = ?
+        """;
+        
+        try (Connection c = Db.getConnection();
+                java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, name);
+            ps.setString(2, type);
+            ps.setDouble(3, price);
+            ps.setDouble(4, stockKg);
+            ps.setDouble(5, thresholdKg);
+            ps.setInt(6, productId);
+            
+            int rowsAffected = ps.executeUpdate();
+            return rowsAffected > 0;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to update product: " + e.getMessage(), e);
+        }
+    }
 }

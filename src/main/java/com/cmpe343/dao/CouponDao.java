@@ -6,6 +6,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,24 +14,26 @@ public class CouponDao {
     
     public List<Coupon> getAllCoupons() {
         List<Coupon> list = new ArrayList<>();
-        String sql = "SELECT id, code, discount_amount, expiry_date, active FROM coupons ORDER BY code";
+        String sql = "SELECT id, code, kind, value, min_cart, is_active, expires_at FROM coupons ORDER BY code";
         
         try (Connection c = Db.getConnection();
                 PreparedStatement ps = c.prepareStatement(sql);
                 ResultSet rs = ps.executeQuery()) {
             
             while (rs.next()) {
-                // Add null check to prevent NullPointerException if expiry_date is NULL in database
-                java.sql.Date expiryDate = rs.getDate("expiry_date");
-                LocalDate expiry = expiryDate != null 
-                    ? expiryDate.toLocalDate() 
-                    : LocalDate.now().plusYears(1); // Fallback to 1 year from now if NULL
+                Coupon.CouponKind kind = Coupon.CouponKind.valueOf(rs.getString("kind"));
+                java.sql.Timestamp expiresAt = rs.getTimestamp("expires_at");
+                LocalDateTime expiry = expiresAt != null 
+                    ? expiresAt.toLocalDateTime() 
+                    : null;
                 list.add(new Coupon(
                     rs.getInt("id"),
                     rs.getString("code"),
-                    rs.getDouble("discount_amount"),
-                    expiry,
-                    rs.getBoolean("active")
+                    kind,
+                    rs.getDouble("value"),
+                    rs.getDouble("min_cart"),
+                    rs.getBoolean("is_active"),
+                    expiry
                 ));
             }
         } catch (Exception e) {
@@ -52,9 +55,9 @@ public class CouponDao {
         // Note: customerId parameter is not used - coupons are global in this system
         // If customer-specific coupons are needed, add: WHERE customer_id = ? OR customer_id IS NULL
         String sql = """
-            SELECT id, code, discount_amount, expiry_date, active 
+            SELECT id, code, kind, value, min_cart, is_active, expires_at 
             FROM coupons 
-            WHERE active = 1 AND expiry_date >= CURDATE()
+            WHERE is_active = 1 AND (expires_at IS NULL OR expires_at >= NOW())
             ORDER BY code
         """;
         
@@ -63,17 +66,19 @@ public class CouponDao {
                 ResultSet rs = ps.executeQuery()) {
             
             while (rs.next()) {
-                // Add null check to prevent NullPointerException if expiry_date is NULL in database
-                java.sql.Date expiryDate = rs.getDate("expiry_date");
-                LocalDate expiry = expiryDate != null 
-                    ? expiryDate.toLocalDate() 
-                    : LocalDate.now().plusYears(1); // Fallback to 1 year from now if NULL
+                Coupon.CouponKind kind = Coupon.CouponKind.valueOf(rs.getString("kind"));
+                java.sql.Timestamp expiresAt = rs.getTimestamp("expires_at");
+                LocalDateTime expiry = expiresAt != null 
+                    ? expiresAt.toLocalDateTime() 
+                    : null;
                 list.add(new Coupon(
                     rs.getInt("id"),
                     rs.getString("code"),
-                    rs.getDouble("discount_amount"),
-                    expiry,
-                    rs.getBoolean("active")
+                    kind,
+                    rs.getDouble("value"),
+                    rs.getDouble("min_cart"),
+                    rs.getBoolean("is_active"),
+                    expiry
                 ));
             }
         } catch (Exception e) {
@@ -84,9 +89,9 @@ public class CouponDao {
     
     public Coupon getCouponByCode(String code) {
         String sql = """
-            SELECT id, code, discount_amount, expiry_date, active 
+            SELECT id, code, kind, value, min_cart, is_active, expires_at 
             FROM coupons 
-            WHERE code = ? AND active = 1 AND expiry_date >= CURDATE()
+            WHERE code = ? AND is_active = 1 AND (expires_at IS NULL OR expires_at >= NOW())
         """;
         
         try (Connection c = Db.getConnection();
@@ -95,17 +100,19 @@ public class CouponDao {
             
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    // Add null check to prevent NullPointerException if expiry_date is NULL in database
-                    java.sql.Date expiryDate = rs.getDate("expiry_date");
-                    LocalDate expiry = expiryDate != null 
-                        ? expiryDate.toLocalDate() 
-                        : LocalDate.now().plusYears(1); // Fallback to 1 year from now if NULL
+                    Coupon.CouponKind kind = Coupon.CouponKind.valueOf(rs.getString("kind"));
+                    java.sql.Timestamp expiresAt = rs.getTimestamp("expires_at");
+                    LocalDateTime expiry = expiresAt != null 
+                        ? expiresAt.toLocalDateTime() 
+                        : null;
                     return new Coupon(
                         rs.getInt("id"),
                         rs.getString("code"),
-                        rs.getDouble("discount_amount"),
-                        expiry,
-                        rs.getBoolean("active")
+                        kind,
+                        rs.getDouble("value"),
+                        rs.getDouble("min_cart"),
+                        rs.getBoolean("is_active"),
+                        expiry
                     );
                 }
             }
@@ -117,9 +124,9 @@ public class CouponDao {
     
     public Coupon getCouponById(int id) {
         String sql = """
-            SELECT id, code, discount_amount, expiry_date, active 
+            SELECT id, code, kind, value, min_cart, is_active, expires_at 
             FROM coupons 
-            WHERE id = ? AND active = 1 AND expiry_date >= CURDATE()
+            WHERE id = ? AND is_active = 1 AND (expires_at IS NULL OR expires_at >= NOW())
         """;
         
         try (Connection c = Db.getConnection();
@@ -128,12 +135,20 @@ public class CouponDao {
             
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    // Add null check to prevent NullPointerException if expiry_date is NULL in database
-                    java.sql.Date expiryDate = rs.getDate("expiry_date");
-                    LocalDate expiry = expiryDate != null 
-                        ? expiryDate.toLocalDate() 
-                        : LocalDate.now().plusYears(1); // Fallback to 1 year from now if NULL
-                    return new Coupon(rs.getInt("id"), rs.getString("code"), rs.getDouble("discount_amount"), expiry, rs.getBoolean("active"));
+                    Coupon.CouponKind kind = Coupon.CouponKind.valueOf(rs.getString("kind"));
+                    java.sql.Timestamp expiresAt = rs.getTimestamp("expires_at");
+                    LocalDateTime expiry = expiresAt != null 
+                        ? expiresAt.toLocalDateTime() 
+                        : null;
+                    return new Coupon(
+                        rs.getInt("id"),
+                        rs.getString("code"),
+                        kind,
+                        rs.getDouble("value"),
+                        rs.getDouble("min_cart"),
+                        rs.getBoolean("is_active"),
+                        expiry
+                    );
                 }
             }
         } catch (Exception e) {
@@ -142,18 +157,24 @@ public class CouponDao {
         return null;
     }
     
-    public int createCoupon(String code, double discountAmount, LocalDate expiryDate, boolean active) {
+    public int createCoupon(String code, Coupon.CouponKind kind, double value, double minCart, LocalDateTime expiresAt, boolean isActive) {
         String sql = """
-            INSERT INTO coupons (code, discount_amount, expiry_date, active)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO coupons (code, kind, value, min_cart, expires_at, is_active)
+            VALUES (?, ?, ?, ?, ?, ?)
         """;
         
         try (Connection c = Db.getConnection();
                 PreparedStatement ps = c.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, code);
-            ps.setDouble(2, discountAmount);
-            ps.setDate(3, java.sql.Date.valueOf(expiryDate));
-            ps.setBoolean(4, active);
+            ps.setString(2, kind.name());
+            ps.setDouble(3, value);
+            ps.setDouble(4, minCart);
+            if (expiresAt != null) {
+                ps.setTimestamp(5, java.sql.Timestamp.valueOf(expiresAt));
+            } else {
+                ps.setNull(5, java.sql.Types.TIMESTAMP);
+            }
+            ps.setBoolean(6, isActive);
             
             ps.executeUpdate();
             
