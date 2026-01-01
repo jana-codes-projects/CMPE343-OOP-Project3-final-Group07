@@ -70,23 +70,19 @@
     <ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-background: transparent;" VBox.vgrow="ALWAYS">
         <VBox spacing="32" style="-fx-padding: 32;">
             
-            <!-- Vegetables -->
-            <VBox spacing="16">
-                 <HBox spacing="12" alignment="CENTER_LEFT" onMouseClicked="#toggleVegetables" style="-fx-cursor: hand;">
-                     <Label text="▼" fx:id="vegetablesToggle" style="-fx-text-fill: #10b981; -fx-font-size: 14px;"/>
-                     <Label text="Vegetables" styleClass="section-title"/>
-                 </HBox>
-                 <FlowPane fx:id="vegetablesGrid" hgap="24" vgap="24" prefWrapLength="1000"/>
-            </VBox>
+            <!-- Vegetables TitledPane -->
+            <TitledPane text="Vegetables" expanded="true" styleClass="category-pane">
+                <content>
+                    <FlowPane fx:id="vegetablesGrid" hgap="24" vgap="24" prefWrapLength="1000" style="-fx-padding: 10; -fx-background-color: transparent;"/>
+                </content>
+            </TitledPane>
 
-            <!-- Fruits -->
-            <VBox spacing="16">
-                 <HBox spacing="12" alignment="CENTER_LEFT" onMouseClicked="#toggleFruits" style="-fx-cursor: hand;">
-                     <Label text="▼" fx:id="fruitsToggle" style="-fx-text-fill: #10b981; -fx-font-size: 14px;"/>
-                     <Label text="Fruits" styleClass="section-title" style="-fx-border-color: #10b981;"/>
-                 </HBox>
-                 <FlowPane fx:id="fruitsGrid" hgap="24" vgap="24" prefWrapLength="1000"/>
-            </VBox>
+            <!-- Fruits TitledPane -->
+            <TitledPane text="Fruits" expanded="true" styleClass="category-pane">
+                <content>
+                    <FlowPane fx:id="fruitsGrid" hgap="24" vgap="24" prefWrapLength="1000" style="-fx-padding: 10; -fx-background-color: transparent;"/>
+                </content>
+            </TitledPane>
             
         </VBox>
     </ScrollPane>

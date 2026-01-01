@@ -2,7 +2,8 @@ package com.cmpe343.fx.controller;
 
 import com.cmpe343.dao.CartDao;
 import com.cmpe343.dao.ProductDao;
-
+import java.util.List;
+import java.util.ArrayList;
 import com.cmpe343.fx.util.ToastService;
 import com.cmpe343.fx.Session;
 import com.cmpe343.model.Product;
@@ -40,9 +41,6 @@ public class CustomerController {
     @FXML
     private Label fruitsToggle;
 
-    private boolean vegetablesVisible = true;
-    private boolean fruitsVisible = true;
-
     private final ProductDao productDao = new ProductDao();
     private final CartDao cartDao = new CartDao();
     private final com.cmpe343.dao.OrderDao orderDao = new com.cmpe343.dao.OrderDao();
@@ -59,7 +57,7 @@ public class CustomerController {
         }
 
         // Load Data
-        ObservableList<Product> allProducts = FXCollections.observableArrayList(productDao.findAll());
+        ObservableList<Product> allProducts = FXCollections.observableArrayList(productDao.findActiveForCustomer());
         filteredProducts = new FilteredList<>(allProducts, p -> true);
 
         // Search Listener
@@ -729,21 +727,7 @@ public class CustomerController {
         }
     }
 
-    @FXML
-    private void toggleVegetables() {
-        vegetablesVisible = !vegetablesVisible;
-        vegetablesGrid.setVisible(vegetablesVisible);
-        vegetablesGrid.setManaged(vegetablesVisible);
-        vegetablesToggle.setText(vegetablesVisible ? "▼" : "▶");
-    }
-
-    @FXML
-    private void toggleFruits() {
-        fruitsVisible = !fruitsVisible;
-        fruitsGrid.setVisible(fruitsVisible);
-        fruitsGrid.setManaged(fruitsVisible);
-        fruitsToggle.setText(fruitsVisible ? "▼" : "▶");
-    }
+    // TitledPane handles expansion now, so toggle methods are removed.
 
     @FXML
     private void handleLogout() {

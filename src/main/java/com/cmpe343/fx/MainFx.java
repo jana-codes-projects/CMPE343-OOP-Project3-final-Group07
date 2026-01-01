@@ -5,13 +5,13 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
-public class MainFx extends Application  {
+public class MainFx extends Application {
 
     @Override
     public void start(Stage stage) throws Exception {
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/login.fxml"));
-        Scene scene = new Scene(loader.load(), 640, 480);
-        stage.setTitle("Gr7Project3 - Login");
+        Scene scene = new Scene(loader.load(), 960, 540);
+        stage.setTitle("Group07 GreenGrocer");
         stage.setScene(scene);
         stage.show();
     }

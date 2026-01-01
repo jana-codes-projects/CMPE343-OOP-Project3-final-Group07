@@ -13,21 +13,26 @@ import java.util.List;
 public class ProductDao {
 
     public List<Product> findAll() {
-        List<Product> list = new ArrayList<>();
+        return findFiltered(false);
+    }
 
-        // Get image from BLOB only (no image_path column in database)
-        String sql = """
-                    SELECT id, name, type, price, stock_kg, threshold_kg
-                    FROM products
-                    ORDER BY name
-                """;
+    public List<Product> findActiveForCustomer() {
+        return findFiltered(true);
+    }
+
+    private List<Product> findFiltered(boolean onlyInStock) {
+        List<Product> list = new ArrayList<>();
+        String sql = "SELECT id, name, type, price, stock_kg, threshold_kg FROM products";
+        if (onlyInStock) {
+            sql += " WHERE stock_kg > 0 AND is_active = 1";
+        }
+        sql += " ORDER BY name";
 
         try (Connection c = Db.getConnection();
                 Statement st = c.createStatement();
                 ResultSet rs = st.executeQuery(sql)) {
 
             while (rs.next()) {
-                // Images are stored in BLOB, accessed via getProductImageBlob(productId)
                 list.add(new Product(
                         rs.getInt("id"),
                         rs.getString("name"),
@@ -36,9 +41,7 @@ public class ProductDao {
                         rs.getDouble("stock_kg"),
                         rs.getDouble("threshold_kg")));
             }
-
             return list;
-
         } catch (Exception e) {
             throw new RuntimeException("Could not fetch product list", e);
         }

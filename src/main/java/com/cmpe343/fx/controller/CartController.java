@@ -1,12 +1,15 @@
 package com.cmpe343.fx.controller;
 
+import com.cmpe343.fx.util.ToastService;
 import com.cmpe343.dao.CartDao;
 import com.cmpe343.dao.OrderDao;
+import com.cmpe343.dao.CouponDao;
+import com.cmpe343.dao.ProductDao;
 import com.cmpe343.fx.Session;
 import com.cmpe343.fx.util.ToastService;
 import com.cmpe343.model.CartItem;
+import com.cmpe343.model.Product;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Scene;
@@ -17,11 +20,15 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import javafx.fxml.FXMLLoader;
 import javafx.util.Duration;
 
+import java.io.File;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
 
 public class CartController {
 
@@ -263,7 +270,6 @@ public class CartController {
             return;
         }
 
-        // Validate Date (Reused logic, simplified)
         if (deliveryDatePicker.getValue() == null || deliveryTimeField.getText().isBlank()) {
             ToastService.show(cartItemsContainer.getScene(), "Delivery time must be entered.", ToastService.Type.ERROR,
                     ToastService.Position.BOTTOM_CENTER, Duration.seconds(2));
@@ -272,8 +278,6 @@ public class CartController {
 
         try {
             LocalDate d = deliveryDatePicker.getValue();
-
-            // Validate time format before parsing
             String timeText = deliveryTimeField.getText().trim();
             LocalTime t;
             try {
@@ -287,59 +291,41 @@ public class CartController {
             }
 
             LocalDateTime requested = LocalDateTime.of(d, t);
-
-            // Basic check - cannot select past time
             if (requested.isBefore(LocalDateTime.now())) {
                 ToastService.show(cartItemsContainer.getScene(), "Cannot select past time.", ToastService.Type.ERROR,
                         ToastService.Position.BOTTOM_CENTER, Duration.seconds(2));
                 return;
             }
 
-            // 48 HOUR MAXIMUM DELIVERY TIME CHECK
             LocalDateTime maxDeliveryTime = LocalDateTime.now().plusHours(48);
             if (requested.isAfter(maxDeliveryTime)) {
                 ToastService.show(cartItemsContainer.getScene(),
-                        "Delivery must be within 48 hours! Maximum: " + maxDeliveryTime
-                                .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")),
-                        ToastService.Type.ERROR,
+                        "Delivery must be within 48 hours!", ToastService.Type.ERROR,
                         ToastService.Position.BOTTOM_CENTER, Duration.seconds(3));
                 return;
             }
 
-            // MINIMUM CART VALUE CHECK (50 TL)
             double subtotal = currentCartItems.stream().mapToDouble(i -> i.getLineTotal()).sum();
-            double minCartValue = 50.0;
-            if (subtotal < minCartValue) {
+            if (subtotal < 50.0) {
                 ToastService.show(cartItemsContainer.getScene(),
-                        String.format("Minimum cart value is %.2f ₺. Current: %.2f ₺", minCartValue, subtotal),
-                        ToastService.Type.ERROR,
+                        "Minimum cart value is 50.00 ₺.", ToastService.Type.ERROR,
                         ToastService.Position.BOTTOM_CENTER, Duration.seconds(3));
                 return;
             }
 
-            // Create Order
-            // Validate coupon one more time before placing order to catch race conditions
             if (selectedCouponId != null) {
-                com.cmpe343.model.Coupon coupon = couponDao.getCouponById(selectedCouponId);
-                if (coupon == null) {
-                    ToastService.show(cartItemsContainer.getScene(),
-                            "The selected coupon is no longer valid. Please remove it and try again.",
-                            ToastService.Type.ERROR,
+                if (couponDao.getCouponById(selectedCouponId) == null) {
+                    ToastService.show(cartItemsContainer.getScene(), "Coupon invalid.", ToastService.Type.ERROR,
                             ToastService.Position.BOTTOM_CENTER, Duration.seconds(3));
-                    selectedCouponId = null;
-                    couponComboBox.setValue("No Coupon");
-                    couponDiscountLabel.setText("");
-                    updateTotal();
                     return;
                 }
             }
 
-            // WALLET BALANCE CHECK
             double discount = 0.0;
             if (selectedCouponId != null) {
-                com.cmpe343.model.Coupon coupon = couponDao.getCouponById(selectedCouponId);
-                if (coupon != null)
-                    discount = coupon.calculateDiscount(subtotal);
+                com.cmpe343.model.Coupon c = couponDao.getCouponById(selectedCouponId);
+                if (c != null)
+                    discount = c.calculateDiscount(subtotal);
             }
             double totalAfterDiscount = Math.max(0, subtotal - discount);
             double vat = Math.round((totalAfterDiscount * 0.20) * 100.0) / 100.0;
@@ -347,44 +333,49 @@ public class CartController {
 
             com.cmpe343.model.User user = Session.getUser();
             if (user.getBalance() < finalTotal) {
-                ToastService.show(cartItemsContainer.getScene(),
-                        String.format("Insufficient balance! Required: %.2f ₺, Your Balance: %.2f ₺",
-                                finalTotal, user.getBalance()),
-                        ToastService.Type.ERROR,
+                ToastService.show(cartItemsContainer.getScene(), "Insufficient balance!", ToastService.Type.ERROR,
                         ToastService.Position.BOTTOM_CENTER, Duration.seconds(3));
                 return;
             }
 
-            int orderId = orderDao.createOrder(user.getId(), currentCartItems, requested,
-                    selectedCouponId);
+            // Prepare Order Object
+            com.cmpe343.model.Order orderObj = new com.cmpe343.model.Order();
+            orderObj.setCustomerId(user.getId());
+            orderObj.setOrderTime(LocalDateTime.now());
+            orderObj.setRequestedDeliveryTime(requested);
+            orderObj.setTotalBeforeTax(totalAfterDiscount);
+            orderObj.setVat(vat);
+            orderObj.setTotalAfterTax(finalTotal);
+            orderObj.setItems(new ArrayList<>(currentCartItems));
+            orderObj.setStatus(com.cmpe343.model.Order.OrderStatus.CREATED);
 
+            int orderId = orderDao.createOrder(user.getId(), currentCartItems, requested, selectedCouponId);
             if (orderId > 0) {
-                // Deduct from wallet
-                com.cmpe343.dao.UserDao userDao = new com.cmpe343.dao.UserDao();
-                // Deduct from wallet and Add Loyalty Points (1% back)
-                userDao.updateWalletBalance(user.getId(), -finalTotal);
+                orderObj.setId(orderId);
 
-                double earnedPoints = finalTotal * 0.01;
-                userDao.updateWalletBalance(user.getId(), earnedPoints);
+                // Invoice Persistence (BLOB/CLOB)
+                try {
+                    com.cmpe343.service.PdfService pdfService = new com.cmpe343.service.PdfService();
+                    File pdfFile = pdfService.generateInvoice(orderObj);
+                    String invoiceText = pdfService.generateInvoiceText(orderObj);
+                    new com.cmpe343.dao.InvoiceDao().saveInvoice(orderId, pdfFile, invoiceText);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
 
-                // Update local session user object
-                user.setBalance(user.getBalance() - finalTotal + earnedPoints);
+                // Balance & Loyalty
+                com.cmpe343.dao.UserDao uDao = new com.cmpe343.dao.UserDao();
+                uDao.updateWalletBalance(user.getId(), -finalTotal);
+                double pts = finalTotal * 0.01;
+                uDao.updateWalletBalance(user.getId(), pts);
+                user.setBalance(user.getBalance() - finalTotal + pts);
 
-                // Clear cart from DB after order
                 cartDao.clear(user.getId());
                 currentCartItems.clear();
                 renderCartItems();
-
-                ToastService.show(cartItemsContainer.getScene(),
-                        "Order placed! #" + orderId + " - Loyalty Earned: " + String.format("%.2f", earnedPoints)
-                                + " ₺",
-                        ToastService.Type.SUCCESS,
-                        ToastService.Position.BOTTOM_CENTER, Duration.seconds(3));
-            } else {
-                ToastService.show(cartItemsContainer.getScene(), "Failed to place order.", ToastService.Type.ERROR,
+                ToastService.show(cartItemsContainer.getScene(), "Order placed! #" + orderId, ToastService.Type.SUCCESS,
                         ToastService.Position.BOTTOM_CENTER, Duration.seconds(3));
             }
-
         } catch (Exception e) {
             e.printStackTrace();
             ToastService.show(cartItemsContainer.getScene(), "Error: " + e.getMessage(), ToastService.Type.ERROR,

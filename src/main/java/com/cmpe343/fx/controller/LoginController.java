@@ -127,7 +127,7 @@ public class LoginController {
             }
 
             stage.setScene(newScene);
-            stage.setTitle("Gr7Project3 - " + user.getRole() + " (" + user.getUsername() + ")");
+            stage.setTitle("Group07 GreenGrocer - " + user.getRole().toUpperCase() + " (" + user.getUsername() + ")");
 
             // If login was fullscreen, keep it fullscreen; otherwise make
             // customer/carrier/owner UIs maximized (fullscreen)

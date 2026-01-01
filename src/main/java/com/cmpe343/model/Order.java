@@ -21,6 +21,9 @@ public class Order {
     private double totalAfterTax;
     private List<CartItem> items;
 
+    public Order() {
+    }
+
     public Order(int id, int customerId, Integer carrierId, OrderStatus status,
             LocalDateTime orderTime, LocalDateTime requestedDeliveryTime, LocalDateTime deliveredTime,
             double totalBeforeTax, double vat, double totalAfterTax) {
@@ -33,6 +36,42 @@ public class Order {
         this.deliveredTime = deliveredTime;
         this.totalBeforeTax = totalBeforeTax;
         this.vat = vat;
+        this.totalAfterTax = totalAfterTax;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public void setCustomerId(int customerId) {
+        this.customerId = customerId;
+    }
+
+    public void setCarrierId(Integer carrierId) {
+        this.carrierId = carrierId;
+    }
+
+    public void setOrderTime(LocalDateTime orderTime) {
+        this.orderTime = orderTime;
+    }
+
+    public void setRequestedDeliveryTime(LocalDateTime requestedDeliveryTime) {
+        this.requestedDeliveryTime = requestedDeliveryTime;
+    }
+
+    public void setDeliveredTime(LocalDateTime deliveredTime) {
+        this.deliveredTime = deliveredTime;
+    }
+
+    public void setTotalBeforeTax(double totalBeforeTax) {
+        this.totalBeforeTax = totalBeforeTax;
+    }
+
+    public void setVat(double vat) {
+        this.vat = vat;
+    }
+
+    public void setTotalAfterTax(double totalAfterTax) {
         this.totalAfterTax = totalAfterTax;
     }
 

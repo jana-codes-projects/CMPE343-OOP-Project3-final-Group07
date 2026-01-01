@@ -84,6 +84,7 @@ CREATE TABLE messages (
   owner_id    INT NOT NULL,
   text_clob   LONGTEXT NOT NULL COMMENT 'Message text stored as Character Large Object (CLOB)',
   created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  is_read     TINYINT(1) NOT NULL DEFAULT 0,
   reply_text  LONGTEXT NULL COMMENT 'Reply text stored as Character Large Object (CLOB)',
   replied_at  TIMESTAMP NULL,
   CONSTRAINT fk_msg_customer FOREIGN KEY (customer_id) REFERENCES users(id),

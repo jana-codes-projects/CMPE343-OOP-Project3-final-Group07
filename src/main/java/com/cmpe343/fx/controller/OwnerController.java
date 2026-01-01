@@ -1426,7 +1426,8 @@ public class OwnerController {
             if (selectedFile != null) {
                 try {
                     imageBytesContainer[0] = java.nio.file.Files.readAllBytes(selectedFile.toPath());
-                    selectedFileLabel.setText(selectedFile.getName() + " (" + (imageBytesContainer[0].length / 1024) + " KB)");
+                    selectedFileLabel
+                            .setText(selectedFile.getName() + " (" + (imageBytesContainer[0].length / 1024) + " KB)");
                 } catch (java.io.IOException ex) {
                     showError("Could not read image file: " + ex.getMessage());
                 }
@@ -1466,8 +1467,17 @@ public class OwnerController {
                         return null;
                     }
 
-                    if (price < 0 || stock < 0 || threshold < 0) {
-                        showError("Price, stock, and threshold must be non-negative values.");
+                    if (price <= 0) {
+                        showError("Product price must be greater than zero.");
+                        return null;
+                    }
+                    if (threshold <= 0) {
+                        showError("Threshold must be greater than zero.");
+                        return null;
+                    }
+                                
+                    if (stock < 0) {
+                        showError("Stock cannot be negative.");
                         return null;
                     }
 
