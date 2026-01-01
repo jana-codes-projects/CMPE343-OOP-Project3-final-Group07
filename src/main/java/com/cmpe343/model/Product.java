@@ -37,16 +37,44 @@ public class Product {
     private static ProductType parseType(String typeStr) {
         if (typeStr == null)
             return ProductType.OTHER;
+        String upper = typeStr.toUpperCase();
+        // Map database values to enum (database uses VEG, code uses VEGETABLE)
+        if (upper.equals("VEG"))
+            return ProductType.VEGETABLE;
+        if (upper.equals("FRUIT"))
+            return ProductType.FRUIT;
         try {
-            return ProductType.valueOf(typeStr.toUpperCase());
+            return ProductType.valueOf(upper);
         } catch (IllegalArgumentException e) {
             // Mapping for existing "Fruit" / "Vegetable" strings
-            if (typeStr.equalsIgnoreCase("Fruit"))
+            if (upper.equals("FRUIT"))
                 return ProductType.FRUIT;
-            if (typeStr.equalsIgnoreCase("Vegetable"))
+            if (upper.equals("VEGETABLE"))
                 return ProductType.VEGETABLE;
             return ProductType.OTHER;
         }
+    }
+    
+    /**
+     * Converts ProductType enum to database string format (VEG/FRUIT).
+     */
+    public String getTypeAsDbString() {
+        return switch (type) {
+            case VEGETABLE -> "VEG";
+            case FRUIT -> "FRUIT";
+            case OTHER -> "VEG"; // Default fallback
+        };
+    }
+    
+    /**
+     * Gets display name for product type (for UI).
+     */
+    public String getTypeDisplayName() {
+        return switch (type) {
+            case VEGETABLE -> "Vegetable";
+            case FRUIT -> "Fruit";
+            case OTHER -> "Other";
+        };
     }
 
     public int getId() {

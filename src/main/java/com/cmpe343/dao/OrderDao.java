@@ -36,9 +36,9 @@ public class OrderDao {
         // Validate coupon at order placement time to prevent race conditions
         double couponDiscount = 0.0;
         if (couponId != null) {
-            Double discount = getCouponDiscount(couponId);
+            Double discount = getCouponDiscount(couponId, originalSubtotal);
             if (discount == null) {
-                // Coupon is invalid (expired/deactivated/not found) - throw exception to inform user
+                // Coupon is invalid (expired/deactivated/not found/min cart not met) - throw exception to inform user
                 throw new IllegalArgumentException("The selected coupon is no longer valid. Please remove it and try again.");
             }
             couponDiscount = discount; // discount can be 0.0 for valid coupons with zero discount
@@ -272,15 +272,29 @@ public class OrderDao {
      * @param couponId The coupon ID
      * @return The discount amount if coupon is valid, null if invalid
      */
-    private Double getCouponDiscount(int couponId) {
-        String sql = "SELECT discount_amount FROM coupons WHERE id = ? AND active = 1 AND expiry_date >= CURDATE()";
+    private Double getCouponDiscount(int couponId, double cartTotal) {
+        String sql = "SELECT kind, value, min_cart FROM coupons WHERE id = ? AND is_active = 1 AND (expires_at IS NULL OR expires_at >= NOW())";
         try (Connection c = Db.getConnection();
                 PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, couponId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    // Coupon found and valid - return discount amount (may be 0.0)
-                    return rs.getDouble("discount_amount");
+                    // Coupon found and valid
+                    String kind = rs.getString("kind");
+                    double value = rs.getDouble("value");
+                    double minCart = rs.getDouble("min_cart");
+                    
+                    // Check minimum cart requirement
+                    if (cartTotal < minCart) {
+                        return null; // Cart doesn't meet minimum requirement
+                    }
+                    
+                    // Calculate discount based on type
+                    if ("AMOUNT".equals(kind)) {
+                        return Math.min(value, cartTotal); // Don't discount more than cart total
+                    } else if ("PERCENT".equals(kind)) {
+                        return cartTotal * (value / 100.0);
+                    }
                 }
             }
         } catch (Exception e) {
@@ -291,8 +305,9 @@ public class OrderDao {
     }
     
     public double getCouponDiscountForOrder(int orderId) {
+        // Get the order's total_before_tax to calculate percentage discount correctly
         String sql = """
-            SELECT c.discount_amount 
+            SELECT c.kind, c.value, o.total_before_tax
             FROM orders o
             JOIN coupons c ON o.coupon_id = c.id
             WHERE o.id = ?
@@ -302,7 +317,15 @@ public class OrderDao {
             ps.setInt(1, orderId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    return rs.getDouble("discount_amount");
+                    String kind = rs.getString("kind");
+                    double value = rs.getDouble("value");
+                    double totalBeforeTax = rs.getDouble("total_before_tax");
+                    
+                    if ("AMOUNT".equals(kind)) {
+                        return Math.min(value, totalBeforeTax);
+                    } else if ("PERCENT".equals(kind)) {
+                        return totalBeforeTax * (value / 100.0);
+                    }
                 }
             }
         } catch (Exception e) {
@@ -390,6 +413,88 @@ public class OrderDao {
         }
     }
 
+    /**
+     * Gets customer loyalty statistics including order count, total spent, and purchase frequency.
+     * 
+     * @return A list of customer loyalty data as Object arrays: [customerId, username, orderCount, totalSpent, daysSinceFirstOrder, avgDaysBetweenOrders]
+     */
+    public List<Object[]> getCustomerLoyaltyStats() {
+        List<Object[]> stats = new java.util.ArrayList<>();
+        String sql = """
+            SELECT 
+                u.id as customer_id,
+                u.username,
+                COUNT(o.id) as order_count,
+                COALESCE(SUM(o.total_after_tax), 0) as total_spent,
+                MIN(o.order_time) as first_order_date,
+                MAX(o.order_time) as last_order_date
+            FROM users u
+            LEFT JOIN orders o ON u.id = o.customer_id
+            WHERE u.role = 'customer' AND u.is_active = 1
+            GROUP BY u.id, u.username
+            HAVING order_count > 0
+            ORDER BY order_count DESC, total_spent DESC
+        """;
+        
+        try (Connection c = Db.getConnection();
+                Statement st = c.createStatement();
+                ResultSet rs = st.executeQuery(sql)) {
+            
+            while (rs.next()) {
+                int customerId = rs.getInt("customer_id");
+                String username = rs.getString("username");
+                int orderCount = rs.getInt("order_count");
+                double totalSpent = rs.getDouble("total_spent");
+                
+                java.sql.Timestamp firstOrder = rs.getTimestamp("first_order_date");
+                java.sql.Timestamp lastOrder = rs.getTimestamp("last_order_date");
+                
+                // Calculate days since first order
+                long daysSinceFirstOrder = 0;
+                if (firstOrder != null) {
+                    daysSinceFirstOrder = java.time.temporal.ChronoUnit.DAYS.between(
+                        firstOrder.toLocalDateTime().toLocalDate(),
+                        java.time.LocalDate.now()
+                    );
+                    if (daysSinceFirstOrder == 0) daysSinceFirstOrder = 1; // Avoid division by zero
+                }
+                
+                // Calculate average days between orders
+                double avgDaysBetweenOrders = 0.0;
+                if (orderCount > 1 && firstOrder != null && lastOrder != null) {
+                    long totalDays = java.time.temporal.ChronoUnit.DAYS.between(
+                        firstOrder.toLocalDateTime().toLocalDate(),
+                        lastOrder.toLocalDateTime().toLocalDate()
+                    );
+                    if (totalDays > 0) {
+                        avgDaysBetweenOrders = (double) totalDays / (orderCount - 1);
+                    }
+                }
+                
+                // Calculate purchase frequency (orders per month)
+                double ordersPerMonth = 0.0;
+                if (daysSinceFirstOrder > 0) {
+                    double months = daysSinceFirstOrder / 30.0;
+                    ordersPerMonth = orderCount / Math.max(months, 0.1); // Avoid division by zero
+                }
+                
+                stats.add(new Object[]{
+                    customerId,
+                    username,
+                    orderCount,
+                    totalSpent,
+                    daysSinceFirstOrder,
+                    avgDaysBetweenOrders,
+                    ordersPerMonth
+                });
+            }
+        } catch (Exception e) {
+            System.err.println("Error fetching customer loyalty stats: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return stats;
+    }
+    
     private static double round2(double v) {
         return Math.round(v * 100.0) / 100.0;
     }

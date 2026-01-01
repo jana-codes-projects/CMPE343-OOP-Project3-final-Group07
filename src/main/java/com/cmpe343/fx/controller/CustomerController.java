@@ -2,6 +2,7 @@ package com.cmpe343.fx.controller;
 
 import com.cmpe343.dao.CartDao;
 import com.cmpe343.dao.ProductDao;
+import com.cmpe343.dao.UserDao;
 import com.cmpe343.fx.util.ToastService;
 import com.cmpe343.fx.Session;
 import com.cmpe343.model.Product;
@@ -139,8 +140,19 @@ public class CustomerController {
         Label priceLbl = new Label(p.getPrice() + " ₺ / kg");
         priceLbl.getStyleClass().add("product-price");
 
-        Label stockLbl = new Label(p.isLowStock() ? "Low Stock: " + p.getStockKg() + "kg" : "In Stock");
-        stockLbl.getStyleClass().addAll("stock-tag", p.isLowStock() ? "stock-low" : "stock-ok");
+        // Calculate available stock (current stock - items in cart)
+        double cartQuantity = cartDao.getCartQuantity(currentCustomerId, p.getId());
+        double availableStock = p.getStockKg() - cartQuantity;
+        
+        Label stockLbl;
+        if (availableStock <= 0) {
+            stockLbl = new Label("Out of Stock");
+            stockLbl.getStyleClass().addAll("stock-tag", "stock-low");
+            stockLbl.setStyle("-fx-text-fill: #ef4444; -fx-font-weight: bold;");
+        } else {
+            stockLbl = new Label(String.format("%.2f kg", availableStock));
+            stockLbl.getStyleClass().addAll("stock-tag", availableStock <= p.getThresholdKg() ? "stock-low" : "stock-ok");
+        }
 
         // Controls
         TextField kgInput = new TextField();
@@ -168,8 +180,18 @@ public class CustomerController {
                 toast("Invalid amount", ToastService.Type.ERROR);
                 return;
             }
-            if (kg > p.getStockKg()) {
-                toast("Insufficient stock! Available: " + p.getStockKg() + " kg", ToastService.Type.ERROR);
+            
+            // Calculate available stock (current stock - items already in cart)
+            double cartQuantity = cartDao.getCartQuantity(currentCustomerId, p.getId());
+            double availableStock = p.getStockKg() - cartQuantity;
+            
+            if (availableStock <= 0) {
+                toast("Out of stock!", ToastService.Type.ERROR);
+                return;
+            }
+            
+            if (kg > availableStock) {
+                toast("Insufficient stock! Available: " + String.format("%.2f", availableStock) + " kg", ToastService.Type.ERROR);
                 return;
             }
 
@@ -177,6 +199,8 @@ public class CustomerController {
             toast("Added to cart", ToastService.Type.SUCCESS);
             kgInput.clear();
             updateBadge();
+            // Refresh product display to show updated stock
+            refreshProductDisplay();
         } catch (NumberFormatException e) {
             toast("Enter valid number", ToastService.Type.ERROR);
         } catch (Exception e) {
@@ -194,11 +218,26 @@ public class CustomerController {
             cartCountBadge.setVisible(false);
         }
     }
+    
+    private void refreshProductDisplay() {
+        // Reload products from database to get updated stock
+        ObservableList<Product> allProducts = FXCollections.observableArrayList(productDao.findAll());
+        filteredProducts = new FilteredList<>(allProducts, p -> {
+            // Apply current search filter
+            String searchText = searchField.getText();
+            if (searchText == null || searchText.isBlank()) {
+                return true;
+            }
+            return p.getName().toLowerCase().contains(searchText.toLowerCase());
+        });
+        renderGrids();
+    }
 
     @FXML
     private void handleOpenCart() {
         try {
             Stage stage = (Stage) searchField.getScene().getWindow();
+            boolean wasMaximized = stage.isMaximized();
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/cart.fxml"));
             Scene scene = new Scene(loader.load(), 900, 600);
 
@@ -206,6 +245,9 @@ public class CustomerController {
             scene.getStylesheets().addAll(stage.getScene().getStylesheets());
 
             stage.setScene(scene);
+            if (wasMaximized) {
+                stage.setMaximized(true);
+            }
         } catch (Exception e) {
             e.printStackTrace();
             toast("Failed to open cart", ToastService.Type.ERROR);
@@ -250,6 +292,7 @@ public class CustomerController {
             Scene scene = new Scene(root, 800, 600);
             scene.getStylesheets().addAll(searchField.getScene().getStylesheets());
             stage.setScene(scene);
+            stage.setMaximized(true);
             stage.show();
         } catch (Exception e) {
             e.printStackTrace();
@@ -333,26 +376,28 @@ public class CustomerController {
         javafx.scene.control.Dialog<java.util.Map<String, Object>> dialog = new javafx.scene.control.Dialog<>();
         dialog.setTitle("Rate Your Order");
         dialog.setHeaderText("How was your delivery experience?");
-        
+        dialog.setResizable(true);
+
         javafx.scene.control.ButtonType submitButtonType = new javafx.scene.control.ButtonType("Submit", javafx.scene.control.ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(submitButtonType, javafx.scene.control.ButtonType.CANCEL);
-        
+
         VBox content = new VBox(16);
-        content.setStyle("-fx-padding: 20;");
-        
+        content.setStyle("-fx-padding: 20; -fx-background-color: #0f172a;");
+
         Label ratingLabel = new Label("Rating (1-5):");
         ratingLabel.setStyle("-fx-text-fill: white;");
         javafx.scene.control.Spinner<Integer> ratingSpinner = new javafx.scene.control.Spinner<>(1, 5, 5);
         ratingSpinner.setEditable(true);
-        
+
         Label commentLabel = new Label("Comment (optional):");
         commentLabel.setStyle("-fx-text-fill: white;");
         javafx.scene.control.TextArea commentArea = new javafx.scene.control.TextArea();
-        commentArea.setPrefRowCount(3);
+        commentArea.setPrefRowCount(10);
         commentArea.setWrapText(true);
-        
+
         content.getChildren().addAll(ratingLabel, ratingSpinner, commentLabel, commentArea);
         dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().setPrefSize(600, 500);
         
         dialog.setResultConverter(dialogButton -> {
             if (dialogButton == submitButtonType) {
@@ -393,26 +438,28 @@ public class CustomerController {
             ScrollPane scrollPane = new ScrollPane();
             VBox messagesContainer = new VBox(12);
             messagesContainer.setStyle("-fx-padding: 12;");
+            messagesContainer.setId("messagesContainer"); // Add ID for lookup
             
             com.cmpe343.dao.MessageDao messageDao = new com.cmpe343.dao.MessageDao();
-            java.util.List<com.cmpe343.model.Message> messages = messageDao.getMessagesForCustomer(currentCustomerId);
+            refreshMessagesList(messagesContainer, messageDao);
             
-            if (messages.isEmpty()) {
-                Label empty = new Label("No messages");
-                empty.setStyle("-fx-text-fill: #94a3b8; -fx-padding: 20;");
-                messagesContainer.getChildren().add(empty);
-            } else {
-                for (com.cmpe343.model.Message msg : messages) {
-                    VBox msgCard = createMessageCard(msg, messageDao);
-                    messagesContainer.getChildren().add(msgCard);
-                }
-            }
+            Button sendMessageBtn = new Button("Send New Message");
+            sendMessageBtn.getStyleClass().add("btn-primary");
+            sendMessageBtn.setOnAction(e -> {
+                handleSendMessage(stage, messagesContainer, messageDao);
+            });
+            
+            HBox titleBar = new HBox(12);
+            titleBar.setAlignment(Pos.CENTER_LEFT);
+            Region spacer = new Region();
+            HBox.setHgrow(spacer, Priority.ALWAYS);
+            titleBar.getChildren().addAll(title, spacer, sendMessageBtn);
             
             scrollPane.setContent(messagesContainer);
             scrollPane.setFitToWidth(true);
             scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
             
-            root.getChildren().addAll(title, scrollPane);
+            root.getChildren().addAll(titleBar, scrollPane);
             
             Scene scene = new Scene(root, 700, 500);
             scene.getStylesheets().addAll(searchField.getScene().getStylesheets());
@@ -431,7 +478,7 @@ public class CustomerController {
         HBox header = new HBox(12);
         header.setAlignment(Pos.CENTER_LEFT);
         
-        Label sender = new Label("From: " + msg.getSender());
+        Label sender = new Label("To: Owner");
         sender.setStyle("-fx-font-weight: bold; -fx-text-fill: white;");
         
         Region spacer = new Region();
@@ -448,6 +495,22 @@ public class CustomerController {
         
         card.getChildren().addAll(header, content);
         
+        // Show reply if exists
+        String replyText = messageDao.getReplyText(msg.getId());
+        if (replyText != null && !replyText.trim().isEmpty()) {
+            Separator replySep = new Separator();
+            replySep.setStyle("-fx-opacity: 0.3; -fx-padding: 8 0;");
+            
+            Label replyHeader = new Label("Owner's Reply:");
+            replyHeader.setStyle("-fx-font-weight: bold; -fx-text-fill: #10b981; -fx-font-size: 12px;");
+            
+            Label replyContent = new Label(replyText);
+            replyContent.setWrapText(true);
+            replyContent.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 12px;");
+            
+            card.getChildren().addAll(replySep, replyHeader, replyContent);
+        }
+        
         if (!msg.isRead()) {
             card.setOnMouseClicked(e -> {
                 messageDao.markAsRead(msg.getId());
@@ -456,6 +519,95 @@ public class CustomerController {
         }
         
         return card;
+    }
+    
+    private void handleSendMessage(Stage parentStage, VBox messagesContainer, com.cmpe343.dao.MessageDao messageDao) {
+        Dialog<String> dialog = new Dialog<>();
+        dialog.setTitle("Send Message to Owner");
+        dialog.setHeaderText("Write your message");
+        dialog.setResizable(true);
+        
+        TextArea messageArea = new TextArea();
+        messageArea.setPromptText("Enter your message...");
+        messageArea.setWrapText(true);
+        messageArea.setPrefRowCount(15);
+        messageArea.getStyleClass().add("field");
+        
+        VBox content = new VBox(10);
+        content.setStyle("-fx-padding: 20; -fx-background-color: #0f172a;");
+        Label label = new Label("Message:");
+        label.getStyleClass().add("field-label");
+        content.getChildren().addAll(label, messageArea);
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().setPrefSize(800, 600);
+        
+        ButtonType sendButton = new ButtonType("Send", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(sendButton, ButtonType.CANCEL);
+        
+        // Style buttons
+        Platform.runLater(() -> {
+            javafx.scene.Node sendBtn = dialog.getDialogPane().lookupButton(sendButton);
+            if (sendBtn != null) {
+                sendBtn.getStyleClass().add("btn-primary");
+            }
+            javafx.scene.Node cancelBtn = dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
+            if (cancelBtn != null) {
+                cancelBtn.getStyleClass().add("btn-outline");
+            }
+        });
+        
+        dialog.setResultConverter(buttonType -> {
+            if (buttonType == sendButton) {
+                return messageArea.getText().trim();
+            }
+            return null;
+        });
+        
+        java.util.Optional<String> result = dialog.showAndWait();
+        result.ifPresent(messageText -> {
+            if (messageText.isEmpty()) {
+                toast("Message cannot be empty", ToastService.Type.ERROR);
+                return;
+            }
+            
+            try {
+                com.cmpe343.dao.UserDao userDao = new com.cmpe343.dao.UserDao();
+                int ownerId = userDao.getOwnerId();
+                
+                if (ownerId == -1) {
+                    toast("Owner not found", ToastService.Type.ERROR);
+                    return;
+                }
+                
+                int messageId = messageDao.createMessage(currentCustomerId, ownerId, messageText);
+                if (messageId > 0) {
+                    toast("Message sent successfully!", ToastService.Type.SUCCESS);
+                    // Refresh the messages list
+                    refreshMessagesList(messagesContainer, messageDao);
+                } else {
+                    toast("Failed to send message", ToastService.Type.ERROR);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                toast("Error: " + e.getMessage(), ToastService.Type.ERROR);
+            }
+        });
+    }
+    
+    private void refreshMessagesList(VBox messagesContainer, com.cmpe343.dao.MessageDao messageDao) {
+        messagesContainer.getChildren().clear();
+        java.util.List<com.cmpe343.model.Message> messages = messageDao.getMessagesForCustomer(currentCustomerId);
+        
+        if (messages.isEmpty()) {
+            Label empty = new Label("No messages");
+            empty.setStyle("-fx-text-fill: #94a3b8; -fx-padding: 20;");
+            messagesContainer.getChildren().add(empty);
+        } else {
+            for (com.cmpe343.model.Message msg : messages) {
+                VBox msgCard = createMessageCard(msg, messageDao);
+                messagesContainer.getChildren().add(msgCard);
+            }
+        }
     }
 
     @FXML
