@@ -265,4 +265,21 @@ public class UserDao {
         }
         return -1;
     }
+
+    /**
+     * Updates a user's profile (phone and address).
+     */
+    public boolean updateUserProfile(int userId, String phone, String address) {
+        String sql = "UPDATE users SET phone = ?, address = ? WHERE id = ?";
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, phone);
+            ps.setString(2, address);
+            ps.setInt(3, userId);
+            return ps.executeUpdate() > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
 }

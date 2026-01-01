@@ -100,6 +100,18 @@ public class CustomerController {
         }
     }
 
+    /** Refreshes product list from database (updates stock values) */
+    private void refreshProducts() {
+        ObservableList<Product> allProducts = FXCollections.observableArrayList(productDao.findAll());
+        String currentSearch = searchField.getText();
+        filteredProducts = new FilteredList<>(allProducts, p -> {
+            if (currentSearch == null || currentSearch.isBlank())
+                return true;
+            return p.getName().toLowerCase().contains(currentSearch.toLowerCase());
+        });
+        renderGrids();
+    }
+
     private Node createProductCard(Product p) {
         VBox card = new VBox(12);
         card.getStyleClass().add("product-card");
@@ -408,6 +420,7 @@ public class CustomerController {
                 com.cmpe343.dao.OrderDao.CancelResult result = orderDao.cancelOrder(order.getId(), currentCustomerId);
                 if (result.success) {
                     toast(result.message, ToastService.Type.SUCCESS);
+                    refreshProducts(); // Refresh product list to show updated stock
                     handleViewOrders(); // Refresh orders
                 } else {
                     toast(result.message, ToastService.Type.ERROR);
@@ -708,6 +721,71 @@ public class CustomerController {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    @FXML
+    private void handleProfile() {
+        if (!Session.isLoggedIn()) {
+            toast("Please login first", ToastService.Type.ERROR);
+            return;
+        }
+
+        com.cmpe343.model.User user = Session.getUser();
+
+        Dialog<Boolean> dialog = new Dialog<>();
+        dialog.setTitle("Edit Profile");
+        dialog.setHeaderText("Update your profile information");
+
+        ButtonType saveButtonType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
+
+        VBox content = new VBox(12);
+        content.setStyle("-fx-padding: 20;");
+
+        // Username (read-only)
+        Label usernameInfo = new Label("Username: " + user.getUsername());
+        usernameInfo.setStyle("-fx-font-weight: bold;");
+
+        TextField phoneField = new TextField(user.getPhone() != null ? user.getPhone() : "");
+        phoneField.setPromptText("Phone Number");
+        phoneField.getStyleClass().add("field");
+
+        TextField addressField = new TextField(user.getAddress() != null ? user.getAddress() : "");
+        addressField.setPromptText("Address");
+        addressField.getStyleClass().add("field");
+
+        content.getChildren().addAll(
+                usernameInfo,
+                new Label("Phone:"), phoneField,
+                new Label("Address:"), addressField);
+
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().setStyle("-fx-background-color: #0f172a;");
+
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == saveButtonType) {
+                String newPhone = phoneField.getText().trim();
+                String newAddress = addressField.getText().trim();
+
+                // Update via UserDao
+                com.cmpe343.dao.UserDao userDao = new com.cmpe343.dao.UserDao();
+                boolean success = userDao.updateUserProfile(user.getId(), newPhone, newAddress);
+
+                if (success) {
+                    // Update session user
+                    user.setPhone(newPhone);
+                    user.setAddress(newAddress);
+                    toast("Profile updated successfully!", ToastService.Type.SUCCESS);
+                    return true;
+                } else {
+                    toast("Failed to update profile", ToastService.Type.ERROR);
+                    return false;
+                }
+            }
+            return false;
+        });
+
+        dialog.showAndWait();
     }
 
     private void toast(String msg, ToastService.Type type) {

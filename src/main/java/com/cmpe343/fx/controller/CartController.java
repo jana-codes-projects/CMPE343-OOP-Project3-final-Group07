@@ -308,6 +308,17 @@ public class CartController {
                 return;
             }
 
+            // MINIMUM CART VALUE CHECK (50 TL)
+            double subtotal = currentCartItems.stream().mapToDouble(i -> i.getLineTotal()).sum();
+            double minCartValue = 50.0;
+            if (subtotal < minCartValue) {
+                ToastService.show(cartItemsContainer.getScene(),
+                        String.format("Minimum cart value is %.2f ₺. Current: %.2f ₺", minCartValue, subtotal),
+                        ToastService.Type.ERROR,
+                        ToastService.Position.BOTTOM_CENTER, Duration.seconds(3));
+                return;
+            }
+
             // Create Order
             // Validate coupon one more time before placing order to catch race conditions
             if (selectedCouponId != null) {

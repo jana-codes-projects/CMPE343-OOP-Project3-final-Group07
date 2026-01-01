@@ -43,34 +43,34 @@ public class ProductDao {
             throw new RuntimeException("Could not fetch product list", e);
         }
     }
-    
-//    public byte[] getProductImageBlob(int productId) {
-//        String sql = "SELECT image_blob FROM products WHERE id = ?";
-//
-//        try (Connection c = Db.getConnection();
-//                java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
-//            ps.setInt(1, productId);
-//
-//            try (ResultSet rs = ps.executeQuery()) {
-//                if (rs.next()) {
-//                    Blob blob = rs.getBlob("image_blob");
-//                    if (blob != null && blob.length() > 0) {
-//                        return blob.getBytes(1, (int) blob.length());
-//                    }
-//                }
-//            }
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//        return null;
-//    }
-    
+
+    // public byte[] getProductImageBlob(int productId) {
+    // String sql = "SELECT image_blob FROM products WHERE id = ?";
+    //
+    // try (Connection c = Db.getConnection();
+    // java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
+    // ps.setInt(1, productId);
+    //
+    // try (ResultSet rs = ps.executeQuery()) {
+    // if (rs.next()) {
+    // Blob blob = rs.getBlob("image_blob");
+    // if (blob != null && blob.length() > 0) {
+    // return blob.getBytes(1, (int) blob.length());
+    // }
+    // }
+    // }
+    // } catch (Exception e) {
+    // e.printStackTrace();
+    // }
+    // return null;
+    // }
+
     public int createProduct(String name, String type, double price, double stockKg, double thresholdKg) {
         String sql = """
-            INSERT INTO products (name, type, price, stock_kg, threshold_kg)
-            VALUES (?, ?, ?, ?, ?)
-        """;
-        
+                    INSERT INTO products (name, type, price, stock_kg, threshold_kg)
+                    VALUES (?, ?, ?, ?, ?)
+                """;
+
         try (Connection c = Db.getConnection();
                 java.sql.PreparedStatement ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, name);
@@ -78,9 +78,9 @@ public class ProductDao {
             ps.setDouble(3, price);
             ps.setDouble(4, stockKg);
             ps.setDouble(5, thresholdKg);
-            
+
             ps.executeUpdate();
-            
+
             try (ResultSet keys = ps.getGeneratedKeys()) {
                 if (keys.next()) {
                     return keys.getInt(1);
@@ -91,25 +91,26 @@ public class ProductDao {
         }
         return -1;
     }
-    
+
     /**
      * Updates an existing product.
      * 
-     * @param productId The ID of the product to update
-     * @param name The new product name
-     * @param type The new product type (VEG/FRUIT)
-     * @param price The new price
-     * @param stockKg The new stock in kg
+     * @param productId   The ID of the product to update
+     * @param name        The new product name
+     * @param type        The new product type (VEG/FRUIT)
+     * @param price       The new price
+     * @param stockKg     The new stock in kg
      * @param thresholdKg The new threshold in kg
      * @return true if the update was successful, false otherwise
      */
-    public boolean updateProduct(int productId, String name, String type, double price, double stockKg, double thresholdKg) {
+    public boolean updateProduct(int productId, String name, String type, double price, double stockKg,
+            double thresholdKg) {
         String sql = """
-            UPDATE products
-            SET name = ?, type = ?, price = ?, stock_kg = ?, threshold_kg = ?
-            WHERE id = ?
-        """;
-        
+                    UPDATE products
+                    SET name = ?, type = ?, price = ?, stock_kg = ?, threshold_kg = ?
+                    WHERE id = ?
+                """;
+
         try (Connection c = Db.getConnection();
                 java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, name);
@@ -118,11 +119,44 @@ public class ProductDao {
             ps.setDouble(4, stockKg);
             ps.setDouble(5, thresholdKg);
             ps.setInt(6, productId);
-            
+
             int rowsAffected = ps.executeUpdate();
             return rowsAffected > 0;
         } catch (Exception e) {
             throw new RuntimeException("Failed to update product: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Deactivates a product (sets stock to 0 instead of deleting).
+     * This prevents issues with existing orders referencing the product.
+     */
+    public boolean deactivateProduct(int productId) {
+        String sql = "UPDATE products SET stock_kg = 0, threshold_kg = 0 WHERE id = ?";
+        try (Connection c = Db.getConnection();
+                java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, productId);
+            return ps.executeUpdate() > 0;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to deactivate product: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Permanently deletes a product.
+     * WARNING: This may fail if the product is referenced in orders.
+     * Use deactivateProduct() instead for safer removal.
+     */
+    public boolean deleteProduct(int productId) {
+        String sql = "DELETE FROM products WHERE id = ?";
+        try (Connection c = Db.getConnection();
+                java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, productId);
+            return ps.executeUpdate() > 0;
+        } catch (Exception e) {
+            // If foreign key constraint fails, suggest deactivation instead
+            System.err.println("Cannot delete product (may be in orders). Use deactivateProduct instead.");
+            return false;
         }
     }
 }

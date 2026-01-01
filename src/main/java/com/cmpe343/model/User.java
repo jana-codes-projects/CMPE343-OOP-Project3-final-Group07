@@ -48,4 +48,12 @@ public class User {
     public void setActive(boolean active) {
         this.active = active;
     }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
 }

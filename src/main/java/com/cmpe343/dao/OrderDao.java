@@ -541,6 +541,7 @@ public class OrderDao {
                 ps.setInt(1, orderId);
                 try (ResultSet rs = ps.executeQuery()) {
                     if (!rs.next()) {
+                        System.out.println("[DEBUG] Order not found");
                         return new CancelResult(false, "Order not found.");
                     }
 
@@ -568,13 +569,13 @@ public class OrderDao {
             }
 
             // Restore stock for all items in the order
-            String itemsSql = "SELECT product_id, quantity_kg FROM order_items WHERE order_id = ?";
+            String itemsSql = "SELECT product_id, kg FROM order_items WHERE order_id = ?";
             try (PreparedStatement ps = c.prepareStatement(itemsSql)) {
                 ps.setInt(1, orderId);
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
                         int productId = rs.getInt("product_id");
-                        double qty = rs.getDouble("quantity_kg");
+                        double qty = rs.getDouble("kg");
 
                         // Restore stock
                         String restoreSql = "UPDATE products SET stock_kg = stock_kg + ? WHERE id = ?";
