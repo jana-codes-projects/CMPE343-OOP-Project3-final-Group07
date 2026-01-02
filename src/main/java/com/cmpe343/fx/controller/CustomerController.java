@@ -304,6 +304,22 @@ public class CustomerController {
     }
 
     @FXML
+    private void handleOpenOrders() {
+        try {
+            Stage stage = (Stage) searchField.getScene().getWindow();
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/orders.fxml"));
+            Scene scene = new Scene(loader.load(), 1200, 800);
+            if (stage.getScene() != null) {
+                scene.getStylesheets().addAll(stage.getScene().getStylesheets());
+            }
+            stage.setScene(scene);
+            stage.centerOnScreen();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @FXML
     private void handleLogout() {
         Session.clear();
         try {
@@ -518,7 +534,8 @@ public class CustomerController {
         if (visible) {
             // Ensure chat container is on top of all other elements
             Platform.runLater(() -> {
-                if (chatContainer.getParent() != null && chatContainer.getParent() instanceof javafx.scene.layout.StackPane) {
+                if (chatContainer.getParent() != null
+                        && chatContainer.getParent() instanceof javafx.scene.layout.StackPane) {
                     javafx.scene.layout.StackPane parent = (javafx.scene.layout.StackPane) chatContainer.getParent();
                     // Remove and re-add to ensure it's on top
                     parent.getChildren().remove(chatContainer);
@@ -664,7 +681,7 @@ public class CustomerController {
         vegetablesExpanded = !vegetablesExpanded;
         vegContentBox.setVisible(vegetablesExpanded);
         vegContentBox.setManaged(vegetablesExpanded);
-        
+
         // Rotate chevron
         if (vegChevron != null) {
             if (vegetablesExpanded) {
@@ -680,7 +697,7 @@ public class CustomerController {
         fruitsExpanded = !fruitsExpanded;
         fruitContentBox.setVisible(fruitsExpanded);
         fruitContentBox.setManaged(fruitsExpanded);
-        
+
         // Rotate chevron
         if (fruitChevron != null) {
             if (fruitsExpanded) {
@@ -692,16 +709,18 @@ public class CustomerController {
     }
 
     private void updateSearchResultInfo() {
-        if (resultInfoLabel == null) return;
-        
+        if (resultInfoLabel == null)
+            return;
+
         long totalCount = filteredProducts.size();
         long vegCount = filteredProducts.stream().filter(p -> p.getType() == Product.ProductType.VEG).count();
         long fruitCount = filteredProducts.stream().filter(p -> p.getType() == Product.ProductType.FRUIT).count();
-        
+
         if (searchField.getText() == null || searchField.getText().isBlank()) {
             resultInfoLabel.setText("");
         } else {
-            resultInfoLabel.setText(String.format("%d results found (%d vegetables, %d fruits)", totalCount, vegCount, fruitCount));
+            resultInfoLabel.setText(
+                    String.format("%d results found (%d vegetables, %d fruits)", totalCount, vegCount, fruitCount));
         }
     }
 

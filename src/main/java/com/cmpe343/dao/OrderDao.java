@@ -259,6 +259,24 @@ public class OrderDao {
         }
     }
 
+    public List<com.cmpe343.model.Order> getOrdersByUserId(int userId) {
+        List<com.cmpe343.model.Order> list = new java.util.ArrayList<>();
+        String sql = "SELECT * FROM orders WHERE customer_id = ? ORDER BY order_time DESC";
+
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(mapOrder(rs));
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error fetching user orders: " + e.getMessage());
+        }
+        return list;
+    }
+
     public boolean markOrderDelivered(int orderId, LocalDateTime time) {
         String sql = "UPDATE orders SET status = 'DELIVERED', delivered_time = ? WHERE id = ?";
         try (Connection c = Db.getConnection();

@@ -8,7 +8,7 @@
       styleClass="root"
       xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml"
-      fx:controller="com.cmpe343.fx.controller.CartController">
+      fx:controller="com.cmpe343.fx.controller.OrdersController">
       
     <!-- TOP BAR (Same as Customer Page) -->
     <HBox alignment="CENTER_LEFT" spacing="24" styleClass="topbar">
@@ -51,7 +51,7 @@
             <!-- Actions Group -->
             <HBox alignment="CENTER" spacing="8">
                 <!-- Orders -->
-                <Button onAction="#handleOpenOrders" styleClass="icon-btn">
+                <Button onAction="#handleOpenOrders" styleClass="icon-btn" style="-fx-background-color: rgba(255,255,255,0.1);">
                     <graphic>
                         <SVGPath content="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"
                                  styleClass="icon-white"/>
@@ -60,7 +60,7 @@
                 </Button>
 
                 <!-- Cart (Click goes back) -->
-                <StackPane onMouseClicked="#handleBack" styleClass="icon-btn-wrap">
+                <StackPane onMouseClicked="#handleOpenCart" styleClass="icon-btn-wrap">
                     <Button styleClass="icon-btn" mouseTransparent="true">
                         <graphic>
                             <SVGPath content="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.54-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"
@@ -87,56 +87,18 @@
     </HBox>
 
     <!-- BODY -->
-    <VBox spacing="24" style="-fx-padding: 32;">
+    <VBox spacing="24" style="-fx-padding: 32;" VBox.vgrow="ALWAYS">
+        
+        <HBox alignment="CENTER_LEFT" spacing="16">
+             <Label text="My Orders" styleClass="h2"/>
+             <Region HBox.hgrow="ALWAYS"/>
+             <!-- Filter toggles could go here -->
+        </HBox>
 
-    <HBox spacing="24" VBox.vgrow="ALWAYS">
-        <!-- Cart Items Column -->
-        <VBox spacing="16" HBox.hgrow="ALWAYS">
-            <ScrollPane fitToWidth="true" styleClass="scroll-pane" VBox.vgrow="ALWAYS" style="-fx-padding: 0;">
-                <VBox fx:id="cartItemsContainer" styleClass="list-container" spacing="12"/>
-            </ScrollPane>
-        </VBox>
+        <ScrollPane fitToWidth="true" styleClass="scroll-pane" VBox.vgrow="ALWAYS" style="-fx-padding: 0;">
+            <VBox fx:id="ordersContainer" styleClass="list-container" spacing="12"/>
+        </ScrollPane>
 
-        <!-- Summary Column -->
-        <VBox spacing="24" minWidth="350" prefWidth="350" styleClass="summary-column">
-            <VBox spacing="20" styleClass="card" style="-fx-padding: 24;">
-                <Label text="Order Summary" styleClass="h2"/>
-                
-                <Separator style="-fx-opacity: 0.1;"/>
-                
-                <Label text="Delivery Details" styleClass="h3"/>
-                
-                <VBox spacing="16">
-                     <VBox spacing="4">
-                        <Label text="Date" styleClass="field-label"/>
-                        <DatePicker fx:id="deliveryDatePicker" promptText="Select Date" style="-fx-base: #1e293b;" maxWidth="Infinity"/>
-                     </VBox>
-                     
-                     <VBox spacing="4">
-                        <Label text="Time (HH:mm)" styleClass="field-label"/>
-                        <TextField fx:id="deliveryTimeField" promptText="e.g. 14:30" styleClass="field"/>
-                     </VBox>
-                     
-                     <HBox spacing="8" alignment="CENTER_LEFT" style="-fx-padding: 8; -fx-background-color: rgba(59, 130, 246, 0.1); -fx-background-radius: 8;">
-                        <SVGPath content="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" 
-                                 fill="#3b82f6"/>
-                        <Label text="Delivery must be within 48 hours" styleClass="sub" style="-fx-text-fill: #60a5fa;" wrapText="true"/>
-                     </HBox>
-                </VBox>
-                
-                <Separator style="-fx-opacity: 0.1;"/>
-
-                <VBox spacing="16">
-                    <HBox spacing="16" alignment="CENTER_LEFT">
-                        <Label text="Total" styleClass="h2"/>
-                        <Region HBox.hgrow="ALWAYS"/>
-                        <Label fx:id="totalLabel" text="0.00 ₺" styleClass="h2" style="-fx-text-fill: #10b981; -fx-font-size: 24px; -fx-font-weight: 800;"/>
-                    </HBox>
-                    <Button fx:id="placeOrderButton" text="Place Order" onAction="#handlePlaceOrder" styleClass="btn-primary" maxWidth="Infinity" style="-fx-padding: 14; -fx-font-size: 16px; -fx-font-weight: 700;"/>
-                </VBox>
-            </VBox>
-        </VBox>
-    </HBox>
     </VBox>
 
 </VBox>

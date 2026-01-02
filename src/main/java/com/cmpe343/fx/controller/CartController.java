@@ -40,7 +40,7 @@ public class CartController {
     private Label totalLabel;
     @FXML
     private Button placeOrderButton;
-    
+
     // Header fields (from customer page)
     @FXML
     private Label welcomeLabel;
@@ -52,8 +52,6 @@ public class CartController {
     private Label resultInfoLabel;
     @FXML
     private Label cartCountBadge;
-    @FXML
-    private TextField searchField;
 
     private final CartDao cartDao = new CartDao();
     private final OrderDao orderDao = new OrderDao();
@@ -80,7 +78,7 @@ public class CartController {
                 resultInfoLabel.setText("Shopping Cart");
             }
         }
-        
+
         // Update cart badge
         updateCartBadge();
 
@@ -135,29 +133,30 @@ public class CartController {
 
     private void renderCartItems() {
         cartItemsContainer.getChildren().clear();
-        
+
         if (currentCartItems.isEmpty()) {
             // Empty cart message
             VBox emptyBox = new VBox(16);
             emptyBox.setAlignment(Pos.CENTER);
             emptyBox.setStyle("-fx-padding: 60 20;");
-            
+
             javafx.scene.shape.SVGPath cartIcon = new javafx.scene.shape.SVGPath();
-            cartIcon.setContent("M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.54-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z");
+            cartIcon.setContent(
+                    "M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.54-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z");
             cartIcon.setFill(javafx.scene.paint.Color.web("#64748b"));
             cartIcon.setScaleX(2.0);
             cartIcon.setScaleY(2.0);
-            
+
             Label emptyTitle = new Label("Your Cart is Empty");
             emptyTitle.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #e2e8f0;");
-            
+
             Label emptySub = new Label("Add products to start shopping");
             emptySub.setStyle("-fx-font-size: 14px; -fx-text-fill: #94a3b8;");
-            
+
             Button shopButton = new Button("Start Shopping");
             shopButton.getStyleClass().add("btn-primary");
             shopButton.setOnAction(e -> handleBack());
-            
+
             emptyBox.getChildren().addAll(cartIcon, emptyTitle, emptySub, shopButton);
             cartItemsContainer.getChildren().add(emptyBox);
         } else {
@@ -169,7 +168,7 @@ public class CartController {
         updatePlaceOrderButton();
         updateCartBadge();
     }
-    
+
     private void updateCartBadge() {
         if (cartCountBadge != null) {
             int count = currentCartItems.size();
@@ -219,69 +218,93 @@ public class CartController {
         StackPane imgContainer = new StackPane(imageNode);
         imgContainer.getStyleClass().add("cart-item-image-container");
 
-        // 2. Info
-        VBox info = new VBox(4);
-        info.setAlignment(Pos.CENTER_LEFT);
+        // 2. Name
         Label name = new Label(item.getProduct().getName());
         name.getStyleClass().add("detail-value");
-        name.setStyle("-fx-font-weight: bold; -fx-font-size: 15px;");
+        name.setStyle("-fx-font-weight: bold; -fx-font-size: 15px; -fx-min-width: 150;");
 
-        Label meta = new Label(item.getProduct().getType() + " • " + item.getUnitPrice() + " ₺/kg");
-        meta.getStyleClass().add("muted");
-        info.getChildren().addAll(name, meta);
+        // Spacer between name and quantity
+        Region spacer1 = new Region();
+        HBox.setHgrow(spacer1, Priority.ALWAYS);
 
-        // Spacer
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        // 3. Price & Quantity
-        VBox priceBox = new VBox(8);
-        priceBox.setAlignment(Pos.CENTER_RIGHT);
-
-        Label total = new Label(String.format("%.2f ₺", item.getLineTotal()));
-        total.setStyle("-fx-font-weight: bold; -fx-text-fill: white; -fx-font-size: 14px;");
-
-        if (item.hasDiscount()) {
-            Label discountBadge = new Label("10% OFF");
-            discountBadge.getStyleClass().addAll("badge", "badge-success");
-            discountBadge.setStyle("-fx-font-size: 10px; -fx-padding: 2 6;");
-            priceBox.getChildren().add(discountBadge);
-        }
-
-        // Quantity Controls
-        HBox qtyControls = new HBox(4);
-        qtyControls.setAlignment(Pos.CENTER);
-        qtyControls.getStyleClass().add("qty-controls");
-        qtyControls.setStyle("-fx-background-color: rgba(255,255,255,0.05); -fx-background-radius: 4; -fx-padding: 2;");
+        // 3. Quantity Input (Custom Design: - Input +)
+        HBox qtyBox = new HBox(4);
+        qtyBox.setAlignment(Pos.CENTER);
+        qtyBox.setStyle(
+                "-fx-background-color: rgba(30, 41, 59, 0.5); -fx-border-color: #334155; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 2;");
 
         Button minusBtn = new Button("-");
-        minusBtn.getStyleClass().addAll("btn-icon", "btn-sm"); // Assuming we might add btn-sm or just style inline
-        minusBtn.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 2 6; -fx-min-width: 24;");
+        minusBtn.setStyle(
+                "-fx-background-color: transparent; -fx-text-fill: #94a3b8; -fx-font-weight: bold; -fx-min-width: 28; -fx-cursor: hand;");
+        minusBtn.setOnAction(e -> handleUpdateQuantity(item, -0.5));
 
-        Label qtyLabel = new Label(String.format("%.1f", item.getQuantityKg()));
-        qtyLabel.setStyle("-fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 0 4;");
+        TextField qtyField = new TextField(String.format("%.1f", item.getQuantityKg()));
+        qtyField.setPrefWidth(50);
+        qtyField.setStyle(
+                "-fx-background-color: transparent; -fx-text-fill: white; -fx-alignment: center; -fx-padding: 0;");
+        qtyField.setOnAction(e -> {
+            try {
+                double val = Double.parseDouble(qtyField.getText());
+                double diff = val - item.getQuantityKg();
+                if (diff != 0)
+                    handleUpdateQuantity(item, diff);
+            } catch (NumberFormatException ex) {
+                qtyField.setText(String.format("%.1f", item.getQuantityKg()));
+            }
+        });
+        // Auto-select on focus
+        qtyField.focusedProperty().addListener((obs, o, n) -> {
+            if (!n) { // lost focus, update
+                try {
+                    double val = Double.parseDouble(qtyField.getText());
+                    double diff = val - item.getQuantityKg();
+                    if (diff != 0)
+                        handleUpdateQuantity(item, diff);
+                } catch (NumberFormatException ex) {
+                    qtyField.setText(String.format("%.1f", item.getQuantityKg()));
+                }
+            } else {
+                javafx.application.Platform.runLater(qtyField::selectAll);
+            }
+        });
 
         Button plusBtn = new Button("+");
-        plusBtn.getStyleClass().addAll("btn-icon", "btn-sm");
-        plusBtn.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 2 6; -fx-min-width: 24;");
-
-        minusBtn.setOnAction(e -> handleUpdateQuantity(item, -0.5));
+        plusBtn.setStyle(
+                "-fx-background-color: transparent; -fx-text-fill: #94a3b8; -fx-font-weight: bold; -fx-min-width: 28; -fx-cursor: hand;");
         plusBtn.setOnAction(e -> handleUpdateQuantity(item, 0.5));
 
-        qtyControls.getChildren().addAll(minusBtn, qtyLabel, plusBtn);
+        qtyBox.getChildren().addAll(minusBtn, qtyField, plusBtn);
 
-        priceBox.getChildren().addAll(total, qtyControls);
+        // 4. Unit Price
+        Label unitPrice = new Label(String.format("%.2f ₺/kg", item.getUnitPrice()));
+        unitPrice.setStyle(
+                "-fx-text-fill: #94a3b8; -fx-font-size: 13px; -fx-min-width: 80; -fx-alignment: center-right;");
 
-        // 4. Remove Button
+        // 5. Total Price
+        VBox priceCol = new VBox(2);
+        priceCol.setAlignment(Pos.CENTER_RIGHT);
+        priceCol.setMinWidth(100);
+
+        Label total = new Label(String.format("%.2f ₺", item.getLineTotal()));
+        total.setStyle("-fx-font-weight: bold; -fx-text-fill: #10b981; -fx-font-size: 16px;");
+
+        priceCol.getChildren().add(total);
+        if (item.hasDiscount()) {
+            Label badge = new Label("10% OFF");
+            badge.setStyle(
+                    "-fx-background-color: rgba(16, 185, 129, 0.2); -fx-text-fill: #34d399; -fx-font-size: 10px; -fx-padding: 2 6; -fx-background-radius: 4;");
+            priceCol.getChildren().add(badge);
+        }
+
+        // 6. Remove Button
         Button removeBtn = new Button();
         javafx.scene.shape.SVGPath trashIcon = new javafx.scene.shape.SVGPath();
         trashIcon.setContent("M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z");
-        trashIcon.setFill(javafx.scene.paint.Color.web("#f87171"));
+        trashIcon.setFill(javafx.scene.paint.Color.web("#ef4444"));
+        trashIcon.setScaleX(0.9);
+        trashIcon.setScaleY(0.9);
         removeBtn.setGraphic(trashIcon);
-
-        removeBtn.getStyleClass().add("btn-outline");
-        removeBtn.setStyle("-fx-border-color: #ef4444; -fx-padding: 6 10;");
-
+        removeBtn.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-padding: 8;");
         removeBtn.setOnAction(e -> {
             cartDao.remove(Session.getUser().getId(), item.getProduct().getId());
             currentCartItems.remove(item);
@@ -290,7 +313,7 @@ public class CartController {
                     ToastService.Position.BOTTOM_CENTER, Duration.seconds(1));
         });
 
-        row.getChildren().addAll(imgContainer, info, spacer, priceBox, removeBtn);
+        row.getChildren().addAll(imgContainer, name, spacer1, qtyBox, unitPrice, priceCol, removeBtn);
         return row;
     }
 
@@ -308,7 +331,8 @@ public class CartController {
 
         // Check Stock
         if (newQty > item.getProduct().getStockKg()) {
-            ToastService.show(cartItemsContainer.getScene(), "Maximum stock amount: " + item.getProduct().getStockKg() + " kg",
+            ToastService.show(cartItemsContainer.getScene(),
+                    "Maximum stock amount: " + item.getProduct().getStockKg() + " kg",
                     ToastService.Type.WARNING,
                     ToastService.Position.BOTTOM_CENTER, Duration.seconds(2));
             return;
@@ -350,7 +374,8 @@ public class CartController {
 
         // Validate Date (Reused logic, simplified)
         if (deliveryDatePicker.getValue() == null || deliveryTimeField.getText().isBlank()) {
-            ToastService.show(cartItemsContainer.getScene(), "Please enter delivery date and time.", ToastService.Type.ERROR,
+            ToastService.show(cartItemsContainer.getScene(), "Please enter delivery date and time.",
+                    ToastService.Type.ERROR,
                     ToastService.Position.BOTTOM_CENTER, Duration.seconds(2));
             return;
         }
@@ -378,7 +403,8 @@ public class CartController {
             currentCartItems.clear();
             renderCartItems();
 
-            ToastService.show(cartItemsContainer.getScene(), "Order placed successfully! #" + orderId, ToastService.Type.SUCCESS,
+            ToastService.show(cartItemsContainer.getScene(), "Order placed successfully! #" + orderId,
+                    ToastService.Type.SUCCESS,
                     ToastService.Position.BOTTOM_CENTER, Duration.seconds(3));
 
         } catch (Exception e) {
@@ -408,14 +434,7 @@ public class CartController {
             e.printStackTrace();
         }
     }
-    
-    @FXML
-    private void handleClearSearch() {
-        if (searchField != null) {
-            searchField.clear();
-        }
-    }
-    
+
     @FXML
     private void handleLogout() {
         Session.clear();
@@ -425,6 +444,22 @@ public class CartController {
             Scene scene = new Scene(loader.load(), 1200, 800);
             stage.setScene(scene);
             stage.setTitle("Gr7Project3 - Login");
+            stage.centerOnScreen();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @FXML
+    private void handleOpenOrders() {
+        try {
+            Stage stage = (Stage) cartItemsContainer.getScene().getWindow();
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/orders.fxml"));
+            Scene scene = new Scene(loader.load(), 1200, 800);
+            if (stage.getScene() != null) {
+                scene.getStylesheets().addAll(stage.getScene().getStylesheets());
+            }
+            stage.setScene(scene);
             stage.centerOnScreen();
         } catch (Exception e) {
             e.printStackTrace();

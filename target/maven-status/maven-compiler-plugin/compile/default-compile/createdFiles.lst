@@ -8,6 +8,7 @@ com/cmpe343/model/Coupon.class
 com/cmpe343/model/Product.class
 com/cmpe343/model/Rating.class
 com/cmpe343/model/Order$OrderStatus.class
+com/cmpe343/fx/controller/OrdersController.class
 com/cmpe343/dao/MessageDao$Conversation.class
 com/cmpe343/fx/util/ToastService.class
 com/cmpe343/dao/MessageDao.class
@@ -33,4 +34,5 @@ com/cmpe343/dao/CartDao.class
 com/cmpe343/model/Order.class
 com/cmpe343/fx/controller/CartController.class
 com/cmpe343/dao/CartDao$CartLoadResult.class
+com/cmpe343/fx/controller/RegisterController.class
 com/cmpe343/fx/Session.class

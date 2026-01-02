@@ -3,6 +3,7 @@
 /home/emirfurqan/CMPE343-OOP-Project3-Group7/src/main/java/com/cmpe343/dao/CouponDao.java
 /home/emirfurqan/CMPE343-OOP-Project3-Group7/src/main/java/com/cmpe343/dao/CartDao.java
 /home/emirfurqan/CMPE343-OOP-Project3-Group7/src/main/java/com/cmpe343/dao/ProductDao.java
+/home/emirfurqan/CMPE343-OOP-Project3-Group7/src/main/java/com/cmpe343/fx/controller/OrdersController.java
 /home/emirfurqan/CMPE343-OOP-Project3-Group7/src/main/java/com/cmpe343/dao/RatingDao.java
 /home/emirfurqan/CMPE343-OOP-Project3-Group7/src/main/java/com/cmpe343/model/Order.java
 /home/emirfurqan/CMPE343-OOP-Project3-Group7/src/main/java/com/cmpe343/service/AuthService.java
