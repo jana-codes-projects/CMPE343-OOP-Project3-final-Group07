@@ -654,8 +654,14 @@ public class OrderDao {
                     
                     // Calculate months since first order
                     long daysSinceFirst = (System.currentTimeMillis() - firstOrderDate.getTime()) / (1000L * 60 * 60 * 24);
-                    double months = daysSinceFirst / 30.0;
-                    double ordersPerMonth = orderCount / Math.max(months, 0.1); // Avoid division by zero
+                    
+                    // Handle same-day orders: treat as at least 1 month to avoid inflated metrics
+                    if (daysSinceFirst == 0) {
+                        daysSinceFirst = 30; // Treat as 1 month minimum
+                    }
+                    
+                    double months = Math.max(daysSinceFirst / 30.0, 1.0); // At least 1 month to avoid division issues
+                    double ordersPerMonth = orderCount / months;
                     
                     // Determine discount based on tier
                     if (ordersPerMonth >= 4.0 || orderCount >= 20) {

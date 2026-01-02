@@ -178,16 +178,20 @@ public class MessageDao {
      * @return The created message ID, or -1 if creation fails
      */
     public int createMessage(int customerId, int ownerId, int senderId, String text) {
+        // Note: sender_id column doesn't exist in schema
+        // Schema only supports: customer messages (text_clob) and owner replies (reply_text)
+        // If senderId == ownerId, we need to use reply_text on existing message
+        // For now, only support customer messages (senderId == customerId)
+        // Owner messages should use replyToMessage() instead
         String sql = """
-            INSERT INTO messages (customer_id, owner_id, sender_id, text_clob)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO messages (customer_id, owner_id, text_clob)
+            VALUES (?, ?, ?)
         """;
         try (Connection c = Db.getConnection();
                 PreparedStatement ps = c.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)) {
             ps.setInt(1, customerId);
             ps.setInt(2, ownerId);
-            ps.setInt(3, senderId);
-            ps.setString(4, text);
+            ps.setString(3, text);
             ps.executeUpdate();
             try (ResultSet rs = ps.getGeneratedKeys()) {
                 if (rs.next()) {
@@ -340,7 +344,7 @@ public class MessageDao {
                     SELECT m.customer_id, u.username,
                            MAX(m.created_at) as last_time,
                            (SELECT text_clob FROM messages m2 WHERE m2.customer_id = m.customer_id ORDER BY m2.created_at DESC LIMIT 1) as last_msg,
-                           SUM(CASE WHEN m.replied_at IS NULL AND m.sender_id != ? THEN 1 ELSE 0 END) as unread_count
+                           SUM(CASE WHEN m.replied_at IS NULL THEN 1 ELSE 0 END) as unread_count
                     FROM messages m
                     JOIN users u ON m.customer_id = u.id
                     WHERE m.owner_id = ?
@@ -351,7 +355,6 @@ public class MessageDao {
         try (Connection c = Db.getConnection();
                 PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, ownerId);
-            ps.setInt(2, ownerId);
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -383,9 +386,9 @@ public class MessageDao {
         String sql = """
                     SELECT m.id, u.username as sender, m.text_clob as content,
                            m.created_at, (m.replied_at IS NOT NULL) as is_read,
-                           m.reply_text, m.replied_at, m.customer_id, m.sender_id
+                           m.reply_text, m.replied_at, m.customer_id
                     FROM messages m
-                    LEFT JOIN users u ON m.sender_id = u.id
+                    JOIN users u ON m.customer_id = u.id
                     WHERE m.customer_id = ? AND m.owner_id = ?
                     ORDER BY m.created_at ASC
                 """;
@@ -400,16 +403,9 @@ public class MessageDao {
                     java.sql.Timestamp timestamp = rs.getTimestamp("created_at");
                     LocalDateTime messageTime = timestamp != null ? timestamp.toLocalDateTime() : LocalDateTime.now();
 
-                    int senderId = rs.getInt("sender_id");
-                    boolean hasSenderId = !rs.wasNull();
-                    boolean isFromOwner = hasSenderId && (senderId == ownerId);
-
-                    // Legacy fallback: if senderId is null, assume customer sent it
-                    if (!hasSenderId) {
-                        senderId = rs.getInt("customer_id");
-                    }
-
-                    String senderName = isFromOwner ? "Owner" : (rs.getString("sender") != null ? rs.getString("sender") : "Customer");
+                    // Customer message (since sender_id doesn't exist, all rows are customer messages)
+                    int senderId = rs.getInt("customer_id");
+                    String senderName = rs.getString("sender");
 
                     Message msg = new Message(
                             rs.getInt("id"),
@@ -421,7 +417,7 @@ public class MessageDao {
 
                     list.add(msg);
 
-                    // Handle legacy reply_text (if reply_text exists, add it as a separate message)
+                    // Handle owner reply (reply_text exists, add it as a separate message)
                     String reply = rs.getString("reply_text");
                     if (reply != null && !reply.isEmpty()) {
                         java.sql.Timestamp repliedAt = rs.getTimestamp("replied_at");

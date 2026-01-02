@@ -142,10 +142,10 @@ public class CartController {
         // Reuse the ProductDao instance instead of creating a new one for each cart item
         try {
             javafx.scene.image.Image image = null;
-            //byte[] imageBytes = productDao.getProductImageBlob(item.getProduct().getId());
-//            if (imageBytes != null) {
-//                image = new javafx.scene.image.Image(new java.io.ByteArrayInputStream(imageBytes));
-//            }
+            byte[] imageBytes = productDao.getProductImageBlob(item.getProduct().getId());
+            if (imageBytes != null && imageBytes.length > 0) {
+                image = new javafx.scene.image.Image(new java.io.ByteArrayInputStream(imageBytes));
+            }
             
             if (image != null) {
                 javafx.scene.image.ImageView iv = new javafx.scene.image.ImageView(image);
