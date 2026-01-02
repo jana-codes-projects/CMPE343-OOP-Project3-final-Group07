@@ -593,11 +593,15 @@ public class OwnerController {
         ordersListContainer.getChildren().clear();
         orderDetailContainer.getChildren().clear();
 
+        // Preserve the currently selected order ID before clearing
+        Integer selectedOrderId = selectedOrder != null ? selectedOrder.getId() : null;
+
         List<Order> orders = orderDAO.getAllOrders();
         if (orders.isEmpty()) {
             ordersListContainer.getChildren().add(createPlaceholder("No orders found."));
             if (ordersCountLabel != null)
                 ordersCountLabel.setText("All Orders (0)");
+            selectedOrder = null;
             return;
         }
 
@@ -605,6 +609,7 @@ public class OwnerController {
             ordersCountLabel.setText("All Orders (" + orders.size() + ")");
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("MMM dd HH:mm");
 
+        Order orderToSelect = null;
         for (Order o : orders) {
             HBox item = createListItemBase();
             item.setUserData(o.getId());
@@ -619,92 +624,248 @@ public class OwnerController {
                 case ASSIGNED -> "badge-warning";
                 case DELIVERED -> "badge-success";
                 case CANCELLED -> "badge-danger";
-                default -> "badge-neutral";
+                default -> "badge-secondary";
             };
             status.getStyleClass().addAll("badge", badgeClass);
             status.setPrefWidth(100);
 
             Label date = new Label(o.getOrderTime().format(fmt));
             date.getStyleClass().add("muted");
-            date.setPrefWidth(120);
 
             Region spacer = new Region();
             HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
 
             Label total = new Label(formatPrice(o.getTotalAfterTax()));
             total.getStyleClass().add("detail-value");
-            total.setStyle("-fx-font-weight: bold;");
 
             item.getChildren().addAll(id, status, date, spacer, total);
-            item.setOnMouseClicked(e -> showOrderDetail(o));
+            // Fix lambda capture: create final copy to avoid capturing loop variable by
+            // reference
+            final Order finalOrder = o;
+            item.setOnMouseClicked(e -> showOrderDetail(finalOrder));
             ordersListContainer.getChildren().add(item);
+
+            // Check if this is the previously selected order
+            if (selectedOrderId != null && o.getId() == selectedOrderId) {
+                orderToSelect = o;
+            }
+        }
+
+        // Restore the detail view if the order still exists
+        if (orderToSelect != null) {
+            showOrderDetail(orderToSelect);
+        } else {
+            selectedOrder = null;
         }
     }
 
     private void showOrderDetail(Order order) {
+        selectedOrder = order;
         orderDetailContainer.getChildren().clear();
-        VBox card = new VBox(16);
-        card.getStyleClass().addAll("detail-card", "card");
-        card.setStyle("-fx-padding: 24;");
+        VBox card = new VBox(10);
+        card.getStyleClass().add("detail-card");
 
         Label title = new Label("Order #" + order.getId());
         title.getStyleClass().add("detail-header");
-        title.setStyle("-fx-font-size: 20px; -fx-font-weight: 800; -fx-text-fill: white; -fx-padding: 0 0 8 0;");
 
-        Separator separator = new Separator();
-        separator.setStyle("-fx-opacity: 0.1; -fx-padding: 8 0;");
+        card.getChildren().add(title);
 
-        VBox meta = new VBox(10);
-        String statusBadge = switch (order.getStatus()) {
-            case CREATED -> "🔵 Created";
-            case ASSIGNED -> "🟡 Assigned";
-            case DELIVERED -> "✅ Delivered";
-            case CANCELLED -> "❌ Cancelled";
-            default -> order.getStatus().name();
-        };
-        meta.getChildren().addAll(
-                createDetailRow("Status", statusBadge),
-                createDetailRow("Total", formatPrice(order.getTotalAfterTax())),
-                createDetailRow("Date", order.getOrderTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))));
+        // Order Basic Info
+        VBox orderInfo = new VBox(5);
+        orderInfo.getChildren().add(createDetailRow("Status", order.getStatus().name()));
+        orderInfo.getChildren().add(createDetailRow("Total", formatPrice(order.getTotalAfterTax())));
+        orderInfo.getChildren().add(createDetailRow("Subtotal", formatPrice(order.getTotalBeforeTax())));
+        orderInfo.getChildren().add(createDetailRow("VAT (20%)", formatPrice(order.getVat())));
+        orderInfo.getChildren().add(createDetailRow("Order Date",
+                order.getOrderTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))));
+        if (order.getRequestedDeliveryTime() != null) {
+            orderInfo.getChildren().add(createDetailRow("Requested Delivery",
+                    order.getRequestedDeliveryTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))));
+        }
+        if (order.getDeliveredTime() != null) {
+            orderInfo.getChildren().add(createDetailRow("Delivered",
+                    order.getDeliveredTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))));
+        }
+        card.getChildren().add(orderInfo);
 
-        if (order.getItems() != null && !order.getItems().isEmpty()) {
-            Separator itemsSeparator = new Separator();
-            itemsSeparator.setStyle("-fx-opacity: 0.1; -fx-padding: 12 0;");
+        // Customer Information
+        try {
+            User customer = userDAO.getUserById(order.getCustomerId());
+            if (customer != null) {
+                Separator sep1 = new Separator();
+                sep1.setStyle("-fx-opacity: 0.3; -fx-padding: 10 0;");
+                card.getChildren().add(sep1);
 
-            Label itemsHeader = new Label("Order Items");
-            itemsHeader.getStyleClass().add("h3");
-            itemsHeader
-                    .setStyle("-fx-font-size: 16px; -fx-font-weight: 700; -fx-text-fill: white; -fx-padding: 8 0 8 0;");
+                Label customerHeader = new Label("Customer Information");
+                customerHeader.getStyleClass().add("field-label");
+                customerHeader.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+                card.getChildren().add(customerHeader);
 
-            VBox itemsBox = new VBox(8);
-            itemsBox.setStyle("-fx-padding: 8 0;");
-            for (CartItem ci : order.getItems()) {
-                String pName = ci.getProduct() != null ? ci.getProduct().getName() : "Product";
-                HBox itemRow = new HBox(12);
-                itemRow.setAlignment(Pos.CENTER_LEFT);
-
-                Label itemLabel = new Label(String.format("• %s", pName));
-                itemLabel.getStyleClass().add("detail-value");
-                itemLabel.setStyle("-fx-font-weight: 500;");
-
-                Label qtyLabel = new Label(String.format("%.1f kg", ci.getQuantityKg()));
-                qtyLabel.getStyleClass().add("muted");
-
-                Region spacer = new Region();
-                HBox.setHgrow(spacer, Priority.ALWAYS);
-
-                Label priceLabel = new Label(formatPrice(ci.getLineTotal()));
-                priceLabel.getStyleClass().add("detail-value");
-                priceLabel.setStyle("-fx-font-weight: 600;");
-
-                itemRow.getChildren().addAll(itemLabel, qtyLabel, spacer, priceLabel);
-                itemsBox.getChildren().add(itemRow);
+                VBox customerInfo = new VBox(5);
+                customerInfo.getChildren().add(createDetailRow("Name", customer.getUsername()));
+                if (customer.getPhone() != null && !customer.getPhone().isEmpty()) {
+                    customerInfo.getChildren().add(createDetailRow("Phone", customer.getPhone()));
+                }
+                if (customer.getAddress() != null && !customer.getAddress().isEmpty()) {
+                    customerInfo.getChildren().add(createDetailRow("Address", customer.getAddress()));
+                }
+                card.getChildren().add(customerInfo);
             }
-            meta.getChildren().addAll(itemsSeparator, itemsHeader, itemsBox);
+        } catch (Exception e) {
+            System.err.println("Error loading customer info: " + e.getMessage());
         }
 
-        card.getChildren().addAll(title, separator, meta);
+        // Carrier Information (if assigned)
+        if (order.getCarrierId() != null) {
+            try {
+                User carrier = userDAO.getUserById(order.getCarrierId());
+                if (carrier != null) {
+                    Separator sep2 = new Separator();
+                    sep2.setStyle("-fx-opacity: 0.3; -fx-padding: 10 0;");
+                    card.getChildren().add(sep2);
+
+                    Label carrierHeader = new Label("Carrier Information");
+                    carrierHeader.getStyleClass().add("field-label");
+                    carrierHeader.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+                    card.getChildren().add(carrierHeader);
+
+                    VBox carrierInfo = new VBox(5);
+                    carrierInfo.getChildren().add(createDetailRow("Name", carrier.getUsername()));
+                    if (carrier.getPhone() != null && !carrier.getPhone().isEmpty()) {
+                        carrierInfo.getChildren().add(createDetailRow("Phone", carrier.getPhone()));
+                    }
+                    card.getChildren().add(carrierInfo);
+                }
+            } catch (Exception e) {
+                System.err.println("Error loading carrier info: " + e.getMessage());
+            }
+        }
+
+        // Order Items with Product Details
+        if (order.getItems() == null) {
+            // Load items if not already loaded
+            try {
+                order.setItems(orderDAO.getOrderItems(order.getId()));
+                // Recursive call to refresh with items - but only if items was null
+                showOrderDetail(order);
+                return;
+            } catch (Exception e) {
+                System.err.println("Error loading order items: " + e.getMessage());
+            }
+        }
+
+        // Display items if they exist (even if empty list)
+        if (order.getItems() != null && !order.getItems().isEmpty()) {
+            Separator sep3 = new Separator();
+            sep3.setStyle("-fx-opacity: 0.3; -fx-padding: 10 0;");
+            card.getChildren().add(sep3);
+
+            Label itemsHeader = new Label("Order Items");
+            itemsHeader.getStyleClass().add("field-label");
+            itemsHeader.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+            card.getChildren().add(itemsHeader);
+
+            VBox itemsContainer = new VBox(8);
+            for (CartItem item : order.getItems()) {
+                VBox itemCard = new VBox(5);
+                itemCard.setStyle(
+                        "-fx-background-color: rgba(30, 41, 59, 0.5); -fx-background-radius: 4; -fx-padding: 10;");
+
+                Label productName = new Label(item.getProduct().getName());
+                productName.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
+
+                HBox itemDetails = new HBox(15);
+                itemDetails.getChildren().add(new Label("Type: " + item.getProduct().getType().name()));
+                itemDetails.getChildren().add(new Label("Quantity: " + String.format("%.2f kg", item.getQuantityKg())));
+                itemDetails.getChildren().add(new Label("Unit Price: " + formatPrice(item.getUnitPrice())));
+
+                Label lineTotal = new Label("Line Total: " + formatPrice(item.getLineTotal()));
+                lineTotal.setStyle("-fx-font-weight: bold;");
+
+                itemCard.getChildren().addAll(productName, itemDetails, lineTotal);
+                itemsContainer.getChildren().add(itemCard);
+            }
+            card.getChildren().add(itemsContainer);
+        } else if (order.getItems() != null && order.getItems().isEmpty()) {
+            // Items were loaded but order has no items
+            Separator sep3 = new Separator();
+            sep3.setStyle("-fx-opacity: 0.3; -fx-padding: 10 0;");
+            card.getChildren().add(sep3);
+
+            Label itemsHeader = new Label("Order Items");
+            itemsHeader.getStyleClass().add("field-label");
+            itemsHeader.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+            card.getChildren().add(itemsHeader);
+
+            Label noItemsLabel = new Label("This order has no items.");
+            noItemsLabel.getStyleClass().add("muted");
+            card.getChildren().add(noItemsLabel);
+        }
+
+        // Add cancel button for CREATED and ASSIGNED orders
+        if (order.getStatus() == OrderStatus.CREATED || order.getStatus() == OrderStatus.ASSIGNED) {
+            Separator actionSep = new Separator();
+            actionSep.setStyle("-fx-opacity: 0.3; -fx-padding: 10 0;");
+            card.getChildren().add(actionSep);
+
+            HBox actionsBox = new HBox(10);
+            actionsBox.setAlignment(Pos.CENTER_LEFT);
+
+            Button cancelBtn = new Button("Cancel Order");
+            cancelBtn.getStyleClass().add("btn-danger");
+            cancelBtn.setStyle(
+                    "-fx-background-color: #ef4444; -fx-text-fill: white; -fx-padding: 8 16; -fx-background-radius: 4;");
+            cancelBtn.setOnAction(e -> handleCancelOrder(order));
+            actionsBox.getChildren().add(cancelBtn);
+
+            card.getChildren().add(actionsBox);
+        }
+
         orderDetailContainer.getChildren().add(card);
+    }
+
+    private void handleCancelOrder(Order order) {
+        Alert confirmDialog = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmDialog.setTitle("Cancel Order");
+        confirmDialog.setHeaderText("Cancel Order #" + order.getId() + "?");
+        confirmDialog.setContentText(
+                "Are you sure you want to cancel this order? The products will be restocked and the customer will receive a refund.");
+
+        java.util.Optional<ButtonType> result = confirmDialog.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            try {
+                boolean cancelled = orderDAO.cancelOrder(order.getId());
+
+                if (cancelled) {
+                    com.cmpe343.fx.util.ToastService.show(logoutButton.getScene(),
+                            "Order cancelled successfully. Products have been restocked.",
+                            com.cmpe343.fx.util.ToastService.Type.SUCCESS,
+                            com.cmpe343.fx.util.ToastService.Position.BOTTOM_CENTER,
+                            javafx.util.Duration.seconds(3));
+                    // Refresh the orders list and detail
+                    loadOrders();
+                } else {
+                    com.cmpe343.fx.util.ToastService.show(logoutButton.getScene(),
+                            "Failed to cancel order",
+                            com.cmpe343.fx.util.ToastService.Type.ERROR,
+                            com.cmpe343.fx.util.ToastService.Position.BOTTOM_CENTER,
+                            javafx.util.Duration.seconds(3));
+                }
+            } catch (RuntimeException e) {
+                com.cmpe343.fx.util.ToastService.show(logoutButton.getScene(),
+                        "Error: " + e.getMessage(),
+                        com.cmpe343.fx.util.ToastService.Type.ERROR,
+                        com.cmpe343.fx.util.ToastService.Position.BOTTOM_CENTER,
+                        javafx.util.Duration.seconds(3));
+            } catch (Exception e) {
+                e.printStackTrace();
+                com.cmpe343.fx.util.ToastService.show(logoutButton.getScene(),
+                        "Failed to cancel order: " + e.getMessage(),
+                        com.cmpe343.fx.util.ToastService.Type.ERROR,
+                        com.cmpe343.fx.util.ToastService.Position.BOTTOM_CENTER,
+                        javafx.util.Duration.seconds(3));
+            }
+        }
     }
 
     // Helper method defining list item style
