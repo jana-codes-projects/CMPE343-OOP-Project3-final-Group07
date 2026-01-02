@@ -22,12 +22,9 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 public class OwnerController {
     @FXML
@@ -339,18 +336,18 @@ public class OwnerController {
             default -> order.getStatus().name();
         };
         meta.getChildren().addAll(
-            createDetailRow("Status", statusBadge),
-            createDetailRow("Total", formatPrice(order.getTotalAfterTax())),
-            createDetailRow("Date", order.getOrderTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")))
-        );
+                createDetailRow("Status", statusBadge),
+                createDetailRow("Total", formatPrice(order.getTotalAfterTax())),
+                createDetailRow("Date", order.getOrderTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))));
 
         if (order.getItems() != null && !order.getItems().isEmpty()) {
             Separator itemsSeparator = new Separator();
             itemsSeparator.setStyle("-fx-opacity: 0.1; -fx-padding: 12 0;");
-            
+
             Label itemsHeader = new Label("Order Items");
             itemsHeader.getStyleClass().add("h3");
-            itemsHeader.setStyle("-fx-font-size: 16px; -fx-font-weight: 700; -fx-text-fill: white; -fx-padding: 8 0 8 0;");
+            itemsHeader
+                    .setStyle("-fx-font-size: 16px; -fx-font-weight: 700; -fx-text-fill: white; -fx-padding: 8 0 8 0;");
 
             VBox itemsBox = new VBox(8);
             itemsBox.setStyle("-fx-padding: 8 0;");
@@ -358,21 +355,21 @@ public class OwnerController {
                 String pName = ci.getProduct() != null ? ci.getProduct().getName() : "Product";
                 HBox itemRow = new HBox(12);
                 itemRow.setAlignment(Pos.CENTER_LEFT);
-                
+
                 Label itemLabel = new Label(String.format("• %s", pName));
                 itemLabel.getStyleClass().add("detail-value");
                 itemLabel.setStyle("-fx-font-weight: 500;");
-                
+
                 Label qtyLabel = new Label(String.format("%.1f kg", ci.getQuantityKg()));
                 qtyLabel.getStyleClass().add("muted");
-                
+
                 Region spacer = new Region();
                 HBox.setHgrow(spacer, Priority.ALWAYS);
-                
+
                 Label priceLabel = new Label(formatPrice(ci.getLineTotal()));
                 priceLabel.getStyleClass().add("detail-value");
                 priceLabel.setStyle("-fx-font-weight: 600;");
-                
+
                 itemRow.getChildren().addAll(itemLabel, qtyLabel, spacer, priceLabel);
                 itemsBox.getChildren().add(itemRow);
             }
@@ -387,17 +384,20 @@ public class OwnerController {
     private HBox createListItemBase() {
         HBox item = new HBox(12);
         item.getStyleClass().addAll("list-item-base", "card");
-        item.setStyle("-fx-padding: 14 18; -fx-cursor: hand; -fx-alignment: center-left; -fx-background-radius: 10; -fx-border-radius: 10;");
+        item.setStyle(
+                "-fx-padding: 14 18; -fx-cursor: hand; -fx-alignment: center-left; -fx-background-radius: 10; -fx-border-radius: 10;");
         item.setPrefWidth(Double.MAX_VALUE);
 
         item.setOnMouseEntered(e -> {
             if (item.getProperties().get("selected") == null) {
-                item.setStyle("-fx-background-color: rgba(99, 102, 241, 0.2); -fx-padding: 14 18; -fx-cursor: hand; -fx-background-radius: 10; -fx-border-radius: 10; -fx-border-color: #6366f1; -fx-alignment: center-left; -fx-translate-x: 4;");
+                item.setStyle(
+                        "-fx-background-color: rgba(99, 102, 241, 0.2); -fx-padding: 14 18; -fx-cursor: hand; -fx-background-radius: 10; -fx-border-radius: 10; -fx-border-color: #6366f1; -fx-alignment: center-left; -fx-translate-x: 4;");
             }
         });
         item.setOnMouseExited(e -> {
             if (item.getProperties().get("selected") == null) {
-                item.setStyle("-fx-padding: 14 18; -fx-cursor: hand; -fx-background-radius: 10; -fx-border-radius: 10; -fx-alignment: center-left; -fx-translate-x: 0;");
+                item.setStyle(
+                        "-fx-padding: 14 18; -fx-cursor: hand; -fx-background-radius: 10; -fx-border-radius: 10; -fx-alignment: center-left; -fx-translate-x: 0;");
             }
         });
         return item;
@@ -491,23 +491,25 @@ public class OwnerController {
 
         // Header
         HBox header = new HBox(12);
-        header.setStyle("-fx-padding: 16; -fx-background-color: rgba(30, 41, 59, 0.8); -fx-border-color: rgba(255,255,255,0.1); -fx-border-width: 0 0 1 0;");
+        header.setStyle(
+                "-fx-padding: 16; -fx-background-color: rgba(30, 41, 59, 0.8); -fx-border-color: rgba(255,255,255,0.1); -fx-border-width: 0 0 1 0;");
         header.setAlignment(Pos.CENTER_LEFT);
-        
+
         // Avatar
         StackPane avatar = new StackPane();
-        avatar.setStyle("-fx-background-color: #6366f1; -fx-background-radius: 50%; -fx-min-width: 40; -fx-min-height: 40; -fx-max-width: 40; -fx-max-height: 40;");
+        avatar.setStyle(
+                "-fx-background-color: #6366f1; -fx-background-radius: 50%; -fx-min-width: 40; -fx-min-height: 40; -fx-max-width: 40; -fx-max-height: 40;");
         Label avatarLetter = new Label(conv.getUsername().substring(0, 1).toUpperCase());
         avatarLetter.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 16px;");
         avatar.getChildren().add(avatarLetter);
-        
+
         VBox headerInfo = new VBox(2);
         Label headerLbl = new Label(conv.getUsername());
         headerLbl.setStyle("-fx-font-size: 16px; -fx-font-weight: 700; -fx-text-fill: #f8fafc;");
         Label statusLbl = new Label("Online");
         statusLbl.setStyle("-fx-font-size: 12px; -fx-text-fill: #10b981;");
         headerInfo.getChildren().addAll(headerLbl, statusLbl);
-        
+
         header.getChildren().addAll(avatar, headerInfo);
 
         chatView.getChildren().add(header);
@@ -526,6 +528,11 @@ public class OwnerController {
         for (Message m : messages) {
             // NEW LOGIC: use senderId to detect if it's ME (Owner).
             boolean isOwnerMsg = (m.getSenderId() == ownerId);
+
+            // If incoming message and not read, mark it!
+            if (!isOwnerMsg && !m.isRead()) {
+                messageDAO.markAsRead(m.getId());
+            }
 
             msgsBox.getChildren().add(createChatBubble(m.getSender(), m.getContent(), m.getTimestamp(), isOwnerMsg));
 
@@ -554,19 +561,24 @@ public class OwnerController {
         Message lastMsg = messages.isEmpty() ? null : messages.get(messages.size() - 1);
 
         HBox inputArea = new HBox(10);
-        inputArea.setStyle("-fx-padding: 16; -fx-background-color: rgba(30, 41, 59, 0.8); -fx-border-color: rgba(255,255,255,0.1); -fx-border-width: 1 0 0 0;");
+        inputArea.setStyle(
+                "-fx-padding: 16; -fx-background-color: rgba(30, 41, 59, 0.8); -fx-border-color: rgba(255,255,255,0.1); -fx-border-width: 1 0 0 0;");
         inputArea.setAlignment(Pos.CENTER_LEFT);
 
         TextField replyField = new TextField();
         replyField.setPromptText("Type a message...");
-        replyField.setStyle("-fx-background-color: rgba(15, 23, 42, 0.8); -fx-background-radius: 20; -fx-border-color: rgba(255,255,255,0.1); -fx-border-radius: 20; -fx-text-fill: white; -fx-prompt-text-fill: #64748b; -fx-padding: 10 16;");
+        replyField.setStyle(
+                "-fx-background-color: rgba(15, 23, 42, 0.8); -fx-background-radius: 20; -fx-border-color: rgba(255,255,255,0.1); -fx-border-radius: 20; -fx-text-fill: white; -fx-prompt-text-fill: #64748b; -fx-padding: 10 16;");
         HBox.setHgrow(replyField, Priority.ALWAYS);
 
         Button sendBtn = new Button("Send");
         sendBtn.getStyleClass().add("btn-primary");
-        sendBtn.setStyle("-fx-background-color: #6366f1; -fx-background-radius: 20; -fx-text-fill: white; -fx-font-weight: 600; -fx-padding: 10 24; -fx-cursor: hand;");
-        sendBtn.setOnMouseEntered(e -> sendBtn.setStyle("-fx-background-color: #4f46e5; -fx-background-radius: 20; -fx-text-fill: white; -fx-font-weight: 600; -fx-padding: 10 24; -fx-cursor: hand;"));
-        sendBtn.setOnMouseExited(e -> sendBtn.setStyle("-fx-background-color: #6366f1; -fx-background-radius: 20; -fx-text-fill: white; -fx-font-weight: 600; -fx-padding: 10 24; -fx-cursor: hand;"));
+        sendBtn.setStyle(
+                "-fx-background-color: #6366f1; -fx-background-radius: 20; -fx-text-fill: white; -fx-font-weight: 600; -fx-padding: 10 24; -fx-cursor: hand;");
+        sendBtn.setOnMouseEntered(e -> sendBtn.setStyle(
+                "-fx-background-color: #4f46e5; -fx-background-radius: 20; -fx-text-fill: white; -fx-font-weight: 600; -fx-padding: 10 24; -fx-cursor: hand;"));
+        sendBtn.setOnMouseExited(e -> sendBtn.setStyle(
+                "-fx-background-color: #6366f1; -fx-background-radius: 20; -fx-text-fill: white; -fx-font-weight: 600; -fx-padding: 10 24; -fx-cursor: hand;"));
 
         // Bind Enter key
         replyField.setOnAction(e -> sendBtn.fire());
@@ -608,31 +620,33 @@ public class OwnerController {
     private Node createChatBubble(String sender, String text, LocalDateTime time, boolean isOwner) {
         VBox bubble = new VBox(6);
         bubble.setMaxWidth(400);
-        bubble.setStyle("-fx-padding: 12 16; -fx-background-radius: 18;");
-        
+
         if (isOwner) {
             // Sent message (Owner) - Blue
-            bubble.setStyle("-fx-padding: 12 16; -fx-background-radius: 18; -fx-background-color: #6366f1;");
+            bubble.setStyle("-fx-padding: 12 16; -fx-background-radius: 18 18 2 18; -fx-background-color: #6366f1;");
         } else {
             // Received message (Customer) - Dark gray
-            bubble.setStyle("-fx-padding: 12 16; -fx-background-radius: 18; -fx-background-color: rgba(30, 41, 59, 0.8); -fx-border-color: rgba(255,255,255,0.1); -fx-border-width: 1;");
+            bubble.setStyle(
+                    "-fx-padding: 12 16; -fx-background-radius: 18 18 18 2; -fx-background-color: rgba(30, 41, 59, 0.8);");
         }
 
         Label txt = new Label(text);
         txt.setWrapText(true);
-        txt.setStyle("-fx-text-fill: " + (isOwner ? "white" : "#f8fafc") + "; -fx-font-size: 14px; -fx-line-spacing: 2px;");
+        txt.setStyle(
+                "-fx-text-fill: " + (isOwner ? "white" : "#f8fafc") + "; -fx-font-size: 14px; -fx-line-spacing: 2px;");
         txt.setMaxWidth(350);
 
         HBox footer = new HBox(6);
         footer.setAlignment(Pos.BOTTOM_RIGHT);
-        
+
         Label timeLbl = new Label(time.format(DateTimeFormatter.ofPattern("HH:mm")));
-        timeLbl.setStyle("-fx-text-fill: " + (isOwner ? "rgba(255,255,255,0.7)" : "#94a3b8") + "; -fx-font-size: 11px;");
-        
+        timeLbl.setStyle(
+                "-fx-text-fill: " + (isOwner ? "rgba(255,255,255,0.7)" : "#94a3b8") + "; -fx-font-size: 10px;");
+
         if (isOwner) {
             // Add checkmark icon for sent messages
             Label checkmark = new Label("✓");
-            checkmark.setStyle("-fx-text-fill: rgba(255,255,255,0.7); -fx-font-size: 11px;");
+            checkmark.setStyle("-fx-text-fill: rgba(255,255,255,0.7); -fx-font-size: 9px; -fx-font-weight: bold;");
             footer.getChildren().addAll(timeLbl, checkmark);
         } else {
             footer.getChildren().add(timeLbl);
@@ -666,27 +680,27 @@ public class OwnerController {
         for (Coupon c : coupons) {
             HBox item = createListItemBase();
             item.setUserData(c.getId());
-            
+
             Label code = new Label(c.getCode());
             code.getStyleClass().add("detail-value");
             code.setStyle("-fx-font-weight: bold;");
             code.setPrefWidth(150);
-            
+
             Label kind = new Label(c.getKind() == Coupon.CouponKind.PERCENT ? "PERCENT" : "FIXED");
-            kind.getStyleClass().addAll("badge", c.getKind() == Coupon.CouponKind.PERCENT ? "badge-info" : "badge-warning");
-            
-            Label value = new Label(c.getKind() == Coupon.CouponKind.PERCENT ? 
-                String.format("%.0f%%", c.getValue()) : 
-                String.format("%.2f ₺", c.getValue()));
+            kind.getStyleClass().addAll("badge",
+                    c.getKind() == Coupon.CouponKind.PERCENT ? "badge-info" : "badge-warning");
+
+            Label value = new Label(c.getKind() == Coupon.CouponKind.PERCENT ? String.format("%.0f%%", c.getValue())
+                    : String.format("%.2f ₺", c.getValue()));
             value.getStyleClass().add("detail-value");
             value.setPrefWidth(100);
-            
+
             Label active = new Label(c.isActive() ? "Active" : "Inactive");
             active.getStyleClass().addAll("badge", c.isActive() ? "badge-success" : "badge-danger");
-            
+
             Region spacer = new Region();
             HBox.setHgrow(spacer, Priority.ALWAYS);
-            
+
             item.getChildren().addAll(code, kind, value, active, spacer);
             item.setOnMouseClicked(e -> showCouponDetail(c));
             couponsListContainer.getChildren().add(item);
@@ -697,48 +711,48 @@ public class OwnerController {
     private void handleAddCoupon() {
         showCouponDialog(null);
     }
-    
+
     private void showCouponDetail(Coupon coupon) {
         selectedCoupon = coupon;
         couponDetailContainer.getChildren().clear();
-        
+
         VBox card = new VBox(16);
         card.getStyleClass().addAll("detail-card", "card");
         card.setStyle("-fx-padding: 24;");
-        
+
         Label code = new Label(coupon.getCode());
         code.getStyleClass().add("detail-header");
         code.setStyle("-fx-font-size: 20px; -fx-font-weight: 800; -fx-text-fill: white; -fx-padding: 0 0 8 0;");
-        
+
         Separator separator = new Separator();
         separator.setStyle("-fx-opacity: 0.1; -fx-padding: 8 0;");
-        
+
         VBox meta = new VBox(10);
         meta.getChildren().addAll(
-            createDetailRow("Type", coupon.getKind().name()),
-            createDetailRow("Value", coupon.getKind() == Coupon.CouponKind.PERCENT ? 
-                String.format("%.0f%%", coupon.getValue()) : 
-                String.format("%.2f ₺", coupon.getValue())),
-            createDetailRow("Min Cart", String.format("%.2f ₺", coupon.getMinCart())),
-            createDetailRow("Status", coupon.isActive() ? "✅ Active" : "❌ Inactive"),
-            createDetailRow("Expires", coupon.getExpiresAt() != null ? 
-                coupon.getExpiresAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "Never")
-        );
-        
+                createDetailRow("Type", coupon.getKind().name()),
+                createDetailRow("Value",
+                        coupon.getKind() == Coupon.CouponKind.PERCENT ? String.format("%.0f%%", coupon.getValue())
+                                : String.format("%.2f ₺", coupon.getValue())),
+                createDetailRow("Min Cart", String.format("%.2f ₺", coupon.getMinCart())),
+                createDetailRow("Status", coupon.isActive() ? "✅ Active" : "❌ Inactive"),
+                createDetailRow("Expires",
+                        coupon.getExpiresAt() != null
+                                ? coupon.getExpiresAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+                                : "Never"));
+
         HBox actions = new HBox(12);
         actions.getStyleClass().add("actions-container");
         actions.setAlignment(Pos.CENTER_RIGHT);
-        
+
         Button editBtn = new Button("Edit");
         editBtn.getStyleClass().add("btn-primary");
         editBtn.setStyle("-fx-padding: 10 20;");
         editBtn.setOnAction(e -> showCouponDialog(coupon));
-        
+
         Button toggleBtn = new Button(coupon.isActive() ? "Deactivate" : "Activate");
         toggleBtn.getStyleClass().add(coupon.isActive() ? "btn-outline" : "btn-primary");
-        toggleBtn.setStyle(coupon.isActive() ? 
-            "-fx-border-color: #ef4444; -fx-text-fill: #f87171; -fx-padding: 10 20;" : 
-            "-fx-padding: 10 20;");
+        toggleBtn.setStyle(coupon.isActive() ? "-fx-border-color: #ef4444; -fx-text-fill: #f87171; -fx-padding: 10 20;"
+                : "-fx-padding: 10 20;");
         toggleBtn.setOnAction(e -> {
             try {
                 couponDAO.toggleCoupon(coupon.getId(), !coupon.isActive());
@@ -751,25 +765,25 @@ public class OwnerController {
                 ex.printStackTrace();
             }
         });
-        
+
         actions.getChildren().addAll(editBtn, toggleBtn);
         card.getChildren().addAll(code, separator, meta, actions);
         couponDetailContainer.getChildren().add(card);
     }
-    
+
     private void showCouponDialog(Coupon existing) {
         Dialog<Coupon> dialog = new Dialog<>();
         dialog.setTitle(existing == null ? "Add Coupon" : "Edit Coupon");
         dialog.setHeaderText(existing == null ? "Create New Coupon" : "Edit " + existing.getCode());
-        
+
         ButtonType saveBtnType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(saveBtnType, ButtonType.CANCEL);
-        
+
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(10);
         grid.setPadding(new javafx.geometry.Insets(20, 150, 10, 10));
-        
+
         TextField codeField = new TextField();
         codeField.setPromptText("Coupon Code");
         ComboBox<Coupon.CouponKind> kindCombo = new ComboBox<>();
@@ -782,7 +796,7 @@ public class OwnerController {
         DatePicker expiresPicker = new DatePicker();
         CheckBox activeCheck = new CheckBox("Active");
         activeCheck.setSelected(true);
-        
+
         if (existing != null) {
             codeField.setText(existing.getCode());
             kindCombo.setValue(existing.getKind());
@@ -793,7 +807,7 @@ public class OwnerController {
             }
             activeCheck.setSelected(existing.isActive());
         }
-        
+
         grid.add(new Label("Code:"), 0, 0);
         grid.add(codeField, 1, 0);
         grid.add(new Label("Type:"), 0, 1);
@@ -805,9 +819,9 @@ public class OwnerController {
         grid.add(new Label("Expires:"), 0, 4);
         grid.add(expiresPicker, 1, 4);
         grid.add(activeCheck, 1, 5);
-        
+
         dialog.getDialogPane().setContent(grid);
-        
+
         dialog.setResultConverter(buttonType -> {
             if (buttonType == saveBtnType) {
                 try {
@@ -815,10 +829,10 @@ public class OwnerController {
                     Coupon.CouponKind kind = kindCombo.getValue();
                     double value = Double.parseDouble(valueField.getText());
                     double minCart = Double.parseDouble(minCartField.getText());
-                    LocalDateTime expires = expiresPicker.getValue() != null ? 
-                        expiresPicker.getValue().atTime(23, 59) : null;
+                    LocalDateTime expires = expiresPicker.getValue() != null ? expiresPicker.getValue().atTime(23, 59)
+                            : null;
                     boolean active = activeCheck.isSelected();
-                    
+
                     if (existing == null) {
                         int id = couponDAO.createCoupon(code, kind, value, minCart, expires, active);
                         return new Coupon(id, code, kind, value, minCart, active, expires);
@@ -833,7 +847,7 @@ public class OwnerController {
             }
             return null;
         });
-        
+
         java.util.Optional<Coupon> result = dialog.showAndWait();
         result.ifPresent(coupon -> {
             try {
@@ -919,39 +933,40 @@ public class OwnerController {
     }
 
     private void loadDashboard() {
-        if (dashboardContainer == null) return;
+        if (dashboardContainer == null)
+            return;
         dashboardContainer.getChildren().clear();
-        
+
         // Get statistics
         List<Product> products = productDAO.findAll();
         List<Order> orders = orderDAO.getAllOrders();
         List<User> carriers = userDAO.getAllCarriers();
         List<Coupon> coupons = couponDAO.getAllCoupons();
-        
+
         long activeProducts = products.stream().filter(p -> p.getStockKg() > 0).count();
         long lowStockProducts = products.stream().filter(Product::isLowStock).count();
-        long pendingOrders = orders.stream().filter(o -> o.getStatus() == OrderStatus.CREATED || o.getStatus() == OrderStatus.ASSIGNED).count();
+        long pendingOrders = orders.stream()
+                .filter(o -> o.getStatus() == OrderStatus.CREATED || o.getStatus() == OrderStatus.ASSIGNED).count();
         long activeCoupons = coupons.stream().filter(Coupon::isActive).count();
-        
+
         // Create dashboard cards
         dashboardContainer.getChildren().addAll(
-            createDashboardCard("Total Products", String.valueOf(products.size()), "#6366f1", "📦"),
-            createDashboardCard("Active Products", String.valueOf(activeProducts), "#10b981", "✅"),
-            createDashboardCard("Low Stock", String.valueOf(lowStockProducts), "#ef4444", "⚠️"),
-            createDashboardCard("Total Orders", String.valueOf(orders.size()), "#3b82f6", "📋"),
-            createDashboardCard("Pending Orders", String.valueOf(pendingOrders), "#f59e0b", "⏳"),
-            createDashboardCard("Carriers", String.valueOf(carriers.size()), "#8b5cf6", "🚚"),
-            createDashboardCard("Active Coupons", String.valueOf(activeCoupons), "#ec4899", "🎫")
-        );
+                createDashboardCard("Total Products", String.valueOf(products.size()), "#6366f1", "📦"),
+                createDashboardCard("Active Products", String.valueOf(activeProducts), "#10b981", "✅"),
+                createDashboardCard("Low Stock", String.valueOf(lowStockProducts), "#ef4444", "⚠️"),
+                createDashboardCard("Total Orders", String.valueOf(orders.size()), "#3b82f6", "📋"),
+                createDashboardCard("Pending Orders", String.valueOf(pendingOrders), "#f59e0b", "⏳"),
+                createDashboardCard("Carriers", String.valueOf(carriers.size()), "#8b5cf6", "🚚"),
+                createDashboardCard("Active Coupons", String.valueOf(activeCoupons), "#ec4899", "🎫"));
     }
-    
+
     private VBox createDashboardCard(String title, String value, String color, String icon) {
         VBox card = new VBox(12);
         card.getStyleClass().add("card");
         card.setStyle("-fx-padding: 24; -fx-background-color: rgba(30, 41, 59, 0.6); -fx-background-radius: 16;");
         card.setPrefWidth(200);
         card.setPrefHeight(150);
-        
+
         HBox header = new HBox(8);
         header.setAlignment(Pos.CENTER_LEFT);
         Label iconLabel = new Label(icon);
@@ -960,10 +975,10 @@ public class OwnerController {
         titleLabel.getStyleClass().add("detail-label");
         titleLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: #94a3b8;");
         header.getChildren().addAll(iconLabel, titleLabel);
-        
+
         Label valueLabel = new Label(value);
         valueLabel.setStyle("-fx-font-size: 36px; -fx-font-weight: 800; -fx-text-fill: " + color + ";");
-        
+
         card.getChildren().addAll(header, valueLabel);
         return card;
     }
@@ -972,9 +987,10 @@ public class OwnerController {
     private void handleRefreshLoyalty() {
         loadLoyaltySettings();
     }
-    
+
     private void loadLoyaltySettings() {
-        if (loyaltyContainer == null) return;
+        if (loyaltyContainer == null)
+            return;
         loyaltyContainer.getChildren().clear();
         loyaltyContainer.getChildren().add(createPlaceholder("Loyalty program settings coming soon."));
     }

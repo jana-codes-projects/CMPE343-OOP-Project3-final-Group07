@@ -341,12 +341,15 @@ public class MessageDao {
         List<Conversation> list = new ArrayList<>();
         // Group by customer_id to get unique conversations
         // We want the latest message/status for each customer
-        // Removed owner_id filter to ensure visibility of all messages
         String sql = """
                     SELECT m.customer_id, u.username,
                            MAX(m.created_at) as last_time,
                            (SELECT text_clob FROM messages m2 WHERE m2.customer_id = m.customer_id ORDER BY m2.created_at DESC LIMIT 1) as last_msg,
-                           SUM(CASE WHEN m.replied_at IS NULL AND m.customer_id = m.customer_id THEN 1 ELSE 0 END) as unread_count
+                           SUM(CASE
+                               WHEN m.replied_at IS NULL
+                               AND (m.sender_id != ? OR m.sender_id IS NULL)
+                               THEN 1 ELSE 0
+                           END) as unread_count
                     FROM messages m
                     JOIN users u ON m.customer_id = u.id
                     GROUP BY m.customer_id, u.username
@@ -355,8 +358,7 @@ public class MessageDao {
 
         try (Connection c = Db.getConnection();
                 PreparedStatement ps = c.prepareStatement(sql)) {
-            // No parameters needed as we removed owner_id filters
-            // ps.setInt(1, ownerId);
+            ps.setInt(1, ownerId);
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {

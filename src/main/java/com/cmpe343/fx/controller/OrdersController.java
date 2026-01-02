@@ -6,7 +6,6 @@ import com.cmpe343.dao.CartDao;
 import com.cmpe343.fx.Session;
 import com.cmpe343.model.Order;
 import com.cmpe343.model.CartItem;
-import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
@@ -272,6 +271,29 @@ public class OrdersController {
             itemRow.setStyle("-fx-padding: 8; -fx-border-color: rgba(255,255,255,0.05); -fx-border-width: 0 0 1 0;");
             itemRow.setAlignment(Pos.CENTER_LEFT);
 
+            // Add Product Image
+            javafx.scene.image.ImageView imgView = new javafx.scene.image.ImageView();
+            imgView.setFitWidth(40);
+            imgView.setFitHeight(40);
+            imgView.setPreserveRatio(true);
+
+            byte[] blob = item.getProduct().getImageBlob();
+            if (blob != null && blob.length > 0) {
+                try {
+                    javafx.scene.image.Image img = new javafx.scene.image.Image(new java.io.ByteArrayInputStream(blob));
+                    imgView.setImage(img);
+                } catch (Exception ignored) {
+                }
+            } else {
+                // Should ideally set a placeholder or leave empty
+            }
+
+            // Add a clip for rounded corners (optional but nice)
+            javafx.scene.shape.Rectangle clip = new javafx.scene.shape.Rectangle(40, 40);
+            clip.setArcWidth(10);
+            clip.setArcHeight(10);
+            imgView.setClip(clip);
+
             VBox itemInfo = new VBox(2);
             Label name = new Label(item.getProduct().getName());
             name.setStyle("-fx-font-weight: bold; -fx-text-fill: white; -fx-font-size: 14px;");
@@ -287,7 +309,7 @@ public class OrdersController {
             Label subtotal = new Label(String.format("%.2f ₺", item.getLineTotal()));
             subtotal.setStyle("-fx-text-fill: #cbd5e1; -fx-font-weight: bold;");
 
-            itemRow.getChildren().addAll(itemInfo, sp, subtotal);
+            itemRow.getChildren().addAll(imgView, itemInfo, sp, subtotal);
             content.getChildren().add(itemRow);
         }
 
