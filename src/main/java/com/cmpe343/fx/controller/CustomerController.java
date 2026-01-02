@@ -43,7 +43,9 @@ public class CustomerController {
 
     private final ProductDao productDao = new ProductDao();
     private final CartDao cartDao = new CartDao();
+    private final com.cmpe343.dao.InvoiceDAO invoiceDAO = new com.cmpe343.dao.InvoiceDAO();
 
+    private static boolean imagesPopulated = false; // Flag to ensure images are only populated once
     private FilteredList<Product> filteredProducts;
     private int currentCustomerId;
 
@@ -53,6 +55,10 @@ public class CustomerController {
             this.currentCustomerId = Session.getUser().getId();
             usernameLabel.setText(Session.getUser().getUsername());
         }
+
+        // Populate product images on first initialization (only if needed)
+        // This can be optimized to check if images already exist in the database
+        populateProductImagesIfNeeded();
 
         // Load Data
         ObservableList<Product> allProducts = FXCollections.observableArrayList(productDao.findAll());
@@ -106,17 +112,14 @@ public class CustomerController {
         // Image - fetch from BLOB using product ID
         Node imageNode;
         try {
-            javafx.scene.image.Image image = null;
-//            byte[] imageBytes = productDao.getProductImageBlob(p.getId());
-//            if (imageBytes != null) {
-//                image = new javafx.scene.image.Image(new java.io.ByteArrayInputStream(imageBytes));
-//            }
-            
-            if (image != null) {
+            byte[] imageBytes = productDao.getProductImageBlob(p.getId());
+            if (imageBytes != null && imageBytes.length > 0) {
+                javafx.scene.image.Image image = new javafx.scene.image.Image(new java.io.ByteArrayInputStream(imageBytes));
                 javafx.scene.image.ImageView iv = new javafx.scene.image.ImageView(image);
-                iv.setFitWidth(80);
-                iv.setFitHeight(80);
+                iv.setFitWidth(120);
+                iv.setFitHeight(120);
                 iv.setPreserveRatio(true);
+                iv.setSmooth(true);
                 imageNode = iv;
             } else {
                 throw new Exception("No image available");
@@ -268,20 +271,9 @@ public class CustomerController {
             ScrollPane scrollPane = new ScrollPane();
             VBox ordersContainer = new VBox(12);
             ordersContainer.setStyle("-fx-padding: 12;");
+            ordersContainer.setId("ordersContainer"); // Add ID for lookup
             
-            com.cmpe343.dao.OrderDao orderDao = new com.cmpe343.dao.OrderDao();
-            java.util.List<com.cmpe343.model.Order> orders = orderDao.getOrdersForCustomer(currentCustomerId);
-            
-            if (orders.isEmpty()) {
-                Label empty = new Label("No orders yet");
-                empty.setStyle("-fx-text-fill: #94a3b8; -fx-padding: 20;");
-                ordersContainer.getChildren().add(empty);
-            } else {
-                for (com.cmpe343.model.Order order : orders) {
-                    VBox orderCard = createOrderCard(order);
-                    ordersContainer.getChildren().add(orderCard);
-                }
-            }
+            refreshOrdersList(ordersContainer);
             
             scrollPane.setContent(ordersContainer);
             scrollPane.setFitToWidth(true);
@@ -300,7 +292,24 @@ public class CustomerController {
         }
     }
     
-    private VBox createOrderCard(com.cmpe343.model.Order order) {
+    private void refreshOrdersList(VBox ordersContainer) {
+        ordersContainer.getChildren().clear();
+        com.cmpe343.dao.OrderDao orderDao = new com.cmpe343.dao.OrderDao();
+        java.util.List<com.cmpe343.model.Order> orders = orderDao.getOrdersForCustomer(currentCustomerId);
+        
+        if (orders.isEmpty()) {
+            Label empty = new Label("No orders yet");
+            empty.setStyle("-fx-text-fill: #94a3b8; -fx-padding: 20;");
+            ordersContainer.getChildren().add(empty);
+        } else {
+            for (com.cmpe343.model.Order order : orders) {
+                VBox orderCard = createOrderCard(order, ordersContainer);
+                ordersContainer.getChildren().add(orderCard);
+            }
+        }
+    }
+    
+    private VBox createOrderCard(com.cmpe343.model.Order order, VBox ordersContainer) {
         VBox card = new VBox(12);
         card.setStyle("-fx-background-color: #1e293b; -fx-background-radius: 8; -fx-padding: 16;");
         
@@ -326,9 +335,70 @@ public class CustomerController {
         
         card.getChildren().addAll(header, date);
         
+        // Add product images section
+        if (order.getItems() != null && !order.getItems().isEmpty()) {
+            Label itemsLabel = new Label("Items:");
+            itemsLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 8 0 4 0;");
+            
+            FlowPane imagesContainer = new FlowPane();
+            imagesContainer.setHgap(8);
+            imagesContainer.setVgap(8);
+            imagesContainer.setStyle("-fx-padding: 4 0;");
+            
+            for (com.cmpe343.model.CartItem item : order.getItems()) {
+                if (item.getProduct() != null) {
+                    try {
+                        byte[] imageBytes = productDao.getProductImageBlob(item.getProduct().getId());
+                        if (imageBytes != null && imageBytes.length > 0) {
+                            javafx.scene.image.Image image = new javafx.scene.image.Image(new java.io.ByteArrayInputStream(imageBytes));
+                            javafx.scene.image.ImageView iv = new javafx.scene.image.ImageView(image);
+                            iv.setFitWidth(50);
+                            iv.setFitHeight(50);
+                            iv.setPreserveRatio(true);
+                            iv.setSmooth(true);
+                            
+                            // Add tooltip with product name and quantity
+                            javafx.scene.control.Tooltip tooltip = new javafx.scene.control.Tooltip(
+                                item.getProduct().getName() + "\n" + String.format("%.2f kg", item.getQuantityKg())
+                            );
+                            javafx.scene.control.Tooltip.install(iv, tooltip);
+                            
+                            imagesContainer.getChildren().add(iv);
+                        }
+                    } catch (Exception e) {
+                        // Skip images that fail to load
+                    }
+                }
+            }
+            
+            if (!imagesContainer.getChildren().isEmpty()) {
+                card.getChildren().add(itemsLabel);
+                card.getChildren().add(imagesContainer);
+            }
+        }
+        
+        // Add action buttons
+        HBox actions = new HBox(8);
+        
+        // Add cancel button for CREATED and ASSIGNED orders
+        if (order.getStatus() == com.cmpe343.model.Order.OrderStatus.CREATED || 
+            order.getStatus() == com.cmpe343.model.Order.OrderStatus.ASSIGNED) {
+            Button cancelBtn = new Button("Cancel Order");
+            cancelBtn.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-padding: 6 12;");
+            cancelBtn.setOnAction(e -> handleCancelOrder(order, ordersContainer));
+            actions.getChildren().add(cancelBtn);
+        }
+        
+        // Add track order button for ASSIGNED orders
+        if (order.getStatus() == com.cmpe343.model.Order.OrderStatus.ASSIGNED) {
+            Button trackBtn = new Button("Track Order");
+            trackBtn.setStyle("-fx-background-color: #f59e0b; -fx-text-fill: white; -fx-padding: 6 12;");
+            trackBtn.setOnAction(e -> openTrackingScreen(order));
+            actions.getChildren().add(trackBtn);
+        }
+        
         // Add download PDF button if delivered
         if (order.getStatus() == com.cmpe343.model.Order.OrderStatus.DELIVERED) {
-            HBox actions = new HBox(8);
             Button downloadBtn = new Button("Download Invoice");
             downloadBtn.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-padding: 6 12;");
             downloadBtn.setOnAction(e -> downloadInvoice(order));
@@ -343,28 +413,65 @@ public class CustomerController {
             }
             
             actions.getChildren().add(downloadBtn);
+        }
+        
+        if (!actions.getChildren().isEmpty()) {
             card.getChildren().add(actions);
         }
         
         return card;
     }
     
+    private void handleCancelOrder(com.cmpe343.model.Order order, VBox ordersContainer) {
+        // Show confirmation dialog
+        Alert confirmDialog = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmDialog.setTitle("Cancel Order");
+        confirmDialog.setHeaderText("Cancel Order #" + order.getId() + "?");
+        confirmDialog.setContentText("Are you sure you want to cancel this order? The products will be restocked and you will receive a refund.");
+        
+        java.util.Optional<ButtonType> result = confirmDialog.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            try {
+                com.cmpe343.dao.OrderDao orderDao = new com.cmpe343.dao.OrderDao();
+                boolean cancelled = orderDao.cancelOrder(order.getId());
+                
+                if (cancelled) {
+                    toast("Order cancelled successfully. Products have been restocked.", ToastService.Type.SUCCESS);
+                    // Refresh the orders list
+                    refreshOrdersList(ordersContainer);
+                } else {
+                    toast("Failed to cancel order", ToastService.Type.ERROR);
+                }
+            } catch (RuntimeException e) {
+                toast("Error: " + e.getMessage(), ToastService.Type.ERROR);
+            } catch (Exception e) {
+                e.printStackTrace();
+                toast("Failed to cancel order: " + e.getMessage(), ToastService.Type.ERROR);
+            }
+        }
+    }
+    
     private void downloadInvoice(com.cmpe343.model.Order order) {
         try {
-            com.cmpe343.service.PdfService pdfService = new com.cmpe343.service.PdfService();
-            java.io.File pdfFile = pdfService.generateInvoice(order);
+            byte[] invoicePDF = invoiceDAO.getInvoice(order.getId());
+            if (invoicePDF == null) {
+                toast("Invoice not available for this order", ToastService.Type.WARNING);
+                return;
+            }
             
             javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
             fileChooser.setTitle("Save Invoice");
-            fileChooser.setInitialFileName("invoice_" + order.getId() + ".pdf");
+            fileChooser.setInitialFileName("Invoice_Order_" + order.getId() + ".pdf");
             fileChooser.getExtensionFilters().add(new javafx.stage.FileChooser.ExtensionFilter("PDF Files", "*.pdf"));
             
             Stage stage = (Stage) searchField.getScene().getWindow();
             java.io.File saveFile = fileChooser.showSaveDialog(stage);
             
             if (saveFile != null) {
-                java.nio.file.Files.copy(pdfFile.toPath(), saveFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                toast("Invoice downloaded successfully", ToastService.Type.SUCCESS);
+                try (java.io.FileOutputStream fos = new java.io.FileOutputStream(saveFile)) {
+                    fos.write(invoicePDF);
+                    toast("Invoice downloaded successfully", ToastService.Type.SUCCESS);
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -637,8 +744,159 @@ public class CustomerController {
             e.printStackTrace();
         }
     }
+    
+    @FXML
+    private void handleAddFunds() {
+        javafx.scene.control.Dialog<com.cmpe343.model.CreditCard> dialog = new javafx.scene.control.Dialog<>();
+        dialog.setTitle("Credit Card Payment");
+        dialog.setHeaderText("Secure Wallet Top-up");
+        
+        // Create the custom UI
+        VBox content = new VBox(12);
+        content.setStyle("-fx-padding: 20; -fx-min-width: 300;");
+        
+        TextField holderName = new TextField();
+        holderName.setPromptText("Card Holder Name");
+        TextField cardNum = new TextField();
+        cardNum.setPromptText("Card Number (8 Digits)");
+        TextField expiry = new TextField();
+        expiry.setPromptText("Expiry Date (MM/YY)");
+        TextField cvc = new TextField();
+        cvc.setPromptText("CVC (3 Digits)");
+        TextField amount = new TextField();
+        amount.setPromptText("Amount to Add (₺)");
+        
+        // Input restrictions
+        // 1. Card Number: Only digits, max 8
+        cardNum.textProperty().addListener((obs, old, newValue) -> {
+            if (!newValue.matches("\\d*") || newValue.length() > 8) {
+                cardNum.setText(old);
+            }
+        });
+        
+        // 2. CVC: Only digits, max 3
+        cvc.textProperty().addListener((obs, old, newValue) -> {
+            if (!newValue.matches("\\d*") || newValue.length() > 3) {
+                cvc.setText(old);
+            }
+        });
+        
+        // 3. Expiry: Auto-format MM/YY
+        expiry.setPromptText("MM/YY (e.g. 12/28)");
+        
+        content.getChildren().addAll(
+                new Label("Card Information"), holderName, cardNum,
+                new HBox(10, expiry, cvc),
+                new Separator(),
+                new Label("Top-up Amount"), amount
+        );
+        
+        dialog.getDialogPane().setContent(content);
+        javafx.scene.control.ButtonType payButtonType = new javafx.scene.control.ButtonType("Pay Now", javafx.scene.control.ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(payButtonType, javafx.scene.control.ButtonType.CANCEL);
+        
+        // Apply CSS
+        dialog.getDialogPane().getStylesheets().addAll(searchField.getScene().getStylesheets());
+        
+        dialog.setResultConverter(btn -> {
+            if (btn == payButtonType) {
+                return new com.cmpe343.model.CreditCard(holderName.getText(), cardNum.getText(), expiry.getText(), cvc.getText());
+            }
+            return null;
+        });
+        
+        dialog.showAndWait().ifPresent(card -> {
+            try {
+                // 1. Validate Card
+                if (!card.isValid()) {
+                    toast("Invalid Card Details! Check digits and date.", ToastService.Type.ERROR);
+                    return;
+                }
+                
+                // 2. Validate Amount
+                double topUpAmount = Double.parseDouble(amount.getText());
+                if (topUpAmount <= 0) {
+                    throw new Exception("Amount must be positive");
+                }
+                
+                // 3. Database Update
+                boolean success = com.cmpe343.db.Db.updateUserBalance(currentCustomerId, topUpAmount);
+                
+                if (success) {
+                    // Update Session & UI
+                    double newBalance = Session.getUser().getWalletBalance() + topUpAmount;
+                    Session.getUser().setWalletBalance(newBalance);
+                    usernameLabel.setText(Session.getUser().getUsername() + " | Wallet: " + String.format("%.2f", newBalance) + " ₺");
+                    
+                    toast("Successfully added " + String.format("%.2f", topUpAmount) + " ₺!", ToastService.Type.SUCCESS);
+                } else {
+                    toast("Failed to update wallet balance", ToastService.Type.ERROR);
+                }
+                
+            } catch (NumberFormatException e) {
+                toast("Please enter a valid amount", ToastService.Type.ERROR);
+            } catch (Exception e) {
+                toast("Error: " + e.getMessage(), ToastService.Type.ERROR);
+            }
+        });
+    }
+    
+    private void openTrackingScreen(com.cmpe343.model.Order order) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/TrackingView.fxml"));
+            javafx.scene.Parent root = loader.load();
+            
+            Stage stage = new Stage();
+            stage.setTitle("Live Tracking - Order #" + order.getId());
+            stage.setScene(new Scene(root, 800, 600));
+            stage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+            stage.show();
+            
+            System.out.println("Tracking screen opened for Order ID: " + order.getId());
+        } catch (java.io.IOException e) {
+            e.printStackTrace();
+            toast("Could not load tracking view", ToastService.Type.ERROR);
+        }
+    }
 
     private void toast(String msg, ToastService.Type type) {
         ToastService.show(searchField.getScene(), msg, type);
+    }
+    
+    /**
+     * Populates product images from resources if they haven't been populated yet.
+     * This checks if any products have images, and if not, populates them from the resources folder.
+     */
+    private void populateProductImagesIfNeeded() {
+        if (imagesPopulated) {
+            return; // Already populated in this session
+        }
+        
+        try {
+            // Check if any products have images
+            boolean hasImages = false;
+            java.util.List<Product> products = productDao.findAll();
+            for (Product p : products) {
+                byte[] imageBytes = productDao.getProductImageBlob(p.getId());
+                if (imageBytes != null && imageBytes.length > 0) {
+                    hasImages = true;
+                    break;
+                }
+            }
+            
+            // If no images found, populate them
+            if (!hasImages) {
+                System.out.println("No product images found in database. Populating from resources...");
+                int count = com.cmpe343.service.ImagePopulationService.populateProductImages();
+                if (count > 0) {
+                    System.out.println("Successfully populated " + count + " product images.");
+                }
+            }
+            
+            imagesPopulated = true;
+        } catch (Exception e) {
+            System.err.println("Error populating product images: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 }

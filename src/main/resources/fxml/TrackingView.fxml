@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox spacing="20" style="-fx-padding: 20; -fx-background-color: #0f172a;" xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml" fx:controller="com.cmpe343.fx.controller.TrackingController">
+   <children>
+      <Label text="Live Order Tracking" style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: white;"/>
+      
+      <Label fx:id="etaLabel" text="Loading..." style="-fx-font-size: 16px; -fx-text-fill: #cbd5e1;"/>
+      
+      <StackPane style="-fx-background-color: #1e293b; -fx-background-radius: 8;">
+         <ImageView fx:id="mapImage" fitWidth="600.0" fitHeight="400.0" preserveRatio="true"/>
+         <Pane fx:id="drawingPane" prefWidth="600.0" prefHeight="400.0" style="-fx-background-color: transparent;"/>
+      </StackPane>
+      
+      <Label text="Green marker: Your location | Red marker: Courier location" style="-fx-font-size: 12px; -fx-text-fill: #94a3b8;"/>
+   </children>
+</VBox>

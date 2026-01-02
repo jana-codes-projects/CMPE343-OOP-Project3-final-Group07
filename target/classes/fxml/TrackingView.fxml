@@ -1,41 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.layout.*?>
 <?import javafx.scene.control.*?>
-<?import javafx.scene.image.*?>
-<?import javafx.scene.shape.*?>
 
-<VBox xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="com.cmpe343.fx.controller.TrackingController"
-      alignment="CENTER" spacing="20"
-      style="-fx-background-color: #0f172a; -fx-padding: 30;">
 
-    <VBox alignment="CENTER" spacing="5">
-        <Label text="LIVE ORDER TRACKING"
-               style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: white; -fx-letter-spacing: 2px;"/>
-        <Label fx:id="etaLabel" text="Calculating estimated arrival..."
-               style="-fx-font-size: 16px; -fx-text-fill: #94a3b8;"/>
-    </VBox>
-
-    <StackPane style="-fx-border-color: #334155; -fx-border-width: 5; -fx-border-radius: 15; -fx-background-radius: 15; -fx-overflow: hidden;">
-
-        <ImageView fx:id="mapImage" fitWidth="700" fitHeight="500" preserveRatio="false">
-        </ImageView>
-
-        <Pane fx:id="drawingPane" prefWidth="700" prefHeight="500"
-              style="-fx-background-color: transparent;"/>
 
     </StackPane>
-
-    <HBox alignment="CENTER" spacing="30">
-        <HBox alignment="CENTER" spacing="10">
-            <Circle radius="8" fill="#ef4444" stroke="WHITE" strokeWidth="2"/>
-            <Label text="Courier" style="-fx-text-fill: white; -fx-font-weight: bold;"/>
-        </HBox>
-        <HBox alignment="CENTER" spacing="10">
-            <Circle radius="8" fill="#10b981" stroke="WHITE" strokeWidth="2"/>
-            <Label text="Your Location" style="-fx-text-fill: white; -fx-font-weight: bold;"/>
-        </HBox>
-    </HBox>
 
 </VBox>
