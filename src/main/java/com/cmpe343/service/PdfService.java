@@ -19,6 +19,15 @@ import java.io.File;
 import java.io.IOException;
 import java.time.format.DateTimeFormatter;
 
+/**
+ * Service for generating PDF invoices.
+ * Creates professional invoices with order details, QR code validation, and
+ * coupon information.
+ * Uses iTextPDF library for PDF generation.
+ * 
+ * @author Group07
+ * @version 1.0
+ */
 public class PdfService {
 
         public File generateInvoice(Order order) throws IOException {

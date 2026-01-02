@@ -10,6 +10,14 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Data Access Object for product operations.
+ * Handles CRUD operations for products including image BLOB storage.
+ * Supports product filtering, activation/deactivation, and stock management.
+ * 
+ * @author Group07
+ * @version 1.0
+ */
 public class ProductDao {
 
     public List<Product> findAll() {

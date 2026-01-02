@@ -1,5 +1,14 @@
 package com.cmpe343.model;
 
+/**
+ * Represents an item in a shopping cart or order.
+ * Tracks product, quantity, and pricing information.
+ * Supports both current cart items (live pricing) and historical order items
+ * (stored pricing).
+ * 
+ * @author Group07
+ * @version 1.0
+ */
 public class CartItem {
     private final Product product;
     private double quantityKg;
@@ -25,12 +34,21 @@ public class CartItem {
         this.historicalLineTotal = historicalLineTotal;
     }
 
-    public Product getProduct() { return product; }
-    public double getQuantityKg() { return quantityKg; }
-    public void setQuantityKg(double quantityKg) { this.quantityKg = quantityKg; }
+    public Product getProduct() {
+        return product;
+    }
+
+    public double getQuantityKg() {
+        return quantityKg;
+    }
+
+    public void setQuantityKg(double quantityKg) {
+        this.quantityKg = quantityKg;
+    }
 
     /**
-     * Returns the unit price. For historical order items, returns the price at order time.
+     * Returns the unit price. For historical order items, returns the price at
+     * order time.
      * For current cart items, returns the current product price.
      */
     public double getUnitPrice() {
@@ -38,7 +56,8 @@ public class CartItem {
     }
 
     /**
-     * Returns the line total. For historical order items, returns the stored line total.
+     * Returns the line total. For historical order items, returns the stored line
+     * total.
      * For current cart items, calculates from current product price.
      */
     public double getLineTotal() {

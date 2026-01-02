@@ -2,6 +2,14 @@ package com.cmpe343.model;
 
 import java.time.LocalDateTime;
 
+/**
+ * Represents a message between a customer and the owner.
+ * Messages support owner replies and read status tracking.
+ * Used for customer inquiries and owner responses.
+ * 
+ * @author Group07
+ * @version 1.0
+ */
 public class Message {
 
     private int id;
@@ -11,10 +19,29 @@ public class Message {
     private boolean read;
     private LocalDateTime repliedAt;
 
+    /**
+     * Creates a new Message without reply information.
+     * 
+     * @param id        The unique message identifier
+     * @param sender    The username of the sender
+     * @param content   The message content
+     * @param timestamp When the message was sent
+     * @param read      Whether the message has been read
+     */
     public Message(int id, String sender, String content, LocalDateTime timestamp, boolean read) {
         this(id, sender, content, timestamp, read, null);
     }
 
+    /**
+     * Creates a new Message with reply information.
+     * 
+     * @param id        The unique message identifier
+     * @param sender    The username of the sender
+     * @param content   The message content
+     * @param timestamp When the message was sent
+     * @param read      Whether the message has been read
+     * @param repliedAt When the owner replied (null if no reply)
+     */
     public Message(int id, String sender, String content, LocalDateTime timestamp, boolean read,
             LocalDateTime repliedAt) {
         this.id = id;

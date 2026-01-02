@@ -8,6 +8,14 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Data Access Object for shopping cart operations.
+ * Handles adding, removing, and updating cart items with stock validation.
+ * Implements threshold-based pricing and automatic cart table creation.
+ * 
+ * @author Group07
+ * @version 1.0
+ */
 public class CartDao {
 
     public CartDao() {

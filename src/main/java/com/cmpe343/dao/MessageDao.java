@@ -10,6 +10,14 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Data Access Object for message operations.
+ * Handles customer-to-owner messaging, replies, and read status tracking.
+ * Supports CLOB text storage for message content.
+ * 
+ * @author Group07
+ * @version 1.0
+ */
 public class MessageDao {
 
     public List<Message> getAllMessages() {

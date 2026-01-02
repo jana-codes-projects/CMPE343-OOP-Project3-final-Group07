@@ -7,6 +7,14 @@ import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * Data Access Object for order operations.
+ * Handles order creation, retrieval, cancellation, and statistics.
+ * Manages stock updates, coupon validation, and loyalty discount calculation.
+ * 
+ * @author Group07
+ * @version 1.0
+ */
 public class OrderDao {
 
     private static final double VAT_RATE = 0.20; // %20
@@ -32,11 +40,15 @@ public class OrderDao {
                 .mapToDouble(item -> round2(item.getLineTotal()))
                 .sum();
 
-        // Apply coupon discount if provided
+        // Calculate LOYALTY discount FIRST (based on customer's order history)
+        double loyaltyDiscount = calculateLoyaltyDiscount(customerId, originalSubtotal);
+        double subtotalAfterLoyalty = Math.max(0, originalSubtotal - loyaltyDiscount);
+
+        // Apply coupon discount if provided (applied AFTER loyalty discount)
         // Validate coupon at order placement time to prevent race conditions
         double couponDiscount = 0.0;
         if (couponId != null) {
-            Double discount = getCouponDiscount(couponId, originalSubtotal);
+            Double discount = getCouponDiscount(couponId, subtotalAfterLoyalty);
             if (discount == null) {
                 // Coupon is invalid (expired/deactivated/not found/min cart not met) - throw
                 // exception to inform user
@@ -47,7 +59,7 @@ public class OrderDao {
         }
 
         // Calculate post-coupon subtotal (this is what VAT is calculated on)
-        double totalAfterCoupon = Math.max(0, originalSubtotal - couponDiscount);
+        double totalAfterCoupon = Math.max(0, subtotalAfterLoyalty - couponDiscount);
         double vat = round2(totalAfterCoupon * VAT_RATE);
         double totalAfterTax = round2(totalAfterCoupon + vat);
 
@@ -62,7 +74,7 @@ public class OrderDao {
                        total_before_tax, vat, total_after_tax, coupon_id, loyalty_discount)
                     VALUES
                       (?, NULL, 'CREATED', ?, ?, NULL,
-                       ?, ?, ?, ?, 0)
+                       ?, ?, ?, ?, ?)
                 """;
 
         // ✅ SENİN TABLOYA GÖRE:
@@ -97,6 +109,8 @@ public class OrderDao {
                 } else {
                     ps.setNull(7, Types.INTEGER);
                 }
+                // Set loyalty_discount (position 8)
+                ps.setDouble(8, loyaltyDiscount);
 
                 ps.executeUpdate();
 
@@ -551,6 +565,60 @@ public class OrderDao {
             e.printStackTrace();
         }
         return stats;
+    }
+
+    /**
+     * Gets the total number of completed orders for a customer.
+     * Used to calculate loyalty discount.
+     * 
+     * @param customerId The customer ID
+     * @return The number of completed (delivered) orders
+     */
+    public int getCustomerOrderCount(int customerId) {
+        String sql = "SELECT COUNT(*) FROM orders WHERE customer_id = ? AND status = 'DELIVERED'";
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, customerId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    /**
+     * Calculates the loyalty discount percentage based on customer's order history.
+     * - 10+ completed orders: 10% discount
+     * - 5+ completed orders: 5% discount
+     * - Less than 5 orders: 0% discount
+     * 
+     * @param customerId The customer ID
+     * @return The discount percentage (0.0, 0.05, or 0.10)
+     */
+    public double getLoyaltyDiscountPercent(int customerId) {
+        int orderCount = getCustomerOrderCount(customerId);
+        if (orderCount >= 10) {
+            return 0.10; // 10% discount for VIP customers
+        } else if (orderCount >= 5) {
+            return 0.05; // 5% discount for loyal customers
+        }
+        return 0.0; // No discount for new customers
+    }
+
+    /**
+     * Calculates the loyalty discount amount for a given subtotal.
+     * 
+     * @param customerId The customer ID
+     * @param subtotal   The cart subtotal (before any discounts)
+     * @return The loyalty discount amount in TL
+     */
+    public double calculateLoyaltyDiscount(int customerId, double subtotal) {
+        double percent = getLoyaltyDiscountPercent(customerId);
+        return round2(subtotal * percent);
     }
 
     private static double round2(double v) {

@@ -1,9 +1,25 @@
 package com.cmpe343.model;
 
+/**
+ * Represents a product (fruit or vegetable) in the GreenGrocer system.
+ * Products have pricing with threshold-based price doubling when stock is low.
+ * Product images are stored as BLOBs in the database.
+ * 
+ * @author Group07
+ * @version 1.0
+ */
 public class Product {
 
+    /**
+     * Types of products available in the store.
+     */
     public enum ProductType {
-        FRUIT, VEGETABLE, OTHER
+        /** Fruit products */
+        FRUIT,
+        /** Vegetable products */
+        VEGETABLE,
+        /** Other products */
+        OTHER
     }
 
     private int id;
@@ -12,8 +28,19 @@ public class Product {
     private double price;
     private double stockKg;
     private double thresholdKg;
-    private boolean active = true; // Added for OwnerController compatibility
+    private boolean active = true;
 
+    /**
+     * Creates a new Product with all details.
+     * 
+     * @param id          The unique product identifier
+     * @param name        The product name
+     * @param type        The product type (FRUIT/VEGETABLE/OTHER)
+     * @param price       The base price per kg
+     * @param stockKg     The current stock in kg
+     * @param thresholdKg The low stock threshold (price doubles when stock <=
+     *                    threshold)
+     */
     public Product(int id, String name, ProductType type,
             double price, double stockKg, double thresholdKg) {
         this.id = id;
@@ -24,12 +51,18 @@ public class Product {
         this.thresholdKg = thresholdKg;
     }
 
-    // Constructor for DB reading of existing string types
+    /**
+     * Constructor for DB reading with string type value.
+     * Automatically converts type string (VEG/FRUIT) to ProductType enum.
+     */
     public Product(int id, String name, String typeStr,
             double price, double stockKg, double thresholdKg) {
         this(id, name, parseType(typeStr), price, stockKg, thresholdKg);
     }
 
+    /**
+     * Constructor with default threshold of 0.
+     */
     public Product(int id, String name, String typeStr, double price, double stockKg) {
         this(id, name, parseType(typeStr), price, stockKg, 0);
     }
@@ -54,7 +87,7 @@ public class Product {
             return ProductType.OTHER;
         }
     }
-    
+
     /**
      * Converts ProductType enum to database string format (VEG/FRUIT).
      */
@@ -65,7 +98,7 @@ public class Product {
             case OTHER -> "VEG"; // Default fallback
         };
     }
-    
+
     /**
      * Gets display name for product type (for UI).
      */

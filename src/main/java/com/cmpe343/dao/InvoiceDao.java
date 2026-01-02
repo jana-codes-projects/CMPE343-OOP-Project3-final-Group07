@@ -6,6 +6,15 @@ import java.sql.PreparedStatement;
 import java.nio.file.Files;
 import java.io.File;
 
+/**
+ * Data Access Object for invoice operations.
+ * Handles saving and retrieving PDF invoices as BLOBs and invoice text as
+ * CLOBs.
+ * Supports upsert functionality for invoice updates.
+ * 
+ * @author Group07
+ * @version 1.0
+ */
 public class InvoiceDao {
 
     public void saveInvoice(int orderId, File pdfFile, String invoiceText) {

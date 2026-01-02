@@ -10,6 +10,15 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Data Access Object for user operations.
+ * Handles user authentication, registration, profile management, and wallet
+ * operations.
+ * Supports customer, carrier, and owner roles with SHA-256 password hashing.
+ * 
+ * @author Group07
+ * @version 1.0
+ */
 public class UserDao {
 
     public User login(String username, String password) {

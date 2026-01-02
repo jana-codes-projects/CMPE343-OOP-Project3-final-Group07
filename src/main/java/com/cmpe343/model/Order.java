@@ -3,10 +3,29 @@ package com.cmpe343.model;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * Represents a customer order in the GreenGrocer system.
+ * An order contains cart items, pricing information, and delivery details.
+ * Orders progress through different statuses: CREATED → ASSIGNED →
+ * DELIVERED/CANCELLED.
+ * 
+ * @author Group07
+ * @version 1.0
+ */
 public class Order {
 
+    /**
+     * Represents the possible states of an order in the system.
+     */
     public enum OrderStatus {
-        CREATED, ASSIGNED, DELIVERED, CANCELLED
+        /** Order has been created but not yet assigned to a carrier */
+        CREATED,
+        /** Order has been assigned to a carrier for delivery */
+        ASSIGNED,
+        /** Order has been successfully delivered to the customer */
+        DELIVERED,
+        /** Order has been cancelled by the customer */
+        CANCELLED
     }
 
     private int id;
@@ -21,9 +40,27 @@ public class Order {
     private double totalAfterTax;
     private List<CartItem> items;
 
+    /**
+     * Default constructor for Order.
+     */
     public Order() {
     }
 
+    /**
+     * Creates a new Order with complete information.
+     * 
+     * @param id                    The unique identifier for the order
+     * @param customerId            The ID of the customer who placed the order
+     * @param carrierId             The ID of the assigned carrier (null if not
+     *                              assigned)
+     * @param status                The current status of the order
+     * @param orderTime             The timestamp when the order was placed
+     * @param requestedDeliveryTime The customer's requested delivery time
+     * @param deliveredTime         The actual delivery time (null if not delivered)
+     * @param totalBeforeTax        The subtotal before VAT
+     * @param vat                   The VAT amount (20%)
+     * @param totalAfterTax         The final total after VAT
+     */
     public Order(int id, int customerId, Integer carrierId, OrderStatus status,
             LocalDateTime orderTime, LocalDateTime requestedDeliveryTime, LocalDateTime deliveredTime,
             double totalBeforeTax, double vat, double totalAfterTax) {
