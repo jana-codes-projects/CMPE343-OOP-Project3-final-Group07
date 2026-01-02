@@ -82,7 +82,7 @@ public class CartDao {
     public CartLoadResult getCartItemsWithStockCheck(int userId) {
         CartLoadResult result = new CartLoadResult();
         String sql = """
-                    SELECT ci.product_id, ci.quantity_kg, p.name, p.type, p.price, p.stock_kg, p.threshold_kg, p.image_blob
+                    SELECT ci.product_id, ci.quantity_kg, p.name, p.type, p.price, p.stock_kg, p.threshold_kg, p.discount_threshold, p.discount_percentage, p.image_blob
                     FROM cart_items ci
                     JOIN products p ON ci.product_id = p.id
                     WHERE ci.user_id = ?
@@ -105,6 +105,8 @@ public class CartDao {
                     String pType = rs.getString("type");
                     double pPrice = rs.getDouble("price");
                     double thresholdKg = rs.getDouble("threshold_kg");
+                    double discThreshold = rs.getDouble("discount_threshold");
+                    double discPercent = rs.getDouble("discount_percentage");
                     byte[] pImageBlob = rs.getBytes("image_blob");
 
                     // STOCK CHECK
@@ -133,7 +135,8 @@ public class CartDao {
 
                     // Build Product & CartItem
                     // Pass actual threshold logic
-                    Product p = new Product(pId, pName, pType, pPrice, stockKg, thresholdKg, pImageBlob);
+                    Product p = new Product(pId, pName, pType, pPrice, stockKg, thresholdKg, discThreshold, discPercent,
+                            pImageBlob);
                     CartItem item = new CartItem(p, cartKg);
                     result.items.add(item);
                 }

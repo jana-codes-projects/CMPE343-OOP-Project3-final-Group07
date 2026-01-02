@@ -14,24 +14,49 @@ public class Product {
     private double price;
     private double stockKg;
     private double thresholdKg;
+    private double discountThreshold = 5.0; // Default 5kg
+    private double discountPercentage = 10.0; // Default 10%
     private byte[] imageBlob; // For holding image data
     private boolean active = true;
 
     public Product(int id, String name, ProductType type,
-            double price, double stockKg, double thresholdKg, byte[] imageBlob) {
+            double price, double stockKg, double thresholdKg, double discountThreshold, double discountPercentage,
+            byte[] imageBlob) {
         this.id = id;
         this.name = name;
         this.type = type;
         this.price = price;
         this.stockKg = stockKg;
         this.thresholdKg = thresholdKg;
+        this.discountThreshold = discountThreshold;
+        this.discountPercentage = discountPercentage;
         this.imageBlob = imageBlob;
+    }
+
+    // For update dialog usage
+    public Product(int id, String name, ProductType type,
+            double price, double stockKg, double thresholdKg, double discountThreshold, byte[] imageBlob) {
+        this(id, name, type, price, stockKg, thresholdKg, discountThreshold, 10.0, imageBlob);
+    }
+
+    // Maintain legacy constructor but use default threshold and percentage
+    public Product(int id, String name, ProductType type,
+            double price, double stockKg, double thresholdKg, byte[] imageBlob) {
+        this(id, name, type, price, stockKg, thresholdKg, 5.0, 10.0, imageBlob);
     }
 
     // Constructor for DB reading of existing string types
     public Product(int id, String name, String typeStr,
-            double price, double stockKg, double thresholdKg, byte[] imageBlob) {
-        this(id, name, parseType(typeStr), price, stockKg, thresholdKg, imageBlob);
+            double price, double stockKg, double thresholdKg, double discountThreshold, double discountPercentage,
+            byte[] imageBlob) {
+        this(id, name, parseType(typeStr), price, stockKg, thresholdKg, discountThreshold, discountPercentage,
+                imageBlob);
+    }
+
+    // Legacy DB Constructor
+    public Product(int id, String name, String typeStr,
+            double price, double stockKg, double thresholdKg, double discountThreshold, byte[] imageBlob) {
+        this(id, name, parseType(typeStr), price, stockKg, thresholdKg, discountThreshold, 10.0, imageBlob);
     }
 
     private static ProductType parseType(String typeStr) {
@@ -66,6 +91,14 @@ public class Product {
 
     public double getThresholdKg() {
         return thresholdKg;
+    }
+
+    public double getDiscountThreshold() {
+        return discountThreshold;
+    }
+
+    public double getDiscountPercentage() {
+        return discountPercentage;
     }
 
     public byte[] getImageBlob() {

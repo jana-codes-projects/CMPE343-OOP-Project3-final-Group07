@@ -165,7 +165,9 @@ public class OwnerController {
                 createDetailRow("Type", product.getType().name()),
                 createDetailRow("Price", formatPrice(product.getPrice())),
                 createDetailRow("Stock", String.format("%.2f kg", product.getStockKg())),
-                createDetailRow("Threshold", String.format("%.2f kg", product.getThresholdKg())));
+                createDetailRow("Low Stock Thresh", String.format("%.2f kg", product.getThresholdKg())),
+                createDetailRow("Disc. Threshold", String.format("%.2f kg", product.getDiscountThreshold())),
+                createDetailRow("Disc. Percentage", String.format("%.0f%%", product.getDiscountPercentage())));
 
         HBox actions = new HBox(10);
         actions.setAlignment(Pos.CENTER_RIGHT);
@@ -199,6 +201,97 @@ public class OwnerController {
 
         row.getChildren().addAll(l, v);
         return row;
+    }
+
+    private void showProductEditMode(Product product) {
+        selectedProduct = product;
+        productDetailContainer.getChildren().clear();
+
+        VBox card = new VBox(12);
+        card.getStyleClass().add("detail-card");
+
+        Label header = new Label("Edit " + product.getName());
+        header.getStyleClass().add("detail-header");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new javafx.geometry.Insets(10, 0, 10, 0));
+
+        TextField nameField = new TextField(product.getName());
+        nameField.setPromptText("Name");
+
+        ComboBox<ProductType> typeCombo = new ComboBox<>();
+        typeCombo.getItems().addAll(ProductType.values());
+        typeCombo.setValue(product.getType());
+
+        TextField priceField = new TextField(String.valueOf(product.getPrice()));
+        priceField.setPromptText("Price");
+
+        TextField stockField = new TextField(String.valueOf(product.getStockKg()));
+        stockField.setPromptText("Stock");
+
+        TextField thresholdField = new TextField(String.valueOf(product.getThresholdKg()));
+        thresholdField.setPromptText("Low Stock Threshold");
+
+        TextField discThreshField = new TextField(String.valueOf(product.getDiscountThreshold()));
+        discThreshField.setPromptText("Discount Threshold");
+
+        TextField discPercentField = new TextField(String.valueOf(product.getDiscountPercentage()));
+        discPercentField.setPromptText("Discount %");
+
+        grid.add(new Label("Name:"), 0, 0);
+        grid.add(nameField, 1, 0);
+        grid.add(new Label("Type:"), 0, 1);
+        grid.add(typeCombo, 1, 1);
+        grid.add(new Label("Price:"), 0, 2);
+        grid.add(priceField, 1, 2);
+        grid.add(new Label("Stock:"), 0, 3);
+        grid.add(stockField, 1, 3);
+        grid.add(new Label("Low Thresh:"), 0, 4);
+        grid.add(thresholdField, 1, 4);
+        grid.add(new Label("Disc. Thresh:"), 0, 5);
+        grid.add(discThreshField, 1, 5);
+        grid.add(new Label("Disc. %:"), 0, 6);
+        grid.add(discPercentField, 1, 6);
+
+        HBox actions = new HBox(10);
+        actions.setAlignment(Pos.CENTER_RIGHT);
+
+        Button saveBtn = new Button("Save");
+        saveBtn.getStyleClass().add("btn-primary");
+        saveBtn.setOnAction(e -> {
+            try {
+                String n = nameField.getText();
+                double p = Double.parseDouble(priceField.getText());
+                double s = Double.parseDouble(stockField.getText());
+                double t = Double.parseDouble(thresholdField.getText());
+                double dt = Double.parseDouble(discThreshField.getText());
+                double dp = Double.parseDouble(discPercentField.getText());
+
+                Product updated = new Product(product.getId(), n, typeCombo.getValue(), p, s, t, dt, dp,
+                        product.getImageBlob());
+                productDAO.update(updated);
+
+                com.cmpe343.fx.util.ToastService.show(productDetailContainer.getScene(), "Product Updated",
+                        com.cmpe343.fx.util.ToastService.Type.SUCCESS);
+                loadProducts(); // Refresh list to update name/badges
+                showProductDetail(updated); // Go back to view mode
+            } catch (Exception ex) {
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setContentText("Invalid input: " + ex.getMessage());
+                alert.showAndWait();
+            }
+        });
+
+        Button cancelBtn = new Button("Cancel");
+        cancelBtn.getStyleClass().add("btn-outline");
+        cancelBtn.setOnAction(e -> showProductDetail(product));
+
+        actions.getChildren().addAll(saveBtn, cancelBtn);
+
+        card.getChildren().addAll(header, grid, actions);
+        productDetailContainer.getChildren().add(card);
     }
 
     // ==================== CARRIER MANAGEMENT ====================
@@ -1016,7 +1109,7 @@ public class OwnerController {
     }
 
     private void handleEditProduct(Product product) {
-        showProductDialog(product);
+        showProductEditMode(product);
     }
 
     private void showProductDialog(Product existing) {
@@ -1043,6 +1136,8 @@ public class OwnerController {
         stockField.setPromptText("Stock (kg)");
         TextField thresholdField = new TextField();
         thresholdField.setPromptText("Threshold (kg)");
+        TextField discountThresholdField = new TextField();
+        discountThresholdField.setPromptText("Discount Threshold (kg)");
 
         // Image Handling
         Label imageLabel = new Label("No Image Selected");
@@ -1055,10 +1150,13 @@ public class OwnerController {
             priceField.setText(String.valueOf(existing.getPrice()));
             stockField.setText(String.valueOf(existing.getStockKg()));
             thresholdField.setText(String.valueOf(existing.getThresholdKg()));
+            discountThresholdField.setText(String.valueOf(existing.getDiscountThreshold()));
             if (existing.getImageBlob() != null) {
                 imageLabel.setText("Current Image Loaded (" + existing.getImageBlob().length + " bytes)");
                 imageBlobHolder[0] = existing.getImageBlob();
             }
+        } else {
+            discountThresholdField.setText("5.0"); // Default
         }
 
         uploadBtn.setOnAction(e -> {
@@ -1086,10 +1184,12 @@ public class OwnerController {
         grid.add(priceField, 1, 2);
         grid.add(new Label("Stock:"), 0, 3);
         grid.add(stockField, 1, 3);
-        grid.add(new Label("Threshold:"), 0, 4);
+        grid.add(new Label("Low Stock Threshold:"), 0, 4);
         grid.add(thresholdField, 1, 4);
-        grid.add(new Label("Image:"), 0, 5);
-        grid.add(new HBox(10, uploadBtn, imageLabel), 1, 5);
+        grid.add(new Label("Discount Threshold:"), 0, 5);
+        grid.add(discountThresholdField, 1, 5);
+        grid.add(new Label("Image:"), 0, 6);
+        grid.add(new HBox(10, uploadBtn, imageLabel), 1, 6);
 
         dialog.getDialogPane().setContent(grid);
 
@@ -1102,11 +1202,14 @@ public class OwnerController {
                     double price = Double.parseDouble(priceField.getText());
                     double stock = Double.parseDouble(stockField.getText());
                     double threshold = Double.parseDouble(thresholdField.getText());
+                    double discThreshold = Double.parseDouble(discountThresholdField.getText());
 
                     if (existing == null) {
-                        return new Product(0, name, typeCombo.getValue(), price, stock, threshold, imageBlobHolder[0]);
+                        return new Product(0, name, typeCombo.getValue(), price, stock, threshold, discThreshold,
+                                imageBlobHolder[0]);
                     } else {
                         return new Product(existing.getId(), name, typeCombo.getValue(), price, stock, threshold,
+                                discThreshold,
                                 imageBlobHolder[0]);
                     }
                 } catch (Exception e) {

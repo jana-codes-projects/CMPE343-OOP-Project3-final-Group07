@@ -15,7 +15,7 @@ public class ProductDao {
         List<Product> list = new ArrayList<>();
 
         String sql = """
-                    SELECT id, name, type, price, stock_kg, threshold_kg, image_blob
+                    SELECT id, name, type, price, stock_kg, threshold_kg, discount_threshold, discount_percentage, image_blob
                     FROM products
                     ORDER BY name
                 """;
@@ -32,6 +32,8 @@ public class ProductDao {
                         rs.getDouble("price"),
                         rs.getDouble("stock_kg"),
                         rs.getDouble("threshold_kg"),
+                        rs.getDouble("discount_threshold"),
+                        rs.getDouble("discount_percentage"),
                         rs.getBytes("image_blob")));
             }
 
@@ -43,7 +45,7 @@ public class ProductDao {
     }
 
     public void insert(Product p) {
-        String sql = "INSERT INTO products (name, type, price, stock_kg, threshold_kg, image_blob, is_active) VALUES (?, ?, ?, ?, ?, ?, 1)";
+        String sql = "INSERT INTO products (name, type, price, stock_kg, threshold_kg, discount_threshold, discount_percentage, image_blob, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)";
         try (Connection c = Db.getConnection();
                 java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, p.getName());
@@ -51,7 +53,9 @@ public class ProductDao {
             ps.setDouble(3, p.getPrice());
             ps.setDouble(4, p.getStockKg());
             ps.setDouble(5, p.getThresholdKg());
-            ps.setBytes(6, p.getImageBlob());
+            ps.setDouble(6, p.getDiscountThreshold());
+            ps.setDouble(7, p.getDiscountPercentage());
+            ps.setBytes(8, p.getImageBlob());
             ps.executeUpdate();
         } catch (Exception e) {
             throw new RuntimeException("Error inserting product: " + e.getMessage(), e);
@@ -59,7 +63,7 @@ public class ProductDao {
     }
 
     public void update(Product p) {
-        String sql = "UPDATE products SET name=?, type=?, price=?, stock_kg=?, threshold_kg=?, image_blob=? WHERE id=?";
+        String sql = "UPDATE products SET name=?, type=?, price=?, stock_kg=?, threshold_kg=?, discount_threshold=?, discount_percentage=?, image_blob=? WHERE id=?";
         try (Connection c = Db.getConnection();
                 java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, p.getName());
@@ -67,8 +71,10 @@ public class ProductDao {
             ps.setDouble(3, p.getPrice());
             ps.setDouble(4, p.getStockKg());
             ps.setDouble(5, p.getThresholdKg());
-            ps.setBytes(6, p.getImageBlob());
-            ps.setInt(7, p.getId());
+            ps.setDouble(6, p.getDiscountThreshold());
+            ps.setDouble(7, p.getDiscountPercentage());
+            ps.setBytes(8, p.getImageBlob());
+            ps.setInt(9, p.getId());
             ps.executeUpdate();
         } catch (Exception e) {
             throw new RuntimeException("Error updating product: " + e.getMessage(), e);

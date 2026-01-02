@@ -26,10 +26,14 @@ public class CartItem {
     }
 
     public double getLineTotal() {
+        if (hasDiscount()) {
+            double multiplier = 1.0 - (product.getDiscountPercentage() / 100.0);
+            return product.getPrice() * quantityKg * multiplier;
+        }
         return product.getPrice() * quantityKg;
     }
 
     public boolean hasDiscount() {
-        return quantityKg > 5.0;
-    } // 5kg üzeri indirim
+        return quantityKg > product.getDiscountThreshold();
+    }
 }

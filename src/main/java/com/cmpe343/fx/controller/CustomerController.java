@@ -206,7 +206,8 @@ public class CustomerController {
         priceLbl.getStyleClass().add("product-price");
         priceLbl.setStyle("-fx-font-size: 14px; -fx-text-fill: #94a3b8;");
 
-        Label dealBadge = new Label("Buy >5kg, Get 10% OFF");
+        Label dealBadge = new Label(
+                String.format("Buy >%.0fkg, Get %.0f%% OFF", p.getDiscountThreshold(), p.getDiscountPercentage()));
         dealBadge.getStyleClass().addAll("badge", "badge-info");
         dealBadge.setStyle(
                 "-fx-font-size: 9px; -fx-padding: 2 6; -fx-background-color: rgba(59, 130, 246, 0.2); -fx-text-fill: #60a5fa;");
