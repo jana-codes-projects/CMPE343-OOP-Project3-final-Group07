@@ -26,12 +26,12 @@ public class UserDao {
             ps.setString(1, username);
             ps.setString(2, password);
 
-            ResultSet rs = ps.executeQuery();
-
-            if (rs.next()) {
-                return mapUser(rs);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return mapUser(rs);
+                }
+                return null;
             }
-            return null;
         } catch (Exception e) {
             throw new RuntimeException("Login Error", e);
         }
@@ -149,7 +149,7 @@ public class UserDao {
      * @return The owner ID, or -1 if not found
      */
     public int getOwnerId() {
-        String sql = "SELECT id FROM users WHERE role = 'OWNER' LIMIT 1";
+        String sql = "SELECT id FROM users WHERE role = 'owner' LIMIT 1";
         try (Connection c = Db.getConnection();
                 PreparedStatement ps = c.prepareStatement(sql);
                 ResultSet rs = ps.executeQuery()) {
@@ -262,6 +262,25 @@ public class UserDao {
             throw new RuntimeException("Failed to create carrier: " + e.getMessage(), e);
         }
         return -1;
+    }
+    
+    /**
+     * Deletes a carrier user from the database.
+     * 
+     * @param carrierId The carrier user ID to delete
+     * @return true if deletion was successful, false otherwise
+     */
+    public boolean deleteCarrier(int carrierId) {
+        String sql = "DELETE FROM users WHERE id = ? AND role = 'carrier'";
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, carrierId);
+            int rowsAffected = ps.executeUpdate();
+            return rowsAffected > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("Failed to delete carrier: " + e.getMessage(), e);
+        }
     }
     
     /**

@@ -39,7 +39,7 @@
         <Button fx:id="loginButton" text="Login" onAction="#handleLogin" styleClass="btn-primary" maxWidth="Infinity"/>
 
         <HBox alignment="CENTER" spacing="12">
-            <Hyperlink text="Register" onAction="#handleRegister" styleClass="link"/>
+            <Hyperlink text="Sign Up" onAction="#handleRegister" styleClass="link"/>
             <Label text="•" styleClass="muted"/>
             <Hyperlink text="Exit" onAction="#handleExit" styleClass="link"/>
         </HBox>

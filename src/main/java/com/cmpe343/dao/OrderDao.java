@@ -26,17 +26,21 @@ public class OrderDao {
         Timestamp nowTs = Timestamp.valueOf(LocalDateTime.now());
         Timestamp requestedTs = Timestamp.valueOf(requestedDelivery);
 
-        // Calculate original subtotal (before coupon)
+        // Calculate original subtotal (before any discounts)
         // Round each line total before summing to match order_items precision
         double originalSubtotal = items.stream()
             .mapToDouble(item -> round2(item.getLineTotal()))
             .sum();
         
-        // Apply coupon discount if provided
+        // Calculate loyalty discount first (based on customer's order history)
+        double loyaltyDiscount = calculateLoyaltyDiscount(customerId, originalSubtotal);
+        double subtotalAfterLoyalty = Math.max(0, originalSubtotal - loyaltyDiscount);
+        
+        // Apply coupon discount if provided (applied after loyalty discount)
         // Validate coupon at order placement time to prevent race conditions
         double couponDiscount = 0.0;
         if (couponId != null) {
-            Double discount = getCouponDiscount(couponId, originalSubtotal);
+            Double discount = getCouponDiscount(couponId, subtotalAfterLoyalty);
             if (discount == null) {
                 // Coupon is invalid (expired/deactivated/not found/min cart not met) - throw exception to inform user
                 throw new IllegalArgumentException("The selected coupon is no longer valid. Please remove it and try again.");
@@ -44,14 +48,14 @@ public class OrderDao {
             couponDiscount = discount; // discount can be 0.0 for valid coupons with zero discount
         }
         
-        // Calculate post-coupon subtotal (this is what VAT is calculated on)
-        double totalAfterCoupon = Math.max(0, originalSubtotal - couponDiscount);
-        double vat = round2(totalAfterCoupon * VAT_RATE);
-        double totalAfterTax = round2(totalAfterCoupon + vat);
+        // Calculate final subtotal after all discounts (this is what VAT is calculated on)
+        double totalAfterDiscounts = Math.max(0, subtotalAfterLoyalty - couponDiscount);
+        double vat = round2(totalAfterDiscounts * VAT_RATE);
+        double totalAfterTax = round2(totalAfterDiscounts + vat);
         
-        // Store the post-coupon subtotal in totalBeforeTax (since VAT is calculated on this)
+        // Store the post-discount subtotal in totalBeforeTax (since VAT is calculated on this)
         // This ensures consistency: totalBeforeTax + VAT = totalAfterTax
-        double totalBeforeTax = totalAfterCoupon;
+        double totalBeforeTax = totalAfterDiscounts;
 
         String insertOrder = """
                     INSERT INTO orders
@@ -59,7 +63,7 @@ public class OrderDao {
                        total_before_tax, vat, total_after_tax, coupon_id, loyalty_discount)
                     VALUES
                       (?, NULL, 'CREATED', ?, ?, NULL,
-                       ?, ?, ?, ?, 0)
+                       ?, ?, ?, ?, ?)
                 """;
 
         // ✅ SENİN TABLOYA GÖRE:
@@ -94,6 +98,8 @@ public class OrderDao {
                 } else {
                     ps.setNull(7, Types.INTEGER);
                 }
+                // Set loyalty_discount (position 8)
+                ps.setDouble(8, round2(loyaltyDiscount));
 
                 ps.executeUpdate();
 
@@ -305,9 +311,11 @@ public class OrderDao {
     }
     
     public double getCouponDiscountForOrder(int orderId) {
-        // Get the order's total_before_tax to calculate percentage discount correctly
+        // Get the order's total_before_tax, loyalty_discount, and coupon info
+        // total_before_tax is stored AFTER both discounts, so for percentage coupons
+        // we need to reverse-engineer the base amount before coupon discount
         String sql = """
-            SELECT c.kind, c.value, o.total_before_tax
+            SELECT c.kind, c.value, o.total_before_tax, o.loyalty_discount
             FROM orders o
             JOIN coupons c ON o.coupon_id = c.id
             WHERE o.id = ?
@@ -322,9 +330,18 @@ public class OrderDao {
                     double totalBeforeTax = rs.getDouble("total_before_tax");
                     
                     if ("AMOUNT".equals(kind)) {
-                        return Math.min(value, totalBeforeTax);
+                        // For AMOUNT coupons, the discount is a fixed value.
+                        // Since total_before_tax is stored after the discount was applied,
+                        // we can't perfectly reconstruct if the discount was capped.
+                        // However, the coupon value represents what was intended to be applied.
+                        // We'll return the coupon value, as it was applied at order creation time.
+                        return value;
                     } else if ("PERCENT".equals(kind)) {
-                        return totalBeforeTax * (value / 100.0);
+                        // For percentage coupons, total_before_tax = subtotalAfterLoyalty * (1 - percent/100)
+                        // So: subtotalAfterLoyalty = total_before_tax / (1 - percent/100)
+                        // And coupon discount = subtotalAfterLoyalty * (percent/100)
+                        double subtotalAfterLoyalty = totalBeforeTax / (1.0 - value / 100.0);
+                        return subtotalAfterLoyalty * (value / 100.0);
                     }
                 }
             }

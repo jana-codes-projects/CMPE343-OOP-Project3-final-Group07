@@ -343,7 +343,7 @@ public class MessageDao {
         String sql = """
                     SELECT m.customer_id, u.username,
                            MAX(m.created_at) as last_time,
-                           (SELECT text_clob FROM messages m2 WHERE m2.customer_id = m.customer_id ORDER BY m2.created_at DESC LIMIT 1) as last_msg,
+                           (SELECT text_clob FROM messages m2 WHERE m2.customer_id = m.customer_id AND m2.owner_id = ? ORDER BY m2.created_at DESC LIMIT 1) as last_msg,
                            SUM(CASE WHEN m.replied_at IS NULL THEN 1 ELSE 0 END) as unread_count
                     FROM messages m
                     JOIN users u ON m.customer_id = u.id
@@ -354,7 +354,8 @@ public class MessageDao {
 
         try (Connection c = Db.getConnection();
                 PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setInt(1, ownerId);
+            ps.setInt(1, ownerId); // For subquery
+            ps.setInt(2, ownerId); // For WHERE clause
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -422,8 +423,12 @@ public class MessageDao {
                     if (reply != null && !reply.isEmpty()) {
                         java.sql.Timestamp repliedAt = rs.getTimestamp("replied_at");
                         LocalDateTime replyTime = repliedAt != null ? repliedAt.toLocalDateTime() : messageTime.plusMinutes(1);
+                        // Use a unique positive ID for replies: messageId + large offset
+                        // This avoids negative IDs while maintaining uniqueness
+                        int messageId = rs.getInt("id");
+                        int replyId = messageId + 100000000; // Large offset to ensure uniqueness
                         Message replyMsg = new Message(
-                                -rs.getInt("id"),
+                                replyId,
                                 ownerId,
                                 "Owner",
                                 reply,

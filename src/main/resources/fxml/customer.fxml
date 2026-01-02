@@ -12,6 +12,7 @@
     <stylesheets>
         <java.net.URL value="@../css/base.css" />
         <java.net.URL value="@../css/customer.css" />
+        <java.net.URL value="@../css/cart.css" />
     </stylesheets>
 
     <VBox spacing="0" styleClass="page">
@@ -70,80 +71,140 @@
         </HBox>
 
         <!-- BODY -->
-        <ScrollPane fitToWidth="true" styleClass="scroll-pane" VBox.vgrow="ALWAYS">
-            <VBox spacing="18" styleClass="body">
+        <TabPane fx:id="mainTabPane" styleClass="tab-pane" VBox.vgrow="ALWAYS">
+            <tabs>
+                <!-- PRODUCTS TAB -->
+                <Tab text="Products" closable="false">
+                    <ScrollPane fitToWidth="true" styleClass="scroll-pane" VBox.vgrow="ALWAYS">
+                        <VBox spacing="18" styleClass="body">
 
-                <!-- HERO STRIP -->
-                <HBox alignment="CENTER_LEFT" spacing="14" styleClass="hero">
-                    <VBox spacing="3">
-                        <Label text="Fresh Market" styleClass="hero-title"/>
-                        <Label text="Pick today's best vegetables &amp; fruits. Fast checkout. Live support."
-                               styleClass="hero-sub"/>
-                    </VBox>
-                    <Region HBox.hgrow="ALWAYS"/>
-                    <StackPane styleClass="hero-pill">
-                        <Label text="✨ Seasonal Picks" styleClass="hero-pill-text"/>
-                    </StackPane>
-                </HBox>
+                            <!-- HERO STRIP -->
+                            <HBox alignment="CENTER_LEFT" spacing="14" styleClass="hero">
+                                <VBox spacing="3">
+                                    <Label text="Fresh Market" styleClass="hero-title"/>
+                                    <Label text="Pick today's best vegetables &amp; fruits. Fast checkout. Live support."
+                                           styleClass="hero-sub"/>
+                                </VBox>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <StackPane styleClass="hero-pill">
+                                    <Label text="✨ Seasonal Picks" styleClass="hero-pill-text"/>
+                                </StackPane>
+                            </HBox>
 
-                <!-- CATEGORY: VEGETABLES -->
-                <VBox styleClass="category-card">
-                    <HBox alignment="CENTER_LEFT" spacing="12" styleClass="category-head">
-                        <StackPane styleClass="cat-icon veg">
-                            <SVGPath content="M12 2C8.69 2 6 4.69 6 8c0 1.7.7 3.23 1.83 4.32L12 22l4.17-9.68C17.3 11.23 18 9.7 18 8c0-3.31-2.69-6-6-6z"
-                                     styleClass="icon-white"/>
-                        </StackPane>
-                        <VBox spacing="0">
-                            <Label text="Vegetables" styleClass="cat-title"/>
-                            <Label fx:id="vegCountLabel" text="" styleClass="muted tiny"/>
+                            <!-- CATEGORY: VEGETABLES -->
+                            <VBox styleClass="category-card">
+                                <HBox alignment="CENTER_LEFT" spacing="12" styleClass="category-head">
+                                    <StackPane styleClass="cat-icon veg">
+                                        <SVGPath content="M12 2C8.69 2 6 4.69 6 8c0 1.7.7 3.23 1.83 4.32L12 22l4.17-9.68C17.3 11.23 18 9.7 18 8c0-3.31-2.69-6-6-6z"
+                                                 styleClass="icon-white"/>
+                                    </StackPane>
+                                    <VBox spacing="0">
+                                        <Label text="Vegetables" styleClass="cat-title"/>
+                                        <Label fx:id="vegCountLabel" text="" styleClass="muted tiny"/>
+                                    </VBox>
+
+                                    <Region HBox.hgrow="ALWAYS"/>
+
+                                    <Button styleClass="btn-collapse" onAction="#handleToggleVegetables">
+                                        <graphic>
+                                            <SVGPath fx:id="vegChevron"
+                                                     content="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"
+                                                     styleClass="icon-muted"/>
+                                        </graphic>
+                                    </Button>
+                                </HBox>
+
+                                <VBox fx:id="vegContentBox" styleClass="category-content">
+                                    <FlowPane fx:id="vegetablesGrid" hgap="18" vgap="18" prefWrapLength="1200"/>
+                                </VBox>
+                            </VBox>
+
+                            <!-- CATEGORY: FRUITS -->
+                            <VBox styleClass="category-card">
+                                <HBox alignment="CENTER_LEFT" spacing="12" styleClass="category-head">
+                                    <StackPane styleClass="cat-icon fruit">
+                                        <SVGPath content="M12 2c3.86 0 7 3.14 7 7 0 5.25-7 13-7 13S5 14.25 5 9c0-3.86 3.14-7 7-7z"
+                                                 styleClass="icon-white"/>
+                                    </StackPane>
+                                    <VBox spacing="0">
+                                        <Label text="Fruits" styleClass="cat-title"/>
+                                        <Label fx:id="fruitCountLabel" text="" styleClass="muted tiny"/>
+                                    </VBox>
+
+                                    <Region HBox.hgrow="ALWAYS"/>
+
+                                    <Button styleClass="btn-collapse" onAction="#handleToggleFruits">
+                                        <graphic>
+                                            <SVGPath fx:id="fruitChevron"
+                                                     content="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"
+                                                     styleClass="icon-muted"/>
+                                        </graphic>
+                                    </Button>
+                                </HBox>
+
+                                <VBox fx:id="fruitContentBox" styleClass="category-content">
+                                    <FlowPane fx:id="fruitsGrid" hgap="18" vgap="18" prefWrapLength="1200"/>
+                                </VBox>
+                            </VBox>
+
                         </VBox>
+                    </ScrollPane>
+                </Tab>
 
-                        <Region HBox.hgrow="ALWAYS"/>
+                <!-- CART TAB -->
+                <Tab text="Cart" closable="false">
+                    <VBox spacing="16" style="-fx-padding: 24;" VBox.vgrow="ALWAYS">
+                        <HBox alignment="CENTER_LEFT" spacing="16">
+                            <Label text="Your Cart" styleClass="h1"/>
+                        </HBox>
 
-                        <Button styleClass="btn-collapse" onAction="#handleToggleVegetables">
-                            <graphic>
-                                <SVGPath fx:id="vegChevron"
-                                         content="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"
-                                         styleClass="icon-muted"/>
-                            </graphic>
-                        </Button>
-                    </HBox>
+                        <ScrollPane fitToWidth="true" style="-fx-background: transparent; -fx-background-color: transparent;" VBox.vgrow="ALWAYS">
+                            <VBox fx:id="cartItemsContainer" styleClass="cart-list-container"/>
+                        </ScrollPane>
 
-                    <VBox fx:id="vegContentBox" styleClass="category-content">
-                        <FlowPane fx:id="vegetablesGrid" hgap="18" vgap="18" prefWrapLength="1200"/>
-                    </VBox>
-                </VBox>
+                        <VBox spacing="12" styleClass="cart-summary-card">
+                            <Label text="Delivery Details" styleClass="h2"/>
+                            <HBox spacing="12" alignment="CENTER_LEFT">
+                                <DatePicker fx:id="deliveryDatePicker" promptText="Delivery Date" style="-fx-base: #1e293b;"/>
+                                <TextField fx:id="deliveryTimeField" promptText="HH:mm" styleClass="field" prefWidth="100"/>
+                                <Label text="Must be within 48h" styleClass="muted"/>
+                            </HBox>
+                            
+                            <Separator style="-fx-opacity: 0.1;"/>
 
-                <!-- CATEGORY: FRUITS -->
-                <VBox styleClass="category-card">
-                    <HBox alignment="CENTER_LEFT" spacing="12" styleClass="category-head">
-                        <StackPane styleClass="cat-icon fruit">
-                            <SVGPath content="M12 2c3.86 0 7 3.14 7 7 0 5.25-7 13-7 13S5 14.25 5 9c0-3.86 3.14-7 7-7z"
-                                     styleClass="icon-white"/>
-                        </StackPane>
-                        <VBox spacing="0">
-                            <Label text="Fruits" styleClass="cat-title"/>
-                            <Label fx:id="fruitCountLabel" text="" styleClass="muted tiny"/>
+                            <VBox spacing="8">
+                                <HBox spacing="12" alignment="CENTER_LEFT">
+                                    <Label text="Coupon:" styleClass="field-label"/>
+                                    <ComboBox fx:id="couponComboBox" prefWidth="200" style="-fx-base: #1e293b;"/>
+                                    <Label fx:id="couponDiscountLabel" styleClass="muted" style="-fx-text-fill: #10b981;"/>
+                                </HBox>
+                            </VBox>
+
+                            <Separator style="-fx-opacity: 0.1;"/>
+
+                            <HBox spacing="24" alignment="CENTER_RIGHT">
+                                <Label fx:id="totalLabel" text="Total: 0.00 ₺" styleClass="cart-total"/>
+                                <Button text="Place Order" onAction="#handlePlaceOrder" styleClass="btn-primary" style="-fx-font-size: 14px; -fx-padding: 10 32 10 32;"/>
+                            </HBox>
                         </VBox>
-
-                        <Region HBox.hgrow="ALWAYS"/>
-
-                        <Button styleClass="btn-collapse" onAction="#handleToggleFruits">
-                            <graphic>
-                                <SVGPath fx:id="fruitChevron"
-                                         content="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"
-                                         styleClass="icon-muted"/>
-                            </graphic>
-                        </Button>
-                    </HBox>
-
-                    <VBox fx:id="fruitContentBox" styleClass="category-content">
-                        <FlowPane fx:id="fruitsGrid" hgap="18" vgap="18" prefWrapLength="1200"/>
                     </VBox>
-                </VBox>
+                </Tab>
 
-            </VBox>
-        </ScrollPane>
+                <!-- ORDERS TAB -->
+                <Tab text="Orders" closable="false">
+                    <VBox spacing="24" style="-fx-padding: 32;" VBox.vgrow="ALWAYS">
+                        <HBox alignment="CENTER_LEFT" spacing="16">
+                            <Label text="My Orders" styleClass="h2"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                        </HBox>
+
+                        <ScrollPane fitToWidth="true" styleClass="scroll-pane" VBox.vgrow="ALWAYS" style="-fx-padding: 0;">
+                            <VBox fx:id="ordersContainer" styleClass="list-container" spacing="12"/>
+                        </ScrollPane>
+                    </VBox>
+                </Tab>
+            </tabs>
+        </TabPane>
 
     </VBox>
 

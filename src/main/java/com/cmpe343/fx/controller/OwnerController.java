@@ -14,10 +14,7 @@ import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Region;
-import javafx.scene.layout.StackPane;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 import javafx.stage.Stage;
 
 import java.time.LocalDate;
@@ -378,6 +375,10 @@ public class OwnerController {
         statusRow.getChildren().addAll(statusHeader, statusLabel);
         card.getChildren().add(statusRow);
 
+        HBox actions = new HBox(10);
+        actions.setAlignment(Pos.CENTER_RIGHT);
+        actions.setStyle("-fx-padding: 16 0 0 0;");
+        
         Button toggleBtn = new Button(carrier.isActive() ? "Deactivate" : "Activate");
         toggleBtn.getStyleClass().add("btn-outline");
         toggleBtn.setOnAction(e -> {
@@ -389,7 +390,13 @@ public class OwnerController {
             loadCarriers(); // Reload - will preserve selection
         });
 
-        card.getChildren().add(toggleBtn);
+        Button fireBtn = new Button("Fire Carrier");
+        fireBtn.getStyleClass().add("btn-outline");
+        fireBtn.setStyle("-fx-border-color: #ef4444; -fx-text-fill: #f87171;");
+        fireBtn.setOnAction(e -> handleFireCarrier(carrier));
+
+        actions.getChildren().addAll(toggleBtn, fireBtn);
+        card.getChildren().add(actions);
 
         carrierDetailContainer.getChildren().add(card);
     }
@@ -1804,6 +1811,156 @@ public class OwnerController {
     private void showInfo(String message) {
         if (logoutButton != null && logoutButton.getScene() != null) {
             ToastService.show(logoutButton.getScene(), message, ToastService.Type.INFO);
+        }
+    }
+    
+    @FXML
+    private void handleRefreshCarriers() {
+        loadCarriers();
+    }
+    
+    @FXML
+    private void handleHireCarrier() {
+        showCarrierDialog(null);
+    }
+    
+    private void showCarrierDialog(User existing) {
+        Dialog<java.util.Map<String, String>> dialog = new Dialog<>();
+        dialog.setTitle(existing == null ? "Hire Carrier" : "Edit Carrier");
+        dialog.setHeaderText(existing == null ? "Add New Carrier" : "Edit Carrier: " + existing.getUsername());
+        
+        ButtonType saveBtnType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(saveBtnType, ButtonType.CANCEL);
+        
+        // Style dialog pane to match project theme
+        dialog.getDialogPane().setStyle("-fx-background-color: #0f172a;");
+        dialog.getDialogPane().getStylesheets().add(getClass().getResource("/css/base.css").toExternalForm());
+        dialog.getDialogPane().getStylesheets().add(getClass().getResource("/css/owner.css").toExternalForm());
+        
+        VBox form = new VBox(15);
+        form.setStyle("-fx-background-color: #0f172a; -fx-padding: 20;");
+        
+        TextField usernameField = new TextField(existing != null ? existing.getUsername() : "");
+        usernameField.getStyleClass().add("field");
+        usernameField.setPromptText("Username");
+        if (existing != null) {
+            usernameField.setDisable(true); // Don't allow editing username
+        }
+        
+        PasswordField passwordField = new PasswordField();
+        passwordField.getStyleClass().add("field");
+        passwordField.setPromptText("Password");
+        
+        TextField phoneField = new TextField(existing != null && existing.getPhone() != null ? existing.getPhone() : "");
+        phoneField.getStyleClass().add("field");
+        phoneField.setPromptText("Phone number (e.g., +90 532 123 45 67)");
+        
+        TextField addressField = new TextField(existing != null && existing.getAddress() != null ? existing.getAddress() : "");
+        addressField.getStyleClass().add("field");
+        addressField.setPromptText("Address");
+        
+        Label usernameLabel = new Label("Username:");
+        usernameLabel.getStyleClass().add("field-label");
+        Label passwordLabel = new Label(existing == null ? "Password:" : "New Password (leave blank to keep current):");
+        passwordLabel.getStyleClass().add("field-label");
+        Label phoneLabel = new Label("Phone:");
+        phoneLabel.getStyleClass().add("field-label");
+        Label addressLabel = new Label("Address:");
+        addressLabel.getStyleClass().add("field-label");
+        
+        form.getChildren().addAll(
+            usernameLabel, usernameField,
+            passwordLabel, passwordField,
+            phoneLabel, phoneField,
+            addressLabel, addressField
+        );
+        
+        dialog.getDialogPane().setContent(form);
+        
+        // Enable/disable save button based on validation
+        Node saveButton = dialog.getDialogPane().lookupButton(saveBtnType);
+        saveButton.setDisable(existing == null && (usernameField.getText().trim().isEmpty() || passwordField.getText().trim().isEmpty()));
+        
+        usernameField.textProperty().addListener((obs, oldVal, newVal) -> {
+            saveButton.setDisable(newVal.trim().isEmpty() || (existing == null && passwordField.getText().trim().isEmpty()));
+        });
+        
+        passwordField.textProperty().addListener((obs, oldVal, newVal) -> {
+            if (existing == null) {
+                saveButton.setDisable(newVal.trim().isEmpty() || usernameField.getText().trim().isEmpty());
+            }
+        });
+        
+        dialog.setResultConverter(buttonType -> {
+            if (buttonType == saveBtnType) {
+                java.util.Map<String, String> result = new java.util.HashMap<>();
+                result.put("username", usernameField.getText().trim());
+                result.put("password", passwordField.getText().trim());
+                result.put("phone", phoneField.getText().trim());
+                result.put("address", addressField.getText().trim());
+                return result;
+            }
+            return null;
+        });
+        
+        java.util.Optional<java.util.Map<String, String>> result = dialog.showAndWait();
+        result.ifPresent(data -> {
+            try {
+                String username = data.get("username");
+                String password = data.get("password");
+                String phone = data.get("phone");
+                String address = data.get("address");
+                
+                if (existing == null) {
+                    // Creating new carrier
+                    if (userDAO.usernameExists(username)) {
+                        showError("Username already exists. Please choose a different username.");
+                        return;
+                    }
+                    
+                    int carrierId = userDAO.createCarrier(username, password, phone.isEmpty() ? null : phone, address.isEmpty() ? null : address);
+                    if (carrierId > 0) {
+                        showSuccess("Carrier hired successfully!");
+                        loadCarriers();
+                    } else {
+                        showError("Failed to hire carrier.");
+                    }
+                } else {
+                    // Editing existing carrier (not implemented for now, just show message)
+                    showError("Editing carriers is not yet implemented. Please delete and recreate if needed.");
+                }
+            } catch (RuntimeException e) {
+                if (e.getMessage() != null && e.getMessage().contains("Username already exists")) {
+                    showError("Username already exists. Please choose a different username.");
+                } else {
+                    showError("Error: " + e.getMessage());
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                showError("An error occurred: " + e.getMessage());
+            }
+        });
+    }
+    
+    private void handleFireCarrier(User carrier) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Fire Carrier");
+        alert.setHeaderText("Confirm Deletion");
+        alert.setContentText("Are you sure you want to fire " + carrier.getUsername() + "? This action cannot be undone.");
+
+        if (alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
+            try {
+                boolean deleted = userDAO.deleteCarrier(carrier.getId());
+                if (deleted) {
+                    showSuccess("Carrier fired successfully.");
+                    loadCarriers(); // Reload list
+                } else {
+                    showError("Failed to fire carrier. The carrier may not exist or may not be a carrier.");
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                showError("Error firing carrier: " + e.getMessage());
+            }
         }
     }
 }

@@ -55,6 +55,10 @@
             </Tab>
             <Tab fx:id="carriersTab" text="Carriers" closable="false">
                <VBox spacing="10.0" style="-fx-padding: 10;">
+                  <HBox spacing="10.0">
+                     <Button text="Hire Carrier" onAction="#handleHireCarrier" styleClass="btn-primary"/>
+                     <Button text="Refresh" onAction="#handleRefreshCarriers" styleClass="btn-outline"/>
+                  </HBox>
                   <SplitPane dividerPositions="0.35" VBox.vgrow="ALWAYS">
                      <VBox>
                         <Label text="Carrier List" style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-padding: 5;"/>

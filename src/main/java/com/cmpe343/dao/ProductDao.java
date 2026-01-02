@@ -111,14 +111,12 @@ public class ProductDao {
             // Check if image_path column exists by attempting to use it
             boolean hasImagePathColumn = false;
             if (imagePath != null) {
-                try {
-                    java.sql.Statement checkStmt = c.createStatement();
-                    java.sql.ResultSet rs = checkStmt.executeQuery(
+                try (java.sql.Statement checkStmt = c.createStatement();
+                     java.sql.ResultSet rs = checkStmt.executeQuery(
                         "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS " +
                         "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'products' AND COLUMN_NAME = 'image_path'"
-                    );
+                    )) {
                     hasImagePathColumn = rs.next();
-                    checkStmt.close();
                 } catch (Exception e) {
                     // Column check failed, assume it doesn't exist
                     hasImagePathColumn = false;

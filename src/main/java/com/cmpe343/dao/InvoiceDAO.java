@@ -48,10 +48,10 @@ public class InvoiceDAO {
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             
             stmt.setInt(1, orderId);
-            ResultSet rs = stmt.executeQuery();
-            
-            if (rs.next()) {
-                return rs.getBytes("pdf_blob");
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getBytes("pdf_blob");
+                }
             }
         } catch (SQLException e) {
             e.printStackTrace();
