@@ -127,6 +127,16 @@
                 <Separator style="-fx-opacity: 0.1;"/>
 
                 <VBox spacing="16">
+
+                     <VBox spacing="4" fx:id="couponContainer">
+                        <Label text="Couple Code" styleClass="field-label"/>
+                        <HBox spacing="8" alignment="CENTER_LEFT">
+                             <TextField fx:id="couponInput" promptText="Enter code" styleClass="field" HBox.hgrow="ALWAYS"/>
+                             <Button fx:id="applyCouponBtn" text="Apply" onAction="#handleApplyCouponInline" styleClass="btn-outline-small" style="-fx-padding: 8 16;"/>
+                             <Button fx:id="removeCouponBtn" text="✕" onAction="#handleRemoveCoupon" styleClass="btn-outline-small" visible="false" managed="false" style="-fx-text-fill: #ef4444; -fx-border-color: #ef4444; -fx-padding: 8 12;"/>
+                        </HBox>
+                        <Label fx:id="couponMessage" visible="false" managed="false" style="-fx-font-size: 11px;"/>
+                     </VBox>
                     <HBox spacing="16" alignment="CENTER_LEFT">
                         <Label text="Total" styleClass="h2"/>
                         <Region HBox.hgrow="ALWAYS"/>

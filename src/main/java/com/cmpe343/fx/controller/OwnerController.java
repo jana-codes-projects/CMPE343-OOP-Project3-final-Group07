@@ -323,18 +323,109 @@ public class OwnerController {
         }
     }
 
+    @FXML
+    private void handleAddCarrier() {
+        Dialog<User> dialog = new Dialog<>();
+        dialog.setTitle("Add Carrier");
+        dialog.setHeaderText("Create New Carrier Account");
+
+        ButtonType createType = new ButtonType("Create", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(createType, ButtonType.CANCEL);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new javafx.geometry.Insets(20, 150, 10, 10));
+
+        TextField username = new TextField();
+        username.setPromptText("Username");
+        PasswordField password = new PasswordField();
+        password.setPromptText("Password");
+        TextField phone = new TextField();
+        phone.setPromptText("Phone");
+        TextField address = new TextField();
+        address.setPromptText("Address");
+
+        grid.add(new Label("Username:"), 0, 0);
+        grid.add(username, 1, 0);
+        grid.add(new Label("Password:"), 0, 1);
+        grid.add(password, 1, 1);
+        grid.add(new Label("Phone:"), 0, 2);
+        grid.add(phone, 1, 2);
+        grid.add(new Label("Address:"), 0, 3);
+        grid.add(address, 1, 3);
+
+        dialog.getDialogPane().setContent(grid);
+
+        dialog.setResultConverter(b -> {
+            if (b == createType) {
+                return new User(0, username.getText(), "carrier", phone.getText(), address.getText(), true);
+            }
+            return null;
+        });
+
+        // We need to capture the password too, but User model doesn't hold it.
+        // We can just use the fields directly if result is present.
+
+        dialog.showAndWait().ifPresent(u -> {
+            String pwd = password.getText();
+            if (u.getUsername().isEmpty() || pwd.isEmpty()) {
+                com.cmpe343.fx.util.ToastService.show(logoutButton.getScene(), "Username/Password required",
+                        com.cmpe343.fx.util.ToastService.Type.ERROR);
+                return;
+            }
+            if (userDAO.createCarrier(u.getUsername(), pwd, u.getAddress(), u.getPhone())) {
+                com.cmpe343.fx.util.ToastService.show(logoutButton.getScene(), "Carrier created",
+                        com.cmpe343.fx.util.ToastService.Type.SUCCESS);
+                loadCarriers();
+            } else {
+                com.cmpe343.fx.util.ToastService.show(logoutButton.getScene(), "Failed (Username taken?)",
+                        com.cmpe343.fx.util.ToastService.Type.ERROR);
+            }
+        });
+    }
+
+    @FXML
+    private void handleRefreshCarriers() {
+        loadCarriers();
+    }
+
     private void showCarrierDetail(User carrier) {
         carrierDetailContainer.getChildren().clear();
-        VBox card = new VBox(10);
+        VBox card = new VBox(12); // Incressed spacing
         card.getStyleClass().add("detail-card");
         // Apply card style manually if detail-card isn't sufficient or if we want the
         // generic card look
         card.getStyleClass().add("card");
+        card.setStyle("-fx-padding: 24;");
 
         Label header = new Label(carrier.getUsername());
         header.getStyleClass().add("h2"); // Use h2 instead of detail-header
 
-        card.getChildren().add(header);
+        // Rating Stats
+        RatingDao.RatingStats stats = ratingDAO.getCarrierStats(carrier.getId());
+
+        HBox ratingBox = new HBox(8);
+        ratingBox.setAlignment(Pos.CENTER_LEFT);
+
+        // Star display
+        Label starIcon = new Label("★");
+        starIcon.setStyle("-fx-text-fill: #f59e0b; -fx-font-size: 20px;");
+
+        Label ratingVal = new Label(String.format("%.1f", stats.average()));
+        ratingVal.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: white;");
+
+        Label ratingCount = new Label("(" + stats.count() + " ratings)");
+        ratingCount.getStyleClass().add("muted");
+
+        ratingBox.getChildren().addAll(starIcon, ratingVal, ratingCount);
+
+        card.getChildren().addAll(header, ratingBox);
+
+        Separator sep = new Separator();
+        sep.setStyle("-fx-opacity: 0.1; -fx-padding: 8 0;");
+        card.getChildren().add(sep);
+
         card.getChildren().add(createDetailRow("Phone", carrier.getPhone() != null ? carrier.getPhone() : "-"));
         card.getChildren().add(createDetailRow("Address", carrier.getAddress() != null ? carrier.getAddress() : "-"));
 
@@ -346,9 +437,16 @@ public class OwnerController {
             else
                 userDAO.activateCarrier(carrier.getId());
             loadCarriers(); // Reload
+            User updated = userDAO.getUserById(carrier.getId());
+            if (updated != null)
+                showCarrierDetail(updated);
         });
 
-        card.getChildren().add(toggleBtn);
+        HBox actions = new HBox(10);
+        actions.setPadding(new javafx.geometry.Insets(16, 0, 0, 0));
+        actions.getChildren().add(toggleBtn);
+
+        card.getChildren().add(actions);
 
         carrierDetailContainer.getChildren().add(card);
     }
@@ -967,8 +1065,54 @@ public class OwnerController {
 
     private void loadCarrierRatings() {
         ratingsContainer.getChildren().clear();
-        // Placeholder implementation
-        ratingsContainer.getChildren().add(createPlaceholder("Ratings feature active."));
+
+        List<Rating> ratings = ratingDAO.getAllRatings();
+        if (ratings.isEmpty()) {
+            ratingsContainer.getChildren().add(createPlaceholder("No ratings submitted yet."));
+            return;
+        }
+
+        // We specifically want to show Carrier Name, Score, Comment, Date
+
+        for (Rating r : ratings) {
+            HBox item = createListItemBase();
+            item.setUserData(r.getId());
+
+            User carrier = userDAO.getUserById(r.getCarrierId()); // Assuming getting user by ID is possible
+            String carrierName = (carrier != null) ? carrier.getUsername() : "Unknown Carrier";
+
+            Label name = new Label(carrierName);
+            name.getStyleClass().add("detail-value");
+            name.setStyle("-fx-font-weight: bold;");
+            name.setPrefWidth(150);
+
+            HBox stars = new HBox(2);
+            for (int i = 0; i < 5; i++) {
+                Label star = new Label("★");
+                if (i < r.getRating()) {
+                    star.setStyle("-fx-text-fill: #f59e0b; -fx-font-size: 14px;");
+                } else {
+                    star.setStyle("-fx-text-fill: #475569; -fx-font-size: 14px;");
+                }
+                stars.getChildren().add(star);
+            }
+            stars.setPrefWidth(100);
+
+            Label comment = new Label(r.getComment());
+            comment.getStyleClass().add("muted");
+            comment.setWrapText(true);
+            comment.setMaxWidth(400); // Limit width
+
+            Region spacer = new Region();
+            HBox.setHgrow(spacer, Priority.ALWAYS);
+
+            Label date = new Label(r.getCreatedAt().format(DateTimeFormatter.ofPattern("MMM dd")));
+            date.getStyleClass().add("muted");
+            date.setStyle("-fx-font-size: 11px;");
+
+            item.getChildren().addAll(name, stars, comment, spacer, date);
+            ratingsContainer.getChildren().add(item);
+        }
     }
 
     @FXML

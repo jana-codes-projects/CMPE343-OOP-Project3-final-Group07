@@ -17,6 +17,7 @@ import javafx.fxml.FXMLLoader;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import com.cmpe343.model.Rating;
 
 public class OrdersController {
 
@@ -38,6 +39,7 @@ public class OrdersController {
 
     private final OrderDao orderDao = new OrderDao();
     private final CartDao cartDao = new CartDao();
+    private final com.cmpe343.dao.RatingDao ratingDao = new com.cmpe343.dao.RatingDao();
     private List<Order> userOrders = new java.util.ArrayList<>();
 
     @FXML
@@ -239,7 +241,21 @@ public class OrdersController {
             handleDownloadInvoice(order);
         });
 
-        header.getChildren().addAll(iconContainer, info, spacer, statusBadge, total, invoiceBtn, reorderBtn, cancelBtn,
+        // Rate Carrier Button
+        Button rateBtn = new Button("Rate");
+        rateBtn.getStyleClass().add("btn-outline-small");
+        rateBtn.setStyle("-fx-text-fill: #f59e0b; -fx-border-color: #f59e0b; -fx-padding: 4 12;");
+        // Only visible for Delivered orders (and ideally if not already rated, but
+        // simplified for now)
+        rateBtn.setVisible(order.getStatus() == Order.OrderStatus.DELIVERED);
+        rateBtn.setManaged(rateBtn.isVisible());
+        rateBtn.setOnAction(e -> {
+            e.consume();
+            handleRateCarrier(order);
+        });
+
+        header.getChildren().addAll(iconContainer, info, spacer, statusBadge, total, invoiceBtn, rateBtn, reorderBtn,
+                cancelBtn,
                 chevron);
 
         // 2. Details (Hidden by default)
@@ -481,5 +497,69 @@ public class OrdersController {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private void handleRateCarrier(Order order) {
+        if (order.getCarrierId() == null) {
+            ToastService.show(ordersContainer.getScene(), "No carrier assigned to this order.",
+                    ToastService.Type.ERROR);
+            return;
+        }
+
+        Rating existing = ratingDao.getRatingByOrderId(order.getId());
+
+        Dialog<Boolean> dialog = new Dialog<>();
+        dialog.setTitle(existing == null ? "Rate Carrier" : "Edit Rating");
+        dialog.setHeaderText(existing == null ? "Rate your delivery experience" : "Update your rating");
+
+        ButtonType submitType = new ButtonType("Submit", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(submitType, ButtonType.CANCEL);
+
+        VBox content = new VBox(10);
+        content.setPadding(new javafx.geometry.Insets(20));
+
+        int initialScore = existing != null ? existing.getRating() : 5;
+        Label scoreLabel = new Label("Score: " + initialScore);
+        Slider scoreSlider = new Slider(1, 5, initialScore);
+        scoreSlider.setMajorTickUnit(1);
+        scoreSlider.setMinorTickCount(0);
+        scoreSlider.setSnapToTicks(true);
+        scoreSlider.setShowTickMarks(true);
+        scoreSlider.setShowTickLabels(true);
+
+        scoreSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
+            scoreLabel.setText("Score: " + newVal.intValue());
+        });
+
+        TextArea commentArea = new TextArea();
+        commentArea.setPromptText("Optional comment...");
+        commentArea.setPrefRowCount(3);
+        if (existing != null && existing.getComment() != null) {
+            commentArea.setText(existing.getComment());
+        }
+
+        content.getChildren().addAll(scoreLabel, scoreSlider, new Label("Comment:"), commentArea);
+        dialog.getDialogPane().setContent(content);
+
+        dialog.setResultConverter(b -> {
+            if (b == submitType) {
+                try {
+                    int score = (int) scoreSlider.getValue();
+                    String comment = commentArea.getText().trim();
+                    ratingDao.saveRating(order.getId(), order.getCarrierId(), order.getCustomerId(), score, comment);
+                    return true;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+            return false;
+        });
+
+        dialog.showAndWait().ifPresent(success -> {
+            if (success) {
+                ToastService.show(ordersContainer.getScene(), "Thank you for your feedback!",
+                        ToastService.Type.SUCCESS);
+            }
+        });
     }
 }

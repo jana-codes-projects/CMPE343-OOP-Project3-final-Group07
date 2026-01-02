@@ -12,6 +12,10 @@ public class OrderDao {
     private static final double VAT_RATE = 0.20; // %20
 
     public int createOrder(int customerId, List<CartItem> items, LocalDateTime requestedDelivery) {
+        return createOrder(customerId, items, requestedDelivery, null);
+    }
+
+    public int createOrder(int customerId, List<CartItem> items, LocalDateTime requestedDelivery, Integer couponId) {
         if (items == null || items.isEmpty()) {
             throw new IllegalArgumentException("Sepet boş.");
         }
@@ -21,7 +25,35 @@ public class OrderDao {
 
         double totalBeforeTax = items.stream().mapToDouble(CartItem::getLineTotal).sum();
         double vat = round2(totalBeforeTax * VAT_RATE);
-        double totalAfterTax = round2(totalBeforeTax + vat);
+
+        // Calculate Discount if Coupon Exists
+        double discountAmount = 0.0;
+        if (couponId != null) {
+            com.cmpe343.dao.CouponDao couponDao = new com.cmpe343.dao.CouponDao();
+            com.cmpe343.model.Coupon coupon = couponDao.getCouponById(couponId);
+            if (coupon != null && coupon.isActive()) {
+                // Double check validity (optional but safe)
+                if (totalBeforeTax >= coupon.getMinCart()) {
+                    if (coupon.getKind() == com.cmpe343.model.Coupon.CouponKind.PERCENT) {
+                        discountAmount = round2(totalBeforeTax * (coupon.getValue() / 100.0));
+                    } else {
+                        discountAmount = coupon.getValue();
+                    }
+                }
+            }
+        }
+
+        // Ensure discount doesn't exceed total (though usually we apply discount BEFORE
+        // tax or AFTER tax depending on rules,
+        // usually Logic: Subtotal - Discount + VAT.
+        // Here, simplistic approach: (Subtotal + VAT) - Discount, or (Subtotal -
+        // Discount) + VAT.
+        // Tax is usually on the discounted price. Let's assume standard retail:
+        // Taxable Base = TotalBeforeTax - Discount.
+
+        double taxableBase = Math.max(0, totalBeforeTax - discountAmount);
+        double finalVat = round2(taxableBase * VAT_RATE);
+        double totalAfterTax = round2(taxableBase + finalVat);
 
         Timestamp nowTs = Timestamp.valueOf(LocalDateTime.now());
         Timestamp requestedTs = Timestamp.valueOf(requestedDelivery);
@@ -32,7 +64,7 @@ public class OrderDao {
                        total_before_tax, vat, total_after_tax, coupon_id, loyalty_discount)
                     VALUES
                       (?, NULL, 'CREATED', ?, ?, NULL,
-                       ?, ?, ?, NULL, 0)
+                       ?, ?, ?, ?, 0)
                 """;
 
         String insertItem = """
@@ -57,8 +89,13 @@ public class OrderDao {
                 ps.setTimestamp(2, nowTs);
                 ps.setTimestamp(3, requestedTs);
                 ps.setDouble(4, round2(totalBeforeTax));
-                ps.setDouble(5, vat);
+                ps.setDouble(5, finalVat);
                 ps.setDouble(6, totalAfterTax);
+                if (couponId != null) {
+                    ps.setInt(7, couponId);
+                } else {
+                    ps.setNull(7, Types.INTEGER);
+                }
 
                 ps.executeUpdate();
 
@@ -419,7 +456,7 @@ public class OrderDao {
 
     public double getCouponDiscountForOrder(int orderId) {
         String sql = """
-                    SELECT c.kind, c.value, c.min_cart_amount, o.total_before_tax
+                    SELECT c.kind, c.value, c.min_cart, o.total_before_tax
                     FROM orders o
                     JOIN coupons c ON o.coupon_id = c.id
                     WHERE o.id = ?
@@ -432,20 +469,11 @@ public class OrderDao {
                 if (rs.next()) {
                     String kind = rs.getString("kind");
                     double value = rs.getDouble("value");
-                    // We don't strictly need these for calculation if the discount was already
-                    // applied to total_after_tax
-                    // BUT, typically we want to know how much was discounted.
-                    // If the DB doesn't store the discount amount directly, we verify against the
-                    // kind.
-                    // The schema has 'coupon_id', but not 'discount_amount'.
-                    // However, we can calculate it.
-
                     double totalBefore = rs.getDouble("total_before_tax");
 
                     if ("PERCENT".equalsIgnoreCase(kind)) {
                         return round2(totalBefore * (value / 100.0));
                     } else {
-                        // FIXED
                         return value;
                     }
                 }

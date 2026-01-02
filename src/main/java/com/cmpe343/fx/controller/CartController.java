@@ -41,6 +41,16 @@ public class CartController {
     @FXML
     private Button placeOrderButton;
 
+    // Inline Coupon UI
+    @FXML
+    private TextField couponInput;
+    @FXML
+    private Button applyCouponBtn;
+    @FXML
+    private Button removeCouponBtn;
+    @FXML
+    private Label couponMessage;
+
     // Header fields (from customer page)
     @FXML
     private Label welcomeLabel;
@@ -55,7 +65,9 @@ public class CartController {
 
     private final CartDao cartDao = new CartDao();
     private final OrderDao orderDao = new OrderDao();
+    private final com.cmpe343.dao.CouponDao couponDao = new com.cmpe343.dao.CouponDao();
     private java.util.List<CartItem> currentCartItems = new java.util.ArrayList<>();
+    private com.cmpe343.model.Coupon appliedCoupon = null;
 
     @FXML
     public void initialize() {
@@ -355,9 +367,106 @@ public class CartController {
     }
 
     private void updateTotal() {
-        double total = currentCartItems.stream().mapToDouble(CartItem::getLineTotal).sum();
+        double subtotal = currentCartItems.stream().mapToDouble(CartItem::getLineTotal).sum();
+
+        // Remove existing coupon logic visual elements if any (not implemented yet in
+        // UI, so safe)
+        // But we need to display it.
+        // Assuming we have a place to display totals. Currently we just have
+        // 'totalLabel'.
+
+        double discount = 0;
+        if (appliedCoupon != null) {
+            if (subtotal >= appliedCoupon.getMinCart()) {
+                if (appliedCoupon.getKind() == com.cmpe343.model.Coupon.CouponKind.PERCENT) {
+                    discount = subtotal * (appliedCoupon.getValue() / 100.0);
+                } else {
+                    discount = appliedCoupon.getValue();
+                }
+            } else {
+                // Coupon invalid due to amount change
+                appliedCoupon = null;
+                ToastService.show(cartItemsContainer.getScene(), "Coupon removed (min cart amount not met)",
+                        ToastService.Type.WARNING);
+            }
+        }
+
+        double finalTotal = Math.max(0, subtotal - discount);
+
         if (totalLabel != null) {
-            totalLabel.setText(String.format("%.2f ₺", total));
+            if (discount > 0) {
+                totalLabel.setText(
+                        String.format("Sub: %.2f ₺\nDisc: -%.2f ₺\nTotal: %.2f ₺", subtotal, discount, finalTotal));
+            } else {
+                totalLabel.setText(String.format("%.2f ₺", finalTotal));
+            }
+        }
+    }
+
+    @FXML
+    private void handleApplyCouponInline() {
+        String code = couponInput.getText().trim();
+        if (code.isEmpty()) {
+            setCouponMessage("Enter a code", true);
+            return;
+        }
+
+        com.cmpe343.model.Coupon c = couponDao.getCouponByCode(code);
+        if (c == null || !c.isActive()) {
+            setCouponMessage("Invalid/Inactive Code", true);
+            return;
+        }
+
+        if (c.getExpiresAt() != null && c.getExpiresAt().isBefore(LocalDateTime.now())) {
+            setCouponMessage("Coupon Expired", true);
+            return;
+        }
+
+        double subtotal = currentCartItems.stream().mapToDouble(CartItem::getLineTotal).sum();
+        if (subtotal < c.getMinCart()) {
+            setCouponMessage("Min cart: " + c.getMinCart() + " ₺", true);
+            return;
+        }
+
+        // Success
+        appliedCoupon = c;
+        couponInput.setDisable(true);
+        applyCouponBtn.setVisible(false);
+        applyCouponBtn.setManaged(false);
+        removeCouponBtn.setVisible(true);
+        removeCouponBtn.setManaged(true);
+        setCouponMessage("Coupon Applied!", false);
+
+        updateTotal();
+    }
+
+    @FXML
+    private void handleRemoveCoupon() {
+        appliedCoupon = null;
+        couponInput.clear();
+        couponInput.setDisable(false);
+
+        applyCouponBtn.setVisible(true);
+        applyCouponBtn.setManaged(true);
+
+        removeCouponBtn.setVisible(false);
+        removeCouponBtn.setManaged(false);
+
+        setCouponMessage("", false);
+        updateTotal();
+        ToastService.show(cartItemsContainer.getScene(), "Coupon removed.", ToastService.Type.INFO);
+    }
+
+    private void setCouponMessage(String msg, boolean isError) {
+        if (couponMessage == null)
+            return;
+        couponMessage.setText(msg);
+        couponMessage.setVisible(!msg.isEmpty());
+        couponMessage.setManaged(!msg.isEmpty());
+        if (isError) {
+            couponMessage.setStyle("-fx-text-fill: #ef4444; -fx-font-size: 11px;");
+        } else {
+            couponMessage.setStyle("-fx-text-fill: #10b981; -fx-font-size: 11px;");
         }
     }
 
@@ -399,15 +508,21 @@ public class CartController {
             }
 
             // Create Order
-            int orderId = orderDao.createOrder(Session.getUser().getId(), currentCartItems, requested);
+            int orderId = orderDao.createOrder(Session.getUser().getId(), currentCartItems, requested,
+                    appliedCoupon != null ? appliedCoupon.getId() : null);
 
-            // Generate Invoice
+            // Generate Invoice (only once)
             orderDao.createInvoice(orderId, currentCartItems);
 
             // Clear cart from DB after order
             cartDao.clear(Session.getUser().getId());
             currentCartItems.clear();
             renderCartItems();
+
+            // Reset Coupon UI
+            if (appliedCoupon != null) {
+                handleRemoveCoupon();
+            }
 
             ToastService.show(cartItemsContainer.getScene(), "Order placed successfully! #" + orderId,
                     ToastService.Type.SUCCESS,

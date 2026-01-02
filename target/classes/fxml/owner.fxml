@@ -61,6 +61,10 @@
             </Tab>
             <Tab fx:id="carriersTab" text="Carriers" closable="false">
                <VBox spacing="16.0" style="-fx-padding: 24;">
+                  <HBox spacing="12.0" alignment="CENTER_LEFT">
+                     <Button text="New Carrier" onAction="#handleAddCarrier" styleClass="btn-primary"/>
+                     <Button text="Refresh" onAction="#handleRefreshCarriers" styleClass="btn-outline"/>
+                  </HBox>
                   <SplitPane dividerPositions="0.35" VBox.vgrow="ALWAYS" styleClass="split-pane">
                      <VBox spacing="8" styleClass="card" style="-fx-padding: 16;">
                         <Label text="Carrier List" styleClass="h3"/>

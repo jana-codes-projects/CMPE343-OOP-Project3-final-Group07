@@ -174,6 +174,34 @@ public class UserDao {
         }
     }
 
+    public boolean createCarrier(String username, String password, String address, String phone) {
+        String checkSql = "SELECT id FROM users WHERE username = ?";
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement(checkSql)) {
+            ps.setString(1, username);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return false; // Username taken
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Error checking username: " + e.getMessage(), e);
+        }
+
+        String sql = "INSERT INTO users (username, password_hash, role, address, phone, is_active) VALUES (?, SHA2(?, 256), 'carrier', ?, ?, 1)";
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, username);
+            ps.setString(2, password);
+            ps.setString(3, address);
+            ps.setString(4, phone);
+            int rows = ps.executeUpdate();
+            return rows > 0;
+        } catch (Exception e) {
+            throw new RuntimeException("Error creating carrier: " + e.getMessage(), e);
+        }
+    }
+
     /**
      * Gets the owner user ID (first user with role 'owner').
      * 

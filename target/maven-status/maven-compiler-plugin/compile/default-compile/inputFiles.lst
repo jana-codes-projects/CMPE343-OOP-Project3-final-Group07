@@ -16,6 +16,7 @@
 /home/emirfurqan/CMPE343-OOP-Project3-Group7/src/main/java/com/cmpe343/model/CartItem.java
 /home/emirfurqan/CMPE343-OOP-Project3-Group7/src/main/java/com/cmpe343/fx/MainFx.java
 /home/emirfurqan/CMPE343-OOP-Project3-Group7/src/main/java/com/cmpe343/fx/controller/OwnerController.java
+/home/emirfurqan/CMPE343-OOP-Project3-Group7/src/main/java/com/cmpe343/temp/MigrationFixRatingsTable.java
 /home/emirfurqan/CMPE343-OOP-Project3-Group7/src/main/java/com/cmpe343/fx/controller/CarrierController.java
 /home/emirfurqan/CMPE343-OOP-Project3-Group7/src/main/java/com/cmpe343/dao/MessageDao.java
 /home/emirfurqan/CMPE343-OOP-Project3-Group7/src/main/java/com/cmpe343/fx/controller/RegisterController.java
