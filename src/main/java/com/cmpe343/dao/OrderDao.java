@@ -495,6 +495,100 @@ public class OrderDao {
         return stats;
     }
     
+    /**
+     * Cancels an order, restocks products, and updates order status.
+     * This method:
+     * 1. Updates the order status to CANCELLED (only if order is CREATED or ASSIGNED)
+     * 2. Restocks all products from the order items
+     * 3. Uses a transaction to ensure data consistency
+     * 
+     * Note: Refunds are typically handled externally through payment processors.
+     * This method only handles the inventory restocking and status update.
+     * 
+     * @param orderId The ID of the order to cancel
+     * @return true if the order was successfully cancelled, false otherwise
+     * @throws RuntimeException if the order cannot be cancelled (e.g., already DELIVERED or CANCELLED)
+     */
+    public boolean cancelOrder(int orderId) {
+        // First, get the order to check its status and items
+        com.cmpe343.model.Order order = null;
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement("SELECT * FROM orders WHERE id = ?")) {
+            ps.setInt(1, orderId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    order = mapOrder(rs);
+                } else {
+                    return false; // Order not found
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error fetching order: " + e.getMessage());
+            return false;
+        }
+        
+        // Check if order can be cancelled (only CREATED or ASSIGNED orders can be cancelled)
+        if (order.getStatus() == com.cmpe343.model.Order.OrderStatus.DELIVERED) {
+            throw new RuntimeException("Cannot cancel a delivered order.");
+        }
+        if (order.getStatus() == com.cmpe343.model.Order.OrderStatus.CANCELLED) {
+            throw new RuntimeException("Order is already cancelled.");
+        }
+        
+        // Load order items
+        List<com.cmpe343.model.CartItem> items = getOrderItems(orderId);
+        if (items == null || items.isEmpty()) {
+            throw new RuntimeException("Order has no items to restock.");
+        }
+        
+        String updateOrderStatus = """
+            UPDATE orders 
+            SET status = 'CANCELLED' 
+            WHERE id = ? AND status IN ('CREATED', 'ASSIGNED')
+        """;
+        
+        String restockProduct = """
+            UPDATE products
+            SET stock_kg = stock_kg + ?
+            WHERE id = ?
+        """;
+        
+        try (Connection c = Db.getConnection()) {
+            c.setAutoCommit(false);
+            
+            try {
+                // 1) Update order status
+                try (PreparedStatement ps = c.prepareStatement(updateOrderStatus)) {
+                    ps.setInt(1, orderId);
+                    int updated = ps.executeUpdate();
+                    if (updated == 0) {
+                        c.rollback();
+                        throw new RuntimeException("Could not update order status. Order may have already been cancelled or delivered.");
+                    }
+                }
+                
+                // 2) Restock all products
+                for (com.cmpe343.model.CartItem item : items) {
+                    try (PreparedStatement ps = c.prepareStatement(restockProduct)) {
+                        ps.setDouble(1, item.getQuantityKg());
+                        ps.setInt(2, item.getProduct().getId());
+                        ps.executeUpdate();
+                    }
+                }
+                
+                c.commit();
+                return true;
+                
+            } catch (Exception e) {
+                c.rollback();
+                throw new RuntimeException("Could not cancel order: " + e.getMessage(), e);
+            }
+        } catch (Exception e) {
+            System.err.println("Error cancelling order: " + e.getMessage());
+            throw new RuntimeException("Could not cancel order: " + e.getMessage(), e);
+        }
+    }
+    
     private static double round2(double v) {
         return Math.round(v * 100.0) / 100.0;
     }
