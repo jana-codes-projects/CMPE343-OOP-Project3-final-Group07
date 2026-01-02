@@ -128,6 +128,11 @@
 
                 <VBox spacing="16">
 
+                     <!-- Loyalty Info -->
+                     <VBox fx:id="loyaltyBox" spacing="4">
+                        <Label fx:id="loyaltyLabel" text="Checking loyalty status..." wrapText="true" maxWidth="Infinity" />
+                     </VBox>
+
                      <VBox spacing="4" fx:id="couponContainer">
                         <Label text="Couple Code" styleClass="field-label"/>
                         <HBox spacing="8" alignment="CENTER_LEFT">
@@ -140,7 +145,7 @@
                     <HBox spacing="16" alignment="CENTER_LEFT">
                         <Label text="Total" styleClass="h2"/>
                         <Region HBox.hgrow="ALWAYS"/>
-                        <Label fx:id="totalLabel" text="0.00 ₺" styleClass="h2" style="-fx-text-fill: #10b981; -fx-font-size: 24px; -fx-font-weight: 800;"/>
+                        <Label fx:id="totalLabel" text="0.00 ₺" styleClass="h2" style="-fx-text-fill: #10b981; -fx-font-size: 18px; -fx-font-weight: 800;"/>
                     </HBox>
                     <Button fx:id="placeOrderButton" text="Place Order" onAction="#handlePlaceOrder" styleClass="btn-primary" maxWidth="Infinity" style="-fx-padding: 14; -fx-font-size: 16px; -fx-font-weight: 700;"/>
                 </VBox>

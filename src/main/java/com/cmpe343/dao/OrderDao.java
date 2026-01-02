@@ -12,10 +12,11 @@ public class OrderDao {
     private static final double VAT_RATE = 0.20; // %20
 
     public int createOrder(int customerId, List<CartItem> items, LocalDateTime requestedDelivery) {
-        return createOrder(customerId, items, requestedDelivery, null);
+        return createOrder(customerId, items, requestedDelivery, null, 0.0);
     }
 
-    public int createOrder(int customerId, List<CartItem> items, LocalDateTime requestedDelivery, Integer couponId) {
+    public int createOrder(int customerId, List<CartItem> items, LocalDateTime requestedDelivery, Integer couponId,
+            double loyaltyDiscount) {
         if (items == null || items.isEmpty()) {
             throw new IllegalArgumentException("Sepet boş.");
         }
@@ -23,8 +24,10 @@ public class OrderDao {
             throw new IllegalArgumentException("Requested delivery time boş olamaz.");
         }
 
-        double totalBeforeTax = items.stream().mapToDouble(CartItem::getLineTotal).sum();
-        double vat = round2(totalBeforeTax * VAT_RATE);
+        // VAT-INCLUSIVE LOGIC
+        // The item prices are Gross (Inc. Tax).
+        // Total Gross = Sum(Item Line Totals)
+        double grossTotal = items.stream().mapToDouble(CartItem::getLineTotal).sum();
 
         // Calculate Discount if Coupon Exists
         double discountAmount = 0.0;
@@ -32,10 +35,9 @@ public class OrderDao {
             com.cmpe343.dao.CouponDao couponDao = new com.cmpe343.dao.CouponDao();
             com.cmpe343.model.Coupon coupon = couponDao.getCouponById(couponId);
             if (coupon != null && coupon.isActive()) {
-                // Double check validity (optional but safe)
-                if (totalBeforeTax >= coupon.getMinCart()) {
+                if (grossTotal >= coupon.getMinCart()) {
                     if (coupon.getKind() == com.cmpe343.model.Coupon.CouponKind.PERCENT) {
-                        discountAmount = round2(totalBeforeTax * (coupon.getValue() / 100.0));
+                        discountAmount = round2(grossTotal * (coupon.getValue() / 100.0));
                     } else {
                         discountAmount = coupon.getValue();
                     }
@@ -43,17 +45,19 @@ public class OrderDao {
             }
         }
 
-        // Ensure discount doesn't exceed total (though usually we apply discount BEFORE
-        // tax or AFTER tax depending on rules,
-        // usually Logic: Subtotal - Discount + VAT.
-        // Here, simplistic approach: (Subtotal + VAT) - Discount, or (Subtotal -
-        // Discount) + VAT.
-        // Tax is usually on the discounted price. Let's assume standard retail:
-        // Taxable Base = TotalBeforeTax - Discount.
+        // Final Total Calculation (Customer Pays)
+        // Total = Gross - Coupon - Loyalty
+        double totalToPay = Math.max(0, grossTotal - discountAmount - loyaltyDiscount);
 
-        double taxableBase = Math.max(0, totalBeforeTax - discountAmount);
-        double finalVat = round2(taxableBase * VAT_RATE);
-        double totalAfterTax = round2(taxableBase + finalVat);
+        // Back-calculate VAT
+        // Total = Net * 1.20 => Net = Total / 1.20
+        double netTotal = round2(totalToPay / (1.0 + VAT_RATE));
+        double vat = round2(totalToPay - netTotal);
+
+        // Variables for DB
+        double totalBeforeTax = netTotal;
+        double totalAfterTax = round2(totalToPay);
+        double finalVat = vat;
 
         Timestamp nowTs = Timestamp.valueOf(LocalDateTime.now());
         Timestamp requestedTs = Timestamp.valueOf(requestedDelivery);
@@ -64,7 +68,7 @@ public class OrderDao {
                        total_before_tax, vat, total_after_tax, coupon_id, loyalty_discount)
                     VALUES
                       (?, NULL, 'CREATED', ?, ?, NULL,
-                       ?, ?, ?, ?, 0)
+                       ?, ?, ?, ?, ?)
                 """;
 
         String insertItem = """
@@ -96,6 +100,7 @@ public class OrderDao {
                 } else {
                     ps.setNull(7, Types.INTEGER);
                 }
+                ps.setDouble(8, loyaltyDiscount);
 
                 ps.executeUpdate();
 
@@ -482,5 +487,22 @@ public class OrderDao {
             e.printStackTrace();
         }
         return 0.0;
+    }
+
+    public double[] getCustomerStats(int userId) {
+        // Returns [totalSpent, orderCount]
+        String sql = "SELECT COUNT(*) as cnt, SUM(total_after_tax) as total FROM orders WHERE customer_id = ? AND status = 'DELIVERED'";
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return new double[] { rs.getDouble("total"), rs.getInt("cnt") };
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return new double[] { 0.0, 0.0 };
     }
 }

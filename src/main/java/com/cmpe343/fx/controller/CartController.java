@@ -5,10 +5,6 @@ import com.cmpe343.dao.OrderDao;
 import com.cmpe343.fx.Session;
 import com.cmpe343.fx.util.ToastService;
 import com.cmpe343.model.CartItem;
-import javafx.beans.property.SimpleObjectProperty;
-import javafx.beans.property.SimpleStringProperty;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Pos;
@@ -62,6 +58,11 @@ public class CartController {
     private Label resultInfoLabel;
     @FXML
     private Label cartCountBadge;
+
+    @FXML
+    private VBox loyaltyBox; // We will add this to FXML or just insert it
+    @FXML
+    private Label loyaltyLabel; // Info about status
 
     private final CartDao cartDao = new CartDao();
     private final OrderDao orderDao = new OrderDao();
@@ -140,7 +141,41 @@ public class CartController {
         }
 
         currentCartItems = res.items;
+        checkLoyalty();
         renderCartItems();
+    }
+
+    private double loyaltyDiscountAmount = 0.0;
+    private boolean isLoyaltyEligible = false;
+
+    private void checkLoyalty() {
+        // Loyalty is now determined by the Owner-assigned Level.
+        // Level 1 = 5%, Level 2 = 10%
+        int level = Session.getUser().getLoyaltyLevel();
+
+        isLoyaltyEligible = (level > 0);
+
+        if (loyaltyLabel != null) {
+            if (isLoyaltyEligible) {
+                int percent = level == 2 ? 10 : 5;
+                String tier = level == 2 ? "VIP" : "LOYAL";
+                loyaltyLabel.setText("🌟 Loyalty Tier: " + tier + "\nYou get " + percent + "% OFF!");
+                loyaltyLabel.setStyle(
+                        "-fx-text-fill: #10b981; -fx-font-weight: bold; -fx-padding: 8; -fx-border-color: #10b981; -fx-border-radius: 4;");
+            } else {
+                // Optional: Show progress even if not level 1 yet
+                double[] stats = orderDao.getCustomerStats(Session.getUser().getId());
+                boolean qual = (stats[0] > 5000 || stats[1] > 5);
+
+                if (qual) {
+                    loyaltyLabel.setText("Loyalty Status: Eligible for Upgrade!\n(Contact Owner for activation)");
+                    loyaltyLabel.setStyle("-fx-text-fill: #f59e0b; -fx-padding: 8;");
+                } else {
+                    loyaltyLabel.setText("Loyalty Status: Standard");
+                    loyaltyLabel.setStyle("-fx-text-fill: #94a3b8; -fx-padding: 8;");
+                }
+            }
+        }
     }
 
     private void renderCartItems() {
@@ -304,7 +339,7 @@ public class CartController {
         priceCol.setMinWidth(100);
 
         Label total = new Label(String.format("%.2f ₺", item.getLineTotal()));
-        total.setStyle("-fx-font-weight: bold; -fx-text-fill: #10b981; -fx-font-size: 16px;");
+        total.setStyle("-fx-font-weight: bold; -fx-text-fill: #10b981; -fx-font-size: 14px;");
 
         priceCol.getChildren().add(total);
         if (item.hasDiscount()) {
@@ -386,20 +421,47 @@ public class CartController {
             } else {
                 // Coupon invalid due to amount change
                 appliedCoupon = null;
-                ToastService.show(cartItemsContainer.getScene(), "Coupon removed (min cart amount not met)",
+                ToastService.show(cartItemsContainer.getScene(),
+                        String.format("Coupon min amount not met (%.2f < %.2f)", subtotal, appliedCoupon.getMinCart()),
                         ToastService.Type.WARNING);
             }
         }
 
-        double finalTotal = Math.max(0, subtotal - discount);
+        // VAT-INCLUSIVE LOGIC
+        // Subtotal = Gross Total (Inc. Tax)
+        // Taxable Base = Gross - Coupon
+
+        // Loyalty is calculated on the Gross amount (after coupon) usually, or before?
+        // Let's stick to: Loyalty on the amount the user *would* pay.
+        double baseForLoyalty = Math.max(0, subtotal - discount);
+
+        loyaltyDiscountAmount = 0;
+        if (isLoyaltyEligible) {
+            int level = Session.getUser().getLoyaltyLevel();
+            double rate = (level == 2) ? 0.10 : 0.05;
+            loyaltyDiscountAmount = baseForLoyalty * rate;
+        }
+
+        double finalTotal = Math.max(0, baseForLoyalty - loyaltyDiscountAmount);
+
+        // For display: Caluclate how much of that is VAT
+        double net = finalTotal / 1.20;
+        double vat = finalTotal - net;
 
         if (totalLabel != null) {
-            if (discount > 0) {
-                totalLabel.setText(
-                        String.format("Sub: %.2f ₺\nDisc: -%.2f ₺\nTotal: %.2f ₺", subtotal, discount, finalTotal));
-            } else {
-                totalLabel.setText(String.format("%.2f ₺", finalTotal));
+            StringBuilder sb = new StringBuilder();
+            sb.append(String.format("Sub: %.2f ₺\n", subtotal));
+            if (discount > 0)
+                sb.append(String.format("Coupon: -%.2f ₺\n", discount));
+
+            if (loyaltyDiscountAmount > 0) {
+                int level = Session.getUser().getLoyaltyLevel();
+                int pct = (level == 2) ? 10 : 5;
+                sb.append(String.format("Loyalty (%d%%): -%.2f ₺\n", pct, loyaltyDiscountAmount));
             }
+            sb.append(String.format("Total: %.2f ₺\n", finalTotal));
+            sb.append(String.format("(Inc. VAT: %.2f ₺)", vat));
+            totalLabel.setText(sb.toString());
         }
     }
 
@@ -509,7 +571,7 @@ public class CartController {
 
             // Create Order
             int orderId = orderDao.createOrder(Session.getUser().getId(), currentCartItems, requested,
-                    appliedCoupon != null ? appliedCoupon.getId() : null);
+                    appliedCoupon != null ? appliedCoupon.getId() : null, loyaltyDiscountAmount);
 
             // Generate Invoice (only once)
             orderDao.createInvoice(orderId, currentCartItems);

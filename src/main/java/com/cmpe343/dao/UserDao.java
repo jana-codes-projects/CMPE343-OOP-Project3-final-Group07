@@ -14,7 +14,7 @@ public class UserDao {
 
     public User login(String username, String password) {
         String sql = """
-                    SELECT id, username, role
+                    SELECT id, username, role, loyalty_level
                     FROM users
                     WHERE username = ?
                       AND password_hash = SHA2(?, 256)
@@ -75,7 +75,7 @@ public class UserDao {
     }
 
     private User getUserByIdBasic(int id) {
-        String sql = "SELECT id, username, role FROM users WHERE id = ?";
+        String sql = "SELECT id, username, role, loyalty_level FROM users WHERE id = ?";
         try (Connection c = Db.getConnection();
                 PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, id);
@@ -91,10 +91,19 @@ public class UserDao {
     }
 
     private User mapUser(ResultSet rs) throws Exception {
+        int lvl = 0;
+        try {
+            lvl = rs.getInt("loyalty_level");
+        } catch (Exception e) {
+        }
+
+        // Use full constructor with defaults for phone/address
         return new User(
                 rs.getInt("id"),
                 rs.getString("username"),
-                rs.getString("role"));
+                rs.getString("role"),
+                null, null, true,
+                lvl);
     }
 
     public void activateCarrier(int userId) {
@@ -136,13 +145,20 @@ public class UserDao {
         } catch (Exception e) {
         }
 
+        int loyaltyLevel = 0;
+        try {
+            loyaltyLevel = rs.getInt("loyalty_level");
+        } catch (Exception e) {
+        }
+
         return new User(
                 rs.getInt("id"),
                 rs.getString("username"),
                 rs.getString("role"),
                 phone,
                 address,
-                active);
+                active,
+                loyaltyLevel);
     }
 
     public boolean registerCustomer(String username, String password, String address, String phone) {
@@ -219,5 +235,17 @@ public class UserDao {
             e.printStackTrace();
         }
         return -1;
+    }
+
+    public void updateLoyaltyLevel(int userId, int level) {
+        String sql = "UPDATE users SET loyalty_level = ? WHERE id = ?";
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, level);
+            ps.setInt(2, userId);
+            ps.executeUpdate();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

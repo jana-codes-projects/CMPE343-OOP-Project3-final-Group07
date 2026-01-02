@@ -1,4 +1,5 @@
 com/cmpe343/dao/ProductDao.class
+com/cmpe343/dao/RatingDao$RatingStats.class
 com/cmpe343/fx/controller/CarrierController.class
 com/cmpe343/db/SchemaValidator.class
 com/cmpe343/service/AuthService.class
@@ -9,6 +10,7 @@ com/cmpe343/model/Product.class
 com/cmpe343/model/Rating.class
 com/cmpe343/model/Order$OrderStatus.class
 com/cmpe343/fx/controller/OrdersController.class
+com/cmpe343/service/PdfService.class
 com/cmpe343/dao/MessageDao$Conversation.class
 com/cmpe343/fx/util/ToastService.class
 com/cmpe343/dao/MessageDao.class

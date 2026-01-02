@@ -59,6 +59,20 @@
                   </SplitPane>
                </VBox>
             </Tab>
+            <Tab fx:id="loyaltyTab" text="Loyalty" closable="false">
+                <VBox spacing="16.0" style="-fx-padding: 24;">
+                    <HBox spacing="12.0" alignment="CENTER_LEFT">
+                        <Label text="Loyalty Management" styleClass="h2"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Button text="Refresh Report" onAction="#handleRefreshLoyalty" styleClass="btn-outline"/>
+                    </HBox>
+                     <VBox spacing="8" styleClass="card" style="-fx-padding: 16;" VBox.vgrow="ALWAYS">
+                         <ScrollPane fitToWidth="true" styleClass="edge-to-edge" VBox.vgrow="ALWAYS">
+                             <VBox fx:id="loyaltyReportContainer" spacing="0"/>
+                         </ScrollPane>
+                     </VBox>
+                </VBox>
+            </Tab>
             <Tab fx:id="carriersTab" text="Carriers" closable="false">
                <VBox spacing="16.0" style="-fx-padding: 24;">
                   <HBox spacing="12.0" alignment="CENTER_LEFT">
@@ -173,18 +187,7 @@
                   </ScrollPane>
                </VBox>
             </Tab>
-            <Tab fx:id="loyaltyTab" text="Loyalty Settings" closable="false">
-               <VBox spacing="16.0" style="-fx-padding: 24;">
-                  <HBox spacing="12.0" alignment="CENTER_LEFT">
-                     <Label text="Loyalty Program Configuration" styleClass="h2"/>
-                     <Region HBox.hgrow="ALWAYS"/>
-                     <Button text="Refresh" onAction="#handleRefreshLoyalty" styleClass="btn-outline"/>
-                  </HBox>
-                  <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" styleClass="scroll-pane">
-                     <VBox fx:id="loyaltyContainer" spacing="16.0" styleClass="list-container"/>
-                  </ScrollPane>
-               </VBox>
-            </Tab>
+
             <Tab fx:id="reportsTab" text="Reports" closable="false">
                <VBox spacing="16.0" style="-fx-padding: 24;">
                   <HBox spacing="12.0" alignment="CENTER_LEFT">

@@ -50,8 +50,6 @@ public class OwnerController {
     @FXML
     private VBox ratingsContainer;
     @FXML
-    private VBox loyaltyContainer;
-    @FXML
     private Label ordersCountLabel;
     @FXML
     private Button logoutButton;
@@ -60,6 +58,26 @@ public class OwnerController {
     @FXML
     private FlowPane dashboardContainer;
 
+    @FXML
+    private TabPane mainTabPane;
+    @FXML
+    private Tab loyaltyTab;
+    @FXML
+    private VBox loyaltyReportContainer;
+    @FXML
+    private Tab carriersTab;
+    @FXML
+    private Tab productsTab;
+    @FXML
+    private Tab ordersTab;
+    @FXML
+    private Tab messagesTab;
+    @FXML
+    private Tab couponsTab;
+    @FXML
+    private Tab ratingsTab;
+    @FXML
+    private Tab reportsTab;
     private MessageDao.Conversation selectedConversation;
     private Order selectedOrder;
     private Product selectedProduct;
@@ -85,13 +103,33 @@ public class OwnerController {
         if (ordersListContainer != null)
             ordersListContainer.setFillWidth(true);
 
+        if (mainTabPane != null) {
+            mainTabPane.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> {
+                if (newTab == loyaltyTab) {
+                    loadLoyaltyReport();
+                } else if (newTab == carriersTab) {
+                    loadCarriers();
+                } else if (newTab == ratingsTab) {
+                    loadCarrierRatings();
+                } else if (newTab == productsTab) {
+                    loadProducts();
+                } else if (newTab == ordersTab) {
+                    loadOrders();
+                } else if (newTab == messagesTab && Session.isLoggedIn()) {
+                    loadConversations();
+                } else if (newTab == couponsTab) {
+                    loadCoupons();
+                }
+            });
+        }
+
         loadDashboard();
         loadProducts();
         loadCarriers();
         loadOrders();
         loadCoupons();
         loadCarrierRatings();
-        loadLoyaltySettings();
+        loadLoyaltyReport();
         if (Session.isLoggedIn()) {
             loadConversations();
         }
@@ -292,6 +330,104 @@ public class OwnerController {
 
         card.getChildren().addAll(header, grid, actions);
         productDetailContainer.getChildren().add(card);
+    }
+
+    // ==================== LOYALTY MANAGEMENT ====================
+
+    @FXML
+    private void handleRefreshLoyalty() {
+        loadLoyaltyReport();
+    }
+
+    private void loadLoyaltyReport() {
+        if (loyaltyReportContainer == null)
+            return;
+        loyaltyReportContainer.getChildren().clear();
+
+        // Header
+        HBox header = new HBox(16);
+        header.setStyle(
+                "-fx-padding: 12 16; -fx-background-color: #f8fafc; -fx-border-color: transparent transparent #e2e8f0 transparent;");
+        Label h1 = new Label("Customer");
+        h1.setPrefWidth(150);
+        h1.setStyle("-fx-font-weight:bold; -fx-text-fill:#64748b;");
+        Label h2 = new Label("Total Spent");
+        h2.setPrefWidth(100);
+        h2.setStyle("-fx-font-weight:bold; -fx-text-fill:#64748b;");
+        Label h3 = new Label("Orders");
+        h3.setPrefWidth(80);
+        h3.setStyle("-fx-font-weight:bold; -fx-text-fill:#64748b;");
+        Label h4 = new Label("Calculated Status");
+        h4.setPrefWidth(150);
+        h4.setStyle("-fx-font-weight:bold; -fx-text-fill:#64748b;");
+        Label h5 = new Label("Assigned Level");
+        h5.setPrefWidth(140);
+        h5.setStyle("-fx-font-weight:bold; -fx-text-fill:#64748b;");
+
+        header.getChildren().addAll(h1, h2, h3, h4, h5);
+        loyaltyReportContainer.getChildren().add(header);
+
+        List<Object[]> stats = orderDAO.getCustomerLoyaltyStats();
+        // stats: [id, username, order_count, total_spent... ]
+
+        for (Object[] row : stats) {
+            int userId = (int) row[0];
+            String username = (String) row[1];
+            int count = ((Number) row[2]).intValue();
+            double spent = ((Number) row[3]).doubleValue();
+
+            // Check current user level
+            User u = userDAO.getUserById(userId);
+            int currentLevel = (u != null) ? u.getLoyaltyLevel() : 0;
+
+            // Auto Eligibility
+            boolean autoEligible = (spent > 5000 || count > 5);
+
+            HBox item = new HBox(16);
+            item.setAlignment(Pos.CENTER_LEFT);
+            item.setStyle("-fx-padding: 12 16; -fx-border-color: transparent transparent #f1f5f9 transparent;");
+
+            Label lName = new Label(username);
+            lName.setPrefWidth(150);
+            lName.setStyle("-fx-font-weight:bold;");
+            Label lSpent = new Label(String.format("%.2f ₺", spent));
+            lSpent.setPrefWidth(100);
+            Label lCount = new Label(String.valueOf(count));
+            lCount.setPrefWidth(80);
+
+            Label lStatus = new Label(autoEligible ? "Likely Eligible" : "Standard");
+            lStatus.setPrefWidth(150);
+            if (autoEligible)
+                lStatus.setStyle("-fx-text-fill: #10b981;");
+            else
+                lStatus.setStyle("-fx-text-fill: #94a3b8;");
+
+            // Level Selector
+            ComboBox<String> levelParams = new ComboBox<>();
+            levelParams.getItems().addAll("Level 0 (None)", "Level 1 (Loyal)", "Level 2 (VIP)");
+            levelParams.setValue("Level " + currentLevel
+                    + (currentLevel == 0 ? " (None)" : (currentLevel == 1 ? " (Loyal)" : " (VIP)")));
+            levelParams.setPrefWidth(170);
+
+            levelParams.setOnAction(e -> {
+                String val = levelParams.getValue();
+                int newLevel = 0;
+                if (val.startsWith("Level 1"))
+                    newLevel = 1;
+                else if (val.startsWith("Level 2"))
+                    newLevel = 2;
+
+                if (newLevel != currentLevel) {
+                    userDAO.updateLoyaltyLevel(userId, newLevel);
+                    com.cmpe343.fx.util.ToastService.show(logoutButton.getScene(),
+                            "Updated " + username + " to Level " + newLevel,
+                            com.cmpe343.fx.util.ToastService.Type.SUCCESS);
+                }
+            });
+
+            item.getChildren().addAll(lName, lSpent, lCount, lStatus, levelParams);
+            loyaltyReportContainer.getChildren().add(item);
+        }
     }
 
     // ==================== CARRIER MANAGEMENT ====================
@@ -1218,18 +1354,6 @@ public class OwnerController {
 
         card.getChildren().addAll(header, valueLabel);
         return card;
-    }
-
-    @FXML
-    private void handleRefreshLoyalty() {
-        loadLoyaltySettings();
-    }
-
-    private void loadLoyaltySettings() {
-        if (loyaltyContainer == null)
-            return;
-        loyaltyContainer.getChildren().clear();
-        loyaltyContainer.getChildren().add(createPlaceholder("Loyalty program settings coming soon."));
     }
 
     @FXML
