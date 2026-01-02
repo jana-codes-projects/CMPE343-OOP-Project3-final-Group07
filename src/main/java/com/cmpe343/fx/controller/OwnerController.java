@@ -11,10 +11,12 @@ import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
@@ -68,6 +70,7 @@ public class OwnerController {
     private javafx.scene.layout.FlowPane dashboardContainer;
 
     private Message selectedMessage;
+    private MessageDao.Conversation selectedConversation;
     private Order selectedOrder;
     private Product selectedProduct;
     private User selectedCarrier;
@@ -100,7 +103,7 @@ public class OwnerController {
         loadCarrierRatings();
         // loadLoyaltySettings(); // Loyalty not yet implemented in backend
         if (Session.isLoggedIn()) {
-            loadMessages();
+            loadConversations();
         }
     }
     
@@ -652,172 +655,209 @@ public class OwnerController {
 
     // ==================== MESSAGE MANAGEMENT ====================
 
-    private void loadMessages() {
+    private void loadConversations() {
         messagesListContainer.getChildren().clear();
         messageDetailContainer.getChildren().clear();
-        
-        // Preserve the currently selected message ID before clearing
-        Integer selectedMessageId = selectedMessage != null ? selectedMessage.getId() : null;
+        selectedConversation = null;
 
-        List<Message> msgs = messageDAO.getAllMessages();
-        if (msgs.isEmpty()) {
+        int ownerId = Session.getUser().getId();
+        List<MessageDao.Conversation> conversations = messageDAO.getConversationsForOwner(ownerId);
+
+        if (conversations.isEmpty()) {
             messagesListContainer.getChildren().add(createPlaceholder("No messages."));
-            selectedMessage = null;
             return;
         }
 
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm");
-        Message messageToSelect = null;
-        for (Message m : msgs) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMM dd, HH:mm");
+
+        for (MessageDao.Conversation conv : conversations) {
             HBox item = createListItemBase();
-            item.setUserData(m.getId());
-            
-            Label sender = new Label(m.getSender());
-            sender.getStyleClass().add("detail-value");
-            sender.setPrefWidth(150);
-            
-            Label content = new Label(m.getContent().length() > 50 ? m.getContent().substring(0, 50) + "..." : m.getContent());
-            content.getStyleClass().add("muted");
-            
-            Label timestamp = new Label(m.getTimestamp().format(formatter));
-            timestamp.getStyleClass().add("muted");
-            timestamp.setPrefWidth(150);
-            
-            if (!m.isRead()) {
-                Label unreadBadge = new Label("NEW");
-                unreadBadge.getStyleClass().addAll("badge", "badge-info");
-                item.getChildren().addAll(sender, content, timestamp, unreadBadge);
-            } else {
-                item.getChildren().addAll(sender, content, timestamp);
+            item.setUserData(conv);
+
+            VBox info = new VBox(2);
+            Label userLbl = new Label(conv.getUsername());
+            userLbl.getStyleClass().add("detail-value");
+            userLbl.setStyle("-fx-font-weight: bold;");
+
+            Label msgPreview = new Label(
+                    conv.getLastMessage() != null && conv.getLastMessage().length() > 30 
+                        ? conv.getLastMessage().substring(0, 30) + "..." 
+                        : (conv.getLastMessage() != null ? conv.getLastMessage() : ""));
+            msgPreview.getStyleClass().add("muted");
+            msgPreview.setStyle("-fx-font-size: 11px;");
+
+            info.getChildren().addAll(userLbl, msgPreview);
+
+            Region spacer = new Region();
+            HBox.setHgrow(spacer, Priority.ALWAYS);
+
+            VBox meta = new VBox(2);
+            meta.setAlignment(Pos.CENTER_RIGHT);
+
+            Label timeLbl = new Label(conv.getLastTimestamp().format(formatter));
+            timeLbl.getStyleClass().add("muted");
+            timeLbl.setStyle("-fx-font-size: 10px;");
+
+            meta.getChildren().add(timeLbl);
+
+            if (conv.hasUnread()) {
+                Label badge = new Label("NEW");
+                badge.getStyleClass().addAll("badge", "badge-info");
+                badge.setStyle("-fx-font-size: 9px;");
+                meta.getChildren().add(badge);
             }
-            
-            // Fix lambda capture: create final copy to avoid capturing loop variable by reference
-            final Message finalMessage = m;
+
+            item.getChildren().addAll(info, spacer, meta);
+
             item.setOnMouseClicked(e -> {
-                selectedMessage = finalMessage;
-                showMessageDetail(finalMessage);
-                if (!finalMessage.isRead()) {
-                    messageDAO.markAsRead(finalMessage.getId());
-                    loadMessages(); // Refresh to update read status
-                }
+                selectedConversation = conv;
+                showConversationDetail(conv);
             });
-            
+
             messagesListContainer.getChildren().add(item);
-            
-            // Check if this is the previously selected message
-            if (selectedMessageId != null && m.getId() == selectedMessageId) {
-                messageToSelect = m;
-            }
-        }
-        
-        // Restore the detail view if the message still exists
-        if (messageToSelect != null) {
-            showMessageDetail(messageToSelect);
-        } else {
-            selectedMessage = null;
         }
     }
-    
-    private void showMessageDetail(Message message) {
+
+    private void showConversationDetail(MessageDao.Conversation conv) {
         messageDetailContainer.getChildren().clear();
-        VBox card = new VBox(10);
-        card.getStyleClass().add("detail-card");
+        int ownerId = Session.getUser().getId();
+
+        VBox chatView = new VBox(0);
+        chatView.getStyleClass().add("chat-view");
+        VBox.setVgrow(chatView, Priority.ALWAYS);
+
+        // Header
+        HBox header = new HBox(12);
+        header.setStyle("-fx-padding: 16; -fx-background-color: rgba(30, 41, 59, 0.8); -fx-border-color: rgba(255,255,255,0.1); -fx-border-width: 0 0 1 0;");
+        header.setAlignment(Pos.CENTER_LEFT);
         
-        Label header = new Label("Message from: " + message.getSender());
-        header.getStyleClass().add("detail-header");
+        // Avatar
+        StackPane avatar = new StackPane();
+        avatar.setStyle("-fx-background-color: #6366f1; -fx-background-radius: 50%; -fx-min-width: 40; -fx-min-height: 40; -fx-max-width: 40; -fx-max-height: 40;");
+        Label avatarLetter = new Label(conv.getUsername().substring(0, 1).toUpperCase());
+        avatarLetter.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 16px;");
+        avatar.getChildren().add(avatarLetter);
         
-        VBox meta = new VBox(5);
-        LocalDateTime messageTime = message.getTimestamp();
-        meta.getChildren().addAll(
-            createDetailRow("Sender", message.getSender()),
-            createDetailRow("Timestamp", messageTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))),
-            createDetailRow("Status", message.isRead() ? "Replied" : "Unread")
-        );
+        VBox headerInfo = new VBox(2);
+        Label headerLbl = new Label(conv.getUsername());
+        headerLbl.setStyle("-fx-font-size: 16px; -fx-font-weight: 700; -fx-text-fill: #f8fafc;");
+        Label statusLbl = new Label("Online");
+        statusLbl.setStyle("-fx-font-size: 12px; -fx-text-fill: #10b981;");
+        headerInfo.getChildren().addAll(headerLbl, statusLbl);
         
-        Separator sep = new Separator();
-        sep.setStyle("-fx-opacity: 0.3; -fx-padding: 10 0;");
-        
-        Label contentLabel = new Label("Message Content:");
-        contentLabel.getStyleClass().add("field-label");
-        contentLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
-        
-        TextArea contentArea = new TextArea(message.getContent());
-        contentArea.setEditable(false);
-        contentArea.setWrapText(true);
-        contentArea.setPrefRowCount(5);
-        contentArea.setStyle("-fx-background-color: rgba(30, 41, 59, 0.5); -fx-text-fill: white;");
-        
-        card.getChildren().addAll(header, meta, sep, contentLabel, contentArea);
-        
-        // Check if there's already a reply
-        String existingReply = messageDAO.getReplyText(message.getId());
-        if (existingReply != null && !existingReply.trim().isEmpty()) {
-            Separator replySep = new Separator();
-            replySep.setStyle("-fx-opacity: 0.3; -fx-padding: 10 0;");
-            
-            Label replyHeader = new Label("Your Reply:");
-            replyHeader.getStyleClass().add("field-label");
-            replyHeader.setStyle("-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #10b981;");
-            
-            TextArea replyArea = new TextArea(existingReply);
-            replyArea.setEditable(false);
-            replyArea.setWrapText(true);
-            replyArea.setPrefRowCount(4);
-            replyArea.setStyle("-fx-background-color: rgba(16, 185, 129, 0.1); -fx-text-fill: #94a3b8;");
-            
-            card.getChildren().addAll(replySep, replyHeader, replyArea);
-        } else {
-            // Add reply section for new replies
-            Separator replySep = new Separator();
-            replySep.setStyle("-fx-opacity: 0.3; -fx-padding: 10 0;");
-            
-            Label replyLabel = new Label("Reply:");
-            replyLabel.getStyleClass().add("field-label");
-            replyLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
-            
-            TextArea replyArea = new TextArea();
-            replyArea.setPromptText("Type your reply here...");
-            replyArea.setWrapText(true);
-            replyArea.setPrefRowCount(4);
-            replyArea.getStyleClass().add("field");
-            
-            Button sendReplyBtn = new Button("Send Reply");
-            sendReplyBtn.getStyleClass().add("btn-primary");
-            sendReplyBtn.setStyle("-fx-font-size: 12px; -fx-padding: 8 16;");
-            sendReplyBtn.setOnAction(e -> {
-                String replyText = replyArea.getText().trim();
-                if (replyText.isEmpty()) {
-                    ToastService.show(messageDetailContainer.getScene(), "Reply cannot be empty", ToastService.Type.ERROR);
-                    return;
-                }
-                
-                try {
-                    boolean success = messageDAO.replyToMessage(message.getId(), replyText);
-                    if (success) {
-                        ToastService.show(messageDetailContainer.getScene(), "Reply sent successfully!", ToastService.Type.SUCCESS);
-                        loadMessages(); // Refresh to show updated status
-                    } else {
-                        ToastService.show(messageDetailContainer.getScene(), "Failed to send reply", ToastService.Type.ERROR);
-                    }
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                    ToastService.show(messageDetailContainer.getScene(), "Error: " + ex.getMessage(), ToastService.Type.ERROR);
-                }
-            });
-            
-            HBox replyActions = new HBox(10);
-            replyActions.setAlignment(Pos.CENTER_RIGHT);
-            replyActions.getChildren().add(sendReplyBtn);
-            
-            card.getChildren().addAll(replySep, replyLabel, replyArea, replyActions);
+        header.getChildren().addAll(avatar, headerInfo);
+
+        chatView.getChildren().add(header);
+
+        // Messages Area
+        ScrollPane scroll = new ScrollPane();
+        scroll.setFitToWidth(true);
+        scroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
+        scroll.getStyleClass().add("scroll-pane");
+        VBox.setVgrow(scroll, Priority.ALWAYS);
+
+        VBox msgsBox = new VBox(12);
+        msgsBox.setStyle("-fx-padding: 20; -fx-background-color: rgba(15, 23, 42, 0.5);");
+
+        List<Message> messages = messageDAO.getMessagesBetween(ownerId, conv.getUserId());
+        for (Message m : messages) {
+            boolean isOwnerMsg = (m.getSenderId() == ownerId);
+            msgsBox.getChildren().add(createChatBubble(m.getSender(), m.getContent(), m.getTimestamp(), isOwnerMsg));
         }
+
+        scroll.setContent(msgsBox);
+
+        // Scroll to bottom
+        Platform.runLater(() -> {
+            msgsBox.applyCss();
+            msgsBox.layout();
+            scroll.applyCss();
+            scroll.layout();
+            scroll.setVvalue(1.0);
+            Platform.runLater(() -> scroll.setVvalue(1.0));
+        });
+
+        chatView.getChildren().add(scroll);
+
+        HBox inputArea = new HBox(10);
+        inputArea.setStyle("-fx-padding: 16; -fx-background-color: rgba(30, 41, 59, 0.8); -fx-border-color: rgba(255,255,255,0.1); -fx-border-width: 1 0 0 0;");
+        inputArea.setAlignment(Pos.CENTER_LEFT);
+
+        TextField replyField = new TextField();
+        replyField.setPromptText("Type a message...");
+        replyField.setStyle("-fx-background-color: rgba(15, 23, 42, 0.8); -fx-background-radius: 20; -fx-border-color: rgba(255,255,255,0.1); -fx-border-radius: 20; -fx-text-fill: white; -fx-prompt-text-fill: #64748b; -fx-padding: 10 16;");
+        HBox.setHgrow(replyField, Priority.ALWAYS);
+
+        Button sendBtn = new Button("Send");
+        sendBtn.getStyleClass().add("btn-primary");
+        sendBtn.setStyle("-fx-background-color: #6366f1; -fx-background-radius: 20; -fx-text-fill: white; -fx-font-weight: 600; -fx-padding: 10 24; -fx-cursor: hand;");
+        sendBtn.setOnMouseEntered(e -> sendBtn.setStyle("-fx-background-color: #4f46e5; -fx-background-radius: 20; -fx-text-fill: white; -fx-font-weight: 600; -fx-padding: 10 24; -fx-cursor: hand;"));
+        sendBtn.setOnMouseExited(e -> sendBtn.setStyle("-fx-background-color: #6366f1; -fx-background-radius: 20; -fx-text-fill: white; -fx-font-weight: 600; -fx-padding: 10 24; -fx-cursor: hand;"));
+
+        replyField.setOnAction(e -> sendBtn.fire());
+
+        sendBtn.setOnAction(e -> {
+            String txt = replyField.getText().trim();
+            if (txt.isEmpty())
+                return;
+
+            int currentOwnerId = Session.getUser().getId();
+            int msgId = messageDAO.createMessage(conv.getUserId(), currentOwnerId, currentOwnerId, txt);
+
+            if (msgId > 0) {
+                replyField.clear();
+                showConversationDetail(conv); // Refresh
+            } else {
+                ToastService.show(logoutButton.getScene(), "Failed to send", ToastService.Type.ERROR);
+            }
+        });
+
+        inputArea.getChildren().addAll(replyField, sendBtn);
+        chatView.getChildren().add(inputArea);
+
+        messageDetailContainer.getChildren().add(chatView);
+    }
+
+    private Node createChatBubble(String sender, String text, LocalDateTime time, boolean isOwner) {
+        VBox bubble = new VBox(6);
+        bubble.setMaxWidth(400);
         
-        messageDetailContainer.getChildren().add(card);
+        if (isOwner) {
+            bubble.setStyle("-fx-padding: 12 16; -fx-background-radius: 18; -fx-background-color: #6366f1;");
+        } else {
+            bubble.setStyle("-fx-padding: 12 16; -fx-background-radius: 18; -fx-background-color: rgba(30, 41, 59, 0.8); -fx-border-color: rgba(255,255,255,0.1); -fx-border-width: 1;");
+        }
+
+        Label txt = new Label(text);
+        txt.setWrapText(true);
+        txt.setStyle("-fx-text-fill: " + (isOwner ? "white" : "#f8fafc") + "; -fx-font-size: 14px; -fx-line-spacing: 2px;");
+        txt.setMaxWidth(350);
+
+        HBox footer = new HBox(6);
+        footer.setAlignment(Pos.BOTTOM_RIGHT);
+        
+        Label timeLbl = new Label(time.format(DateTimeFormatter.ofPattern("HH:mm")));
+        timeLbl.setStyle("-fx-text-fill: " + (isOwner ? "rgba(255,255,255,0.7)" : "#94a3b8") + "; -fx-font-size: 11px;");
+        
+        if (isOwner) {
+            Label checkmark = new Label("✓");
+            checkmark.setStyle("-fx-text-fill: rgba(255,255,255,0.7); -fx-font-size: 11px;");
+            footer.getChildren().addAll(timeLbl, checkmark);
+        } else {
+            footer.getChildren().add(timeLbl);
+        }
+
+        bubble.getChildren().addAll(txt, footer);
+
+        HBox row = new HBox(8);
+        row.setAlignment(isOwner ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
+        row.getChildren().add(bubble);
+        return row;
     }
 
     @FXML
     private void handleRefreshMessages() {
-        loadMessages();
+        loadConversations();
     }
 
     // ==================== COUPON MANAGEMENT ====================
@@ -929,180 +969,86 @@ public class OwnerController {
             meta.getChildren().add(createDetailRow("Validity", expiryStatus));
         }
         
-        // Add Edit button
+        // Add action buttons
         HBox actions = new HBox(10);
         actions.setAlignment(Pos.CENTER_RIGHT);
-        Button editBtn = new Button("Edit Coupon");
-        editBtn.getStyleClass().add("btn-primary");
-        editBtn.setOnAction(e -> handleEditCoupon(coupon));
-        actions.getChildren().add(editBtn);
+        actions.setStyle("-fx-padding: 16 0 0 0;");
         
+        Button editBtn = new Button("Edit");
+        editBtn.getStyleClass().add("btn-primary");
+        editBtn.setOnAction(e -> showCouponDialog(coupon));
+        
+        Button toggleBtn = new Button(coupon.isActive() ? "Deactivate" : "Activate");
+        toggleBtn.getStyleClass().add(coupon.isActive() ? "btn-outline" : "btn-primary");
+        toggleBtn.setStyle(coupon.isActive() ? 
+            "-fx-border-color: #ef4444; -fx-text-fill: #f87171;" : "");
+        toggleBtn.setOnAction(e -> {
+            try {
+                boolean success = couponDAO.toggleCoupon(coupon.getId(), !coupon.isActive());
+                if (success) {
+                    showSuccess("Coupon " + (!coupon.isActive() ? "activated" : "deactivated") + " successfully!");
+                    loadCoupons();
+                    // Reload coupon to show updated status
+                    Coupon updated = couponDAO.getCouponByIdForEdit(coupon.getId());
+                    if (updated != null) {
+                        showCouponDetail(updated);
+                    }
+                } else {
+                    showError("Failed to update coupon status");
+                }
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                showError("Error updating coupon: " + ex.getMessage());
+            }
+        });
+        
+        actions.getChildren().addAll(editBtn, toggleBtn);
         card.getChildren().addAll(header, meta, actions);
         couponDetailContainer.getChildren().add(card);
     }
     
-    private void handleEditCoupon(Coupon coupon) {
-        // Get the full coupon (including inactive/expired) for editing
-        Coupon fullCoupon = couponDAO.getCouponByIdForEdit(coupon.getId());
-        if (fullCoupon == null) {
-            showError("Coupon not found.");
-            return;
-        }
-        
+    private void showCouponDialog(Coupon existing) {
         Dialog<Coupon> dialog = new Dialog<>();
-        dialog.setTitle("Edit Coupon");
-        dialog.setHeaderText("Edit coupon: " + fullCoupon.getCode());
-        dialog.setResizable(true);
-
+        dialog.setTitle(existing == null ? "Add Coupon" : "Edit Coupon");
+        dialog.setHeaderText(existing == null ? "Create New Coupon" : "Edit " + existing.getCode());
+        
         ButtonType saveBtnType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(saveBtnType, ButtonType.CANCEL);
-
-        // Create form fields
-        TextField codeField = new TextField();
-        codeField.setPromptText("Coupon Code");
         
-        ComboBox<String> kindCombo = new ComboBox<>();
-        kindCombo.getItems().addAll("AMOUNT", "PERCENT");
+        VBox form = new VBox(10);
+        form.setStyle("-fx-padding: 20; -fx-background-color: #0f172a;");
         
-        TextField valueField = new TextField();
-        valueField.setPromptText("Discount Value");
-
-        TextField minCartField = new TextField();
-        minCartField.setPromptText("Minimum Cart (TL)");
-        
-        DatePicker expiryPicker = new DatePicker();
-        
-        CheckBox activeCheck = new CheckBox("Active");
-
-        // Populate fields with existing values
-        codeField.setText(fullCoupon.getCode());
-        kindCombo.setValue(fullCoupon.getKind().name());
-        valueField.setText(String.valueOf(fullCoupon.getValue()));
-        minCartField.setText(String.valueOf(fullCoupon.getMinCart()));
-        if (fullCoupon.getExpiresAt() != null) {
-            expiryPicker.setValue(fullCoupon.getExpiresAt().toLocalDate());
-        }
-        activeCheck.setSelected(fullCoupon.isActive());
-
-        GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(10);
-        grid.setPadding(new javafx.geometry.Insets(20, 150, 10, 10));
-        
-        grid.add(new Label("Code:"), 0, 0);
-        grid.add(codeField, 1, 0);
-        grid.add(new Label("Type:"), 0, 1);
-        grid.add(kindCombo, 1, 1);
-        grid.add(new Label("Value:"), 0, 2);
-        grid.add(valueField, 1, 2);
-        grid.add(new Label("Min Cart:"), 0, 3);
-        grid.add(minCartField, 1, 3);
-        grid.add(new Label("Expires:"), 0, 4);
-        grid.add(expiryPicker, 1, 4);
-        grid.add(activeCheck, 1, 5);
-        
-        codeField.getStyleClass().add("field");
-        kindCombo.setStyle("-fx-background-color: rgba(30, 41, 59, 0.6); -fx-text-fill: white; -fx-background-radius: 8; -fx-border-color: #334155; -fx-border-radius: 8;");
-        valueField.getStyleClass().add("field");
-        minCartField.getStyleClass().add("field");
-        
-        dialog.getDialogPane().setContent(grid);
-        
-        dialog.setResultConverter(buttonType -> {
-            if (buttonType == saveBtnType) {
-                try {
-                    String code = codeField.getText().trim().toUpperCase();
-                    String kindStr = kindCombo.getValue();
-                    double value = Double.parseDouble(valueField.getText().trim());
-                    double minCart = Double.parseDouble(minCartField.getText().trim());
-                    LocalDate expiry = expiryPicker.getValue();
-                    boolean active = activeCheck.isSelected();
-
-                    if (code.isEmpty()) {
-                        showError("Coupon code cannot be empty.");
-                        return null;
-                    }
-
-                    if (expiry == null) {
-                        showError("Please select an expiry date.");
-                        return null;
-                    }
-
-                    if (value <= 0) {
-                        showError("Discount value must be greater than 0.");
-                        return null;
-                    }
-                    
-                    if (minCart < 0) {
-                        showError("Minimum cart value must be non-negative.");
-                        return null;
-                    }
-                    
-                    if ("PERCENT".equals(kindStr) && value > 100) {
-                        showError("Percentage discount cannot exceed 100%.");
-                        return null;
-                    }
-
-                    // Check if code already exists (excluding current coupon)
-                    Coupon existingCoupon = couponDAO.getCouponByCodeForEdit(code);
-                    if (existingCoupon != null && existingCoupon.getId() != fullCoupon.getId()) {
-                        showError("A coupon with this code already exists.");
-                        return null;
-                    }
-
-                    Coupon.CouponKind kind = Coupon.CouponKind.valueOf(kindStr);
-                    LocalDateTime expiresAt = expiry.atStartOfDay();
-
-                    boolean success = couponDAO.updateCoupon(fullCoupon.getId(), code, kind, value, minCart, expiresAt, active);
-                    if (success) {
-                        showSuccess("Coupon updated successfully!");
-                        loadCoupons();
-                        return new Coupon(fullCoupon.getId(), code, kind, value, minCart, active, expiresAt);
-                    } else {
-                        showError("Failed to update coupon.");
-                    }
-                } catch (NumberFormatException e) {
-                    showError("Please enter valid numbers for value and minimum cart.");
-                } catch (Exception e) {
-                    showError("Failed to update coupon: " + e.getMessage());
-                }
-            }
-            return null;
-        });
-
-        dialog.showAndWait();
-    }
-
-    @FXML
-    private void handleAddCoupon() {
-        Dialog<Coupon> dialog = new Dialog<>();
-        dialog.setTitle("Add New Coupon");
-        dialog.setHeaderText("Enter coupon details");
-        dialog.setResizable(true);
-
-        // Create form fields
         TextField codeField = new TextField();
         codeField.setPromptText("Coupon Code");
         
         ComboBox<String> kindCombo = new ComboBox<>();
         kindCombo.getItems().addAll("AMOUNT", "PERCENT");
         kindCombo.setValue("AMOUNT");
-
+        
         TextField valueField = new TextField();
         valueField.setPromptText("Discount Value");
-
-        TextField minCartField = new TextField();
-        minCartField.setPromptText("Minimum Cart (TL)");
-        minCartField.setText("0.0");
         
-        DatePicker expiryPicker = new DatePicker();
-        expiryPicker.setValue(LocalDate.now().plusDays(30)); // Default to 30 days from now
+        TextField minCartField = new TextField();
+        minCartField.setPromptText("Min Cart Amount");
+        
+        DatePicker expiresPicker = new DatePicker();
+        expiresPicker.setValue(LocalDate.now().plusDays(30));
         
         CheckBox activeCheck = new CheckBox("Active");
         activeCheck.setSelected(true);
-
-        VBox form = new VBox(10);
-        form.setStyle("-fx-padding: 20; -fx-background-color: #0f172a;");
+        
+        // Populate fields if editing
+        if (existing != null) {
+            codeField.setText(existing.getCode());
+            kindCombo.setValue(existing.getKind().name());
+            valueField.setText(String.valueOf(existing.getValue()));
+            minCartField.setText(String.valueOf(existing.getMinCart()));
+            if (existing.getExpiresAt() != null) {
+                expiresPicker.setValue(existing.getExpiresAt().toLocalDate());
+            }
+            activeCheck.setSelected(existing.isActive());
+            codeField.setDisable(true); // Don't allow editing code
+        }
         
         Label codeLabel = new Label("Code:");
         codeLabel.getStyleClass().add("field-label");
@@ -1110,9 +1056,9 @@ public class OwnerController {
         kindLabel.getStyleClass().add("field-label");
         Label valueLabel = new Label("Discount Value:");
         valueLabel.getStyleClass().add("field-label");
-        Label minCartLabel = new Label("Minimum Cart (TL):");
+        Label minCartLabel = new Label("Min Cart:");
         minCartLabel.getStyleClass().add("field-label");
-        Label expiryLabel = new Label("Expiry Date:");
+        Label expiryLabel = new Label("Expires:");
         expiryLabel.getStyleClass().add("field-label");
         
         codeField.getStyleClass().add("field");
@@ -1125,82 +1071,97 @@ public class OwnerController {
             kindLabel, kindCombo,
             valueLabel, valueField,
             minCartLabel, minCartField,
-            expiryLabel, expiryPicker,
+            expiryLabel, expiresPicker,
             activeCheck
         );
         form.setPrefWidth(500);
-
+        
         dialog.getDialogPane().setContent(form);
-        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
         dialog.getDialogPane().setPrefSize(600, 550);
         
         Platform.runLater(() -> {
-            javafx.scene.Node okBtn = dialog.getDialogPane().lookupButton(ButtonType.OK);
-            if (okBtn != null) {
-                okBtn.getStyleClass().add("btn-primary");
+            javafx.scene.Node saveBtn = dialog.getDialogPane().lookupButton(saveBtnType);
+            if (saveBtn != null) {
+                saveBtn.getStyleClass().add("btn-primary");
             }
         });
-
+        
         dialog.setResultConverter(buttonType -> {
-            if (buttonType == ButtonType.OK) {
+            if (buttonType == saveBtnType) {
                 try {
                     String code = codeField.getText().trim().toUpperCase();
                     String kindStr = kindCombo.getValue();
                     double value = Double.parseDouble(valueField.getText().trim());
                     double minCart = Double.parseDouble(minCartField.getText().trim());
-                    LocalDate expiry = expiryPicker.getValue();
+                    LocalDateTime expires = expiresPicker.getValue() != null ? 
+                        expiresPicker.getValue().atTime(23, 59) : null;
                     boolean active = activeCheck.isSelected();
-
+                    
                     if (code.isEmpty()) {
-                        showError("Coupon code cannot be empty.");
+                        showError("Coupon code cannot be empty");
                         return null;
                     }
-
-                    if (expiry == null) {
-                        showError("Please select an expiry date.");
-                        return null;
-                    }
-
+                    
                     if (value <= 0) {
-                        showError("Discount value must be greater than 0.");
+                        showError("Discount value must be greater than 0");
                         return null;
                     }
                     
                     if (minCart < 0) {
-                        showError("Minimum cart value must be non-negative.");
+                        showError("Minimum cart value must be non-negative");
                         return null;
                     }
                     
                     if ("PERCENT".equals(kindStr) && value > 100) {
-                        showError("Percentage discount cannot exceed 100%.");
+                        showError("Percentage discount cannot exceed 100%");
                         return null;
                     }
-
-                    // Check if code already exists
-                    if (couponDAO.getCouponByCode(code) != null) {
-                        showError("A coupon with this code already exists.");
-                        return null;
-                    }
-
+                    
                     Coupon.CouponKind kind = Coupon.CouponKind.valueOf(kindStr);
-                    LocalDateTime expiresAt = expiry.atStartOfDay();
-
-                    int couponId = couponDAO.createCoupon(code, kind, value, minCart, expiresAt, active);
-                    if (couponId > 0) {
-                        showSuccess("Coupon added successfully!");
-                        loadCoupons();
-                        return new Coupon(couponId, code, kind, value, minCart, active, expiresAt);
+                    
+                    if (existing == null) {
+                        // Create new coupon
+                        if (couponDAO.getCouponByCode(code) != null) {
+                            showError("A coupon with this code already exists");
+                            return null;
+                        }
+                        int couponId = couponDAO.createCoupon(code, kind, value, minCart, expires, active);
+                        if (couponId > 0) {
+                            showSuccess("Coupon added successfully!");
+                            loadCoupons();
+                            return new Coupon(couponId, code, kind, value, minCart, active, expires);
+                        }
+                    } else {
+                        // Update existing coupon
+                        boolean success = couponDAO.updateCoupon(existing.getId(), code, kind, value, minCart, expires, active);
+                        if (success) {
+                            showSuccess("Coupon updated successfully!");
+                            loadCoupons();
+                            // Reload coupon to show updated values
+                            Coupon updated = couponDAO.getCouponByIdForEdit(existing.getId());
+                            if (updated != null) {
+                                showCouponDetail(updated);
+                            }
+                            return updated;
+                        } else {
+                            showError("Failed to update coupon");
+                        }
                     }
                 } catch (NumberFormatException e) {
-                    showError("Please enter valid numbers for value and minimum cart.");
+                    showError("Please enter valid numbers for value and minimum cart");
                 } catch (Exception e) {
-                    showError("Failed to add coupon: " + e.getMessage());
+                    showError("Error: " + e.getMessage());
                 }
             }
             return null;
         });
-
+        
         dialog.showAndWait();
+    }
+
+    @FXML
+    private void handleAddCoupon() {
+        showCouponDialog(null);
     }
 
     @FXML

@@ -45,7 +45,7 @@ public class CustomerController {
     private final CartDao cartDao = new CartDao();
     private final com.cmpe343.dao.InvoiceDAO invoiceDAO = new com.cmpe343.dao.InvoiceDAO();
     private final com.cmpe343.dao.MessageDao messageDao = new com.cmpe343.dao.MessageDao();
-    private final UserDao userDao = new UserDao();
+    private final com.cmpe343.dao.UserDao userDao = new com.cmpe343.dao.UserDao();
 
     private static boolean imagesPopulated = false; // Flag to ensure images are only populated once
     private FilteredList<Product> filteredProducts;
@@ -703,7 +703,7 @@ public class CustomerController {
                     return;
                 }
                 
-                int messageId = messageDao.createMessage(currentCustomerId, ownerId, messageText);
+                int messageId = messageDao.createMessage(currentCustomerId, ownerId, currentCustomerId, messageText);
                 if (messageId > 0) {
                     toast("Message sent successfully!", ToastService.Type.SUCCESS);
                     // Refresh the messages list
@@ -748,6 +748,133 @@ public class CustomerController {
         fruitsGrid.setVisible(fruitsVisible);
         fruitsGrid.setManaged(fruitsVisible);
         fruitsToggle.setText(fruitsVisible ? "▼" : "▶");
+    }
+
+    @FXML
+    private void toggleChat() {
+        boolean visible = !chatContainer.isVisible();
+        chatContainer.setVisible(visible);
+        chatContainer.setManaged(visible);
+        chatContainer.setMouseTransparent(!visible);
+        if (visible) {
+            Platform.runLater(() -> {
+                if (chatContainer.getParent() != null && chatContainer.getParent() instanceof javafx.scene.layout.StackPane) {
+                    javafx.scene.layout.StackPane parent = (javafx.scene.layout.StackPane) chatContainer.getParent();
+                    parent.getChildren().remove(chatContainer);
+                    parent.getChildren().add(chatContainer);
+                    chatContainer.toFront();
+                }
+                loadChatWidgetMessages();
+                Platform.runLater(() -> {
+                    if (chatInput != null) {
+                        chatInput.requestFocus();
+                    }
+                    if (chatContainer.getParent() != null) {
+                        chatContainer.toFront();
+                    }
+                });
+            });
+        }
+    }
+
+    @FXML
+    private void handleSendChatMessage() {
+        String text = chatInput.getText().trim();
+        if (text.isEmpty())
+            return;
+
+        try {
+            int ownerId = userDao.getOwnerId();
+            if (ownerId == -1) {
+                toast("Owner not found", ToastService.Type.ERROR);
+                return;
+            }
+
+            int msgId = messageDao.createMessage(currentCustomerId, ownerId, currentCustomerId, text);
+            if (msgId > 0) {
+                chatInput.clear();
+                loadChatWidgetMessages();
+            } else {
+                toast("Failed to send", ToastService.Type.ERROR);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            toast("Error sending message", ToastService.Type.ERROR);
+        }
+    }
+
+    private void loadChatWidgetMessages() {
+        chatMessagesBox.getChildren().clear();
+        int ownerId = userDao.getOwnerId();
+        java.util.List<com.cmpe343.model.Message> messages = messageDao.getMessagesBetween(ownerId, currentCustomerId);
+
+        for (com.cmpe343.model.Message msg : messages) {
+            chatMessagesBox.getChildren().add(createWidgetMessage(msg));
+        }
+        Platform.runLater(() -> {
+            chatMessagesBox.applyCss();
+            chatMessagesBox.layout();
+            chatScroll.applyCss();
+            chatScroll.layout();
+            chatScroll.setVvalue(1.0);
+
+            Platform.runLater(() -> {
+                chatScroll.setVvalue(1.0);
+                if (chatContainer.getParent() != null) {
+                    chatContainer.toFront();
+                }
+            });
+        });
+    }
+
+    private Node createWidgetMessage(com.cmpe343.model.Message msg) {
+        VBox bubble = new VBox(4);
+        bubble.setMaxWidth(260);
+
+        boolean isMe = (msg.getSenderId() == currentCustomerId);
+        boolean isOwnerMsg = !isMe;
+
+        String bg = isMe ? "#3b82f6" : "#475569";
+        bubble.setStyle("-fx-background-color: " + bg + "; -fx-background-radius: 12; -fx-padding: 8 12;");
+
+        Label content = new Label(msg.getContent());
+        content.setWrapText(true);
+        content.setStyle("-fx-text-fill: white; -fx-font-size: 13px;");
+
+        Label date = new Label(msg.getTimestamp().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")));
+        date.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px; opacity: 0.8;");
+        date.setAlignment(Pos.BOTTOM_RIGHT);
+
+        bubble.getChildren().addAll(content, date);
+
+        HBox row = new HBox(bubble);
+        row.setAlignment(isMe ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
+
+        String replyText = messageDao.getReplyText(msg.getId());
+        if (replyText != null && !replyText.isEmpty() && msg.getId() > 0) {
+            VBox replyBubble = new VBox(4);
+            replyBubble.setMaxWidth(260);
+            replyBubble.setStyle("-fx-background-color: #475569; -fx-background-radius: 12; -fx-padding: 8 12;");
+
+            Label rContent = new Label(replyText);
+            rContent.setWrapText(true);
+            rContent.setStyle("-fx-text-fill: white; -fx-font-size: 13px;");
+
+            Label rDate = new Label(
+                    msg.getTimestamp().plusMinutes(1).format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")));
+            rDate.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px; opacity: 0.8;");
+
+            replyBubble.getChildren().addAll(rContent, rDate);
+
+            HBox replyRow = new HBox(replyBubble);
+            replyRow.setAlignment(Pos.CENTER_LEFT);
+
+            VBox container = new VBox(5);
+            container.getChildren().addAll(row, replyRow);
+            return container;
+        }
+
+        return row;
     }
 
     @FXML
@@ -878,130 +1005,6 @@ public class CustomerController {
 
     private void toast(String msg, ToastService.Type type) {
         ToastService.show(searchField.getScene(), msg, type);
-    }
-    
-    // ==================== CHAT WIDGET ====================
-    
-    @FXML
-    private void toggleChat() {
-        boolean visible = !chatContainer.isVisible();
-        chatContainer.setVisible(visible);
-        chatContainer.setManaged(visible);
-        chatContainer.setMouseTransparent(!visible);
-        if (visible) {
-            // Ensure chat container is on top of all other elements
-            Platform.runLater(() -> {
-                if (chatContainer.getParent() != null && chatContainer.getParent() instanceof StackPane) {
-                    StackPane parent = (StackPane) chatContainer.getParent();
-                    // Remove and re-add to ensure it's on top
-                    parent.getChildren().remove(chatContainer);
-                    parent.getChildren().add(chatContainer);
-                    // Also use toFront() to ensure z-order
-                    chatContainer.toFront();
-                }
-                loadChatWidgetMessages();
-                Platform.runLater(() -> {
-                    if (chatInput != null) {
-                        chatInput.requestFocus();
-                    }
-                    // Double check z-order after layout
-                    if (chatContainer.getParent() != null) {
-                        chatContainer.toFront();
-                    }
-                });
-            });
-        }
-    }
-
-    @FXML
-    private void handleSendChatMessage() {
-        String text = chatInput.getText().trim();
-        if (text.isEmpty())
-            return;
-
-        try {
-            int ownerId = userDao.getOwnerId();
-            if (ownerId == -1) {
-                toast("Owner not found", ToastService.Type.ERROR);
-                return;
-            }
-
-            int msgId = messageDao.createMessage(currentCustomerId, ownerId, text);
-            if (msgId > 0) {
-                chatInput.clear();
-                loadChatWidgetMessages();
-            } else {
-                toast("Failed to send", ToastService.Type.ERROR);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            toast("Error sending message", ToastService.Type.ERROR);
-        }
-    }
-
-    private void loadChatWidgetMessages() {
-        if (chatMessagesBox == null) return;
-        chatMessagesBox.getChildren().clear();
-        
-        try {
-            int ownerId = userDao.getOwnerId();
-            java.util.List<com.cmpe343.model.Message> messages = messageDao.getMessagesBetween(ownerId, currentCustomerId);
-
-            for (com.cmpe343.model.Message msg : messages) {
-                chatMessagesBox.getChildren().add(createWidgetMessage(msg));
-            }
-            
-            // Scroll to bottom logic:
-            Platform.runLater(() -> {
-                chatMessagesBox.applyCss();
-                chatMessagesBox.layout();
-                if (chatScroll != null) {
-                    chatScroll.applyCss();
-                    chatScroll.layout();
-                    chatScroll.setVvalue(1.0);
-                }
-
-                // Double check to ensure scroll
-                Platform.runLater(() -> {
-                    if (chatScroll != null) {
-                        chatScroll.setVvalue(1.0);
-                    }
-                    // Ensure chat container is still on top
-                    if (chatContainer.getParent() != null) {
-                        chatContainer.toFront();
-                    }
-                });
-            });
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private Node createWidgetMessage(com.cmpe343.model.Message msg) {
-        VBox bubble = new VBox(4);
-        bubble.setMaxWidth(260);
-
-        // Determine if message is from customer (me) or owner
-        // Negative ID indicates owner reply, sender "Owner" indicates owner
-        boolean isMe = msg.getId() > 0 && !"Owner".equals(msg.getSender());
-
-        String bg = isMe ? "#3b82f6" : "#475569"; // Blue for me, Gray for owner
-        bubble.setStyle("-fx-background-color: " + bg + "; -fx-background-radius: 12; -fx-padding: 8 12;");
-
-        Label content = new Label(msg.getContent());
-        content.setWrapText(true);
-        content.setStyle("-fx-text-fill: white; -fx-font-size: 13px;");
-
-        Label date = new Label(msg.getTimestamp().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")));
-        date.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px; opacity: 0.8;");
-        date.setAlignment(Pos.BOTTOM_RIGHT);
-
-        bubble.getChildren().addAll(content, date);
-
-        HBox row = new HBox(bubble);
-        row.setAlignment(isMe ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
-
-        return row;
     }
     
     /**

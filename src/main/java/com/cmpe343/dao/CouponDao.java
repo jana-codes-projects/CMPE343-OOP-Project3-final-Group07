@@ -122,95 +122,11 @@ public class CouponDao {
         return null;
     }
     
-    /**
-     * Gets a coupon by code without checking if it's active or expired.
-     * Used for checking duplicate codes when editing.
-     * 
-     * @param code The coupon code
-     * @return The coupon, or null if not found
-     */
-    public Coupon getCouponByCodeForEdit(String code) {
-        String sql = """
-            SELECT id, code, kind, value, min_cart, is_active, expires_at 
-            FROM coupons 
-            WHERE code = ?
-        """;
-        
-        try (Connection c = Db.getConnection();
-                PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, code);
-            
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    Coupon.CouponKind kind = Coupon.CouponKind.valueOf(rs.getString("kind"));
-                    java.sql.Timestamp expiresAt = rs.getTimestamp("expires_at");
-                    LocalDateTime expiry = expiresAt != null 
-                        ? expiresAt.toLocalDateTime() 
-                        : null;
-                    return new Coupon(
-                        rs.getInt("id"),
-                        rs.getString("code"),
-                        kind,
-                        rs.getDouble("value"),
-                        rs.getDouble("min_cart"),
-                        rs.getBoolean("is_active"),
-                        expiry
-                    );
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-    
     public Coupon getCouponById(int id) {
         String sql = """
             SELECT id, code, kind, value, min_cart, is_active, expires_at 
             FROM coupons 
             WHERE id = ? AND is_active = 1 AND (expires_at IS NULL OR expires_at >= NOW())
-        """;
-        
-        try (Connection c = Db.getConnection();
-                PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setInt(1, id);
-            
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    Coupon.CouponKind kind = Coupon.CouponKind.valueOf(rs.getString("kind"));
-                    java.sql.Timestamp expiresAt = rs.getTimestamp("expires_at");
-                    LocalDateTime expiry = expiresAt != null 
-                        ? expiresAt.toLocalDateTime() 
-                        : null;
-                    return new Coupon(
-                        rs.getInt("id"),
-                        rs.getString("code"),
-                        kind,
-                        rs.getDouble("value"),
-                        rs.getDouble("min_cart"),
-                        rs.getBoolean("is_active"),
-                        expiry
-                    );
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-    
-    /**
-     * Gets a coupon by ID without checking if it's active or expired.
-     * Used for editing purposes.
-     * 
-     * @param id The coupon ID
-     * @return The coupon, or null if not found
-     */
-    public Coupon getCouponByIdForEdit(int id) {
-        String sql = """
-            SELECT id, code, kind, value, min_cart, is_active, expires_at 
-            FROM coupons 
-            WHERE id = ?
         """;
         
         try (Connection c = Db.getConnection();
@@ -281,13 +197,13 @@ public class CouponDao {
      * @param kind The coupon kind (AMOUNT or PERCENT)
      * @param value The discount value
      * @param minCart The minimum cart amount
-     * @param expiresAt The expiry date/time
+     * @param expiresAt The expiration date/time
      * @param isActive Whether the coupon is active
      * @return true if the update was successful, false otherwise
      */
     public boolean updateCoupon(int couponId, String code, Coupon.CouponKind kind, double value, double minCart, LocalDateTime expiresAt, boolean isActive) {
         String sql = """
-            UPDATE coupons 
+            UPDATE coupons
             SET code = ?, kind = ?, value = ?, min_cart = ?, expires_at = ?, is_active = ?
             WHERE id = ?
         """;
@@ -312,5 +228,69 @@ public class CouponDao {
             e.printStackTrace();
             return false;
         }
+    }
+    
+    /**
+     * Toggles the active status of a coupon.
+     * 
+     * @param couponId The ID of the coupon
+     * @param isActive The new active status
+     * @return true if the update was successful, false otherwise
+     */
+    public boolean toggleCoupon(int couponId, boolean isActive) {
+        String sql = "UPDATE coupons SET is_active = ? WHERE id = ?";
+        
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setBoolean(1, isActive);
+            ps.setInt(2, couponId);
+            
+            int rowsAffected = ps.executeUpdate();
+            return rowsAffected > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+    
+    /**
+     * Gets a coupon by ID (including inactive coupons).
+     * 
+     * @param id The coupon ID
+     * @return The coupon, or null if not found
+     */
+    public Coupon getCouponByIdForEdit(int id) {
+        String sql = """
+            SELECT id, code, kind, value, min_cart, is_active, expires_at 
+            FROM coupons 
+            WHERE id = ?
+        """;
+        
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, id);
+            
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    Coupon.CouponKind kind = Coupon.CouponKind.valueOf(rs.getString("kind"));
+                    java.sql.Timestamp expiresAt = rs.getTimestamp("expires_at");
+                    LocalDateTime expiry = expiresAt != null 
+                        ? expiresAt.toLocalDateTime() 
+                        : null;
+                    return new Coupon(
+                        rs.getInt("id"),
+                        rs.getString("code"),
+                        kind,
+                        rs.getDouble("value"),
+                        rs.getDouble("min_cart"),
+                        rs.getBoolean("is_active"),
+                        expiry
+                    );
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }
