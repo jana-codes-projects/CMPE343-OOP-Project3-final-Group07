@@ -4,12 +4,16 @@ import com.cmpe343.dao.OrderDao;
 import com.cmpe343.dao.CartDao;
 import com.cmpe343.fx.Session;
 import com.cmpe343.model.Order;
+import com.cmpe343.model.CartItem;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.shape.SVGPath;
+import javafx.stage.Stage;
+import javafx.scene.Scene;
+import javafx.fxml.FXMLLoader;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
