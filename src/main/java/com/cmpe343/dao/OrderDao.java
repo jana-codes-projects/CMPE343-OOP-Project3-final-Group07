@@ -394,6 +394,25 @@ public class OrderDao {
         }
     }
     
+    public boolean unassignOrderFromCarrier(int orderId, int carrierId) {
+        String sql = """
+            UPDATE orders 
+            SET carrier_id = NULL, status = 'CREATED' 
+            WHERE id = ? AND status = 'ASSIGNED' AND carrier_id = ?
+        """;
+        
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, orderId);
+            ps.setInt(2, carrierId);
+            int updated = ps.executeUpdate();
+            return updated > 0;
+        } catch (Exception e) {
+            System.err.println("Error unassigning order from carrier: " + e.getMessage());
+            return false;
+        }
+    }
+    
     public boolean markOrderDelivered(int orderId, LocalDateTime deliveredTime) {
         String sql = """
             UPDATE orders 

@@ -549,6 +549,14 @@ public class CarrierController {
         HBox buttonBox = new HBox(10);
         buttonBox.setAlignment(Pos.CENTER_RIGHT);
         
+        Button unselectButton = new Button("Unselect Order");
+        unselectButton.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; " +
+                               "-fx-font-size: 13px; -fx-padding: 8 20; -fx-background-radius: 6;");
+        unselectButton.setOnAction(e -> {
+            handleUnselectOrder(order);
+            loadOrders();
+        });
+        
         Button completeButton = new Button("Mark as Delivered");
         completeButton.setStyle("-fx-background-color: #10b981; -fx-text-fill: white; -fx-font-weight: bold; " +
                                "-fx-font-size: 13px; -fx-padding: 8 20; -fx-background-radius: 6;");
@@ -557,7 +565,7 @@ public class CarrierController {
             loadOrders();
         });
         
-        buttonBox.getChildren().add(completeButton);
+        buttonBox.getChildren().addAll(unselectButton, completeButton);
         
         card.getChildren().addAll(header, detailsBox, buttonBox);
         return card;
@@ -666,6 +674,39 @@ public class CarrierController {
         } else {
             ToastService.show(logoutButton.getScene(), "Failed to select order. It may have been selected by another carrier.", 
                     ToastService.Type.ERROR, ToastService.Position.BOTTOM_CENTER, Duration.seconds(3));
+        }
+    }
+    
+    @FXML
+    private void handleUnselectOrder(Order order) {
+        if (currentCarrierId == 0) return;
+        
+        // Use the selected order if order parameter is null (fallback)
+        Order orderToProcess = order != null ? order : selectedMyOrder;
+        if (orderToProcess == null) {
+            ToastService.show(logoutButton.getScene(), "Please select an order first.", 
+                    ToastService.Type.ERROR, ToastService.Position.BOTTOM_CENTER, Duration.seconds(2));
+            return;
+        }
+        
+        // Show confirmation dialog
+        Alert confirmDialog = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmDialog.setTitle("Unselect Order");
+        confirmDialog.setHeaderText("Unselect Order #" + orderToProcess.getId());
+        confirmDialog.setContentText("Are you sure you want to unselect this order? It will become available for other carriers.");
+        
+        java.util.Optional<ButtonType> result = confirmDialog.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            boolean success = orderDao.unassignOrderFromCarrier(orderToProcess.getId(), currentCarrierId);
+            if (success) {
+                ToastService.show(logoutButton.getScene(), "Order " + orderToProcess.getId() + " has been unselected.", 
+                        ToastService.Type.SUCCESS, ToastService.Position.BOTTOM_CENTER, Duration.seconds(3));
+                // Clear selection after successful unselection
+                selectedMyOrder = null;
+            } else {
+                ToastService.show(logoutButton.getScene(), "Failed to unselect order. It may have been completed or assigned to another carrier.", 
+                        ToastService.Type.ERROR, ToastService.Position.BOTTOM_CENTER, Duration.seconds(3));
+            }
         }
     }
     

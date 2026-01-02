@@ -44,13 +44,13 @@ public class CartDao {
     }
 
     public void addToCart(int userId, int productId, double kg) {
-        // Get current product price to store it
+        // Get current product price (with threshold pricing applied) to store it
         double currentPrice = getProductPrice(productId);
         
-        // Upsert logic: If exists, add to current quantity (keep original price)
+        // Upsert logic: If exists, add to current quantity and update price to current price
         String checkSql = "SELECT quantity_kg FROM cart_items WHERE user_id=? AND product_id=?";
         String insertSql = "INSERT INTO cart_items (user_id, product_id, quantity_kg, unit_price_applied) VALUES (?, ?, ?, ?)";
-        String updateSql = "UPDATE cart_items SET quantity_kg = quantity_kg + ? WHERE user_id=? AND product_id=?";
+        String updateSql = "UPDATE cart_items SET quantity_kg = quantity_kg + ?, unit_price_applied = ? WHERE user_id=? AND product_id=?";
 
         try (Connection c = Db.getConnection()) {
             // Check existence
@@ -65,15 +65,16 @@ public class CartDao {
             }
 
             if (exists) {
-                // Update quantity only, keep original price
+                // Update quantity and price to current price (with threshold pricing if applicable)
                 try (PreparedStatement ps = c.prepareStatement(updateSql)) {
                     ps.setDouble(1, kg);
-                    ps.setInt(2, userId);
-                    ps.setInt(3, productId);
+                    ps.setDouble(2, currentPrice);
+                    ps.setInt(3, userId);
+                    ps.setInt(4, productId);
                     ps.executeUpdate();
                 }
             } else {
-                // Insert with current price
+                // Insert with current price (with threshold pricing if applicable)
                 try (PreparedStatement ps = c.prepareStatement(insertSql)) {
                     ps.setInt(1, userId);
                     ps.setInt(2, productId);
