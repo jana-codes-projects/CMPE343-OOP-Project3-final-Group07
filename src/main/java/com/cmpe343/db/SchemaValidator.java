@@ -201,6 +201,9 @@ public class SchemaValidator {
             ensureColumn(conn, stmt, "products", "threshold_kg", "DECIMAL(10,2) NOT NULL");
             ensureColumn(conn, stmt, "products", "image_blob",
                     "LONGBLOB COMMENT 'Product image stored as Binary Large Object (BLOB)'");
+            ensureColumn(conn, stmt, "products", "image_path", "VARCHAR(255) DEFAULT NULL");
+            ensureColumn(conn, stmt, "products", "discount_threshold", "DOUBLE DEFAULT 5");
+            ensureColumn(conn, stmt, "products", "discount_percentage", "DOUBLE DEFAULT 10");
             ensureColumn(conn, stmt, "products", "is_active", "TINYINT(1) NOT NULL DEFAULT 1");
             ensureColumn(conn, stmt, "products", "created_at", "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP");
         }

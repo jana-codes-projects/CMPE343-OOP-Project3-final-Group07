@@ -1,5 +1,7 @@
 package com.cmpe343.fx;
 
+import com.cmpe343.db.SchemaValidator;
+
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -9,6 +11,8 @@ public class MainFx extends Application  {
 
     @Override
     public void start(Stage stage) throws Exception {
+        // Ensure DB schema is up to date before loading UI
+        SchemaValidator.validateAndFix();
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/login.fxml"));
         Scene scene = new Scene(loader.load(), 640, 480);
         stage.setTitle("Gr7Project3 - Login");
