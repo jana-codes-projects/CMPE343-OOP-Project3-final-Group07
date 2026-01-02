@@ -195,6 +195,10 @@ public class ProductDao {
     }
     
     public int createProduct(String name, String type, double price, double stockKg, double thresholdKg) {
+        return createProduct(name, type, price, stockKg, thresholdKg, null);
+    }
+    
+    public int createProduct(String name, String type, double price, double stockKg, double thresholdKg, byte[] imageBytes) {
         String sql = """
             INSERT INTO products (name, type, price, stock_kg, threshold_kg)
             VALUES (?, ?, ?, ?, ?)
@@ -210,15 +214,22 @@ public class ProductDao {
             
             ps.executeUpdate();
             
+            int productId = -1;
             try (ResultSet keys = ps.getGeneratedKeys()) {
                 if (keys.next()) {
-                    return keys.getInt(1);
+                    productId = keys.getInt(1);
                 }
             }
+            
+            // Update image if provided
+            if (productId > 0 && imageBytes != null) {
+                updateProductImageBlob(productId, imageBytes, null);
+            }
+            
+            return productId;
         } catch (Exception e) {
             throw new RuntimeException("Failed to create product: " + e.getMessage(), e);
         }
-        return -1;
     }
     
     /**
@@ -233,6 +244,22 @@ public class ProductDao {
      * @return true if the update was successful, false otherwise
      */
     public boolean updateProduct(int productId, String name, String type, double price, double stockKg, double thresholdKg) {
+        return updateProduct(productId, name, type, price, stockKg, thresholdKg, null);
+    }
+    
+    /**
+     * Updates an existing product with optional image.
+     * 
+     * @param productId The ID of the product to update
+     * @param name The new product name
+     * @param type The new product type (VEG/FRUIT)
+     * @param price The new price
+     * @param stockKg The new stock in kg
+     * @param thresholdKg The new threshold in kg
+     * @param imageBytes Optional image bytes to update
+     * @return true if the update was successful, false otherwise
+     */
+    public boolean updateProduct(int productId, String name, String type, double price, double stockKg, double thresholdKg, byte[] imageBytes) {
         String sql = """
             UPDATE products
             SET name = ?, type = ?, price = ?, stock_kg = ?, threshold_kg = ?
@@ -249,6 +276,12 @@ public class ProductDao {
             ps.setInt(6, productId);
             
             int rowsAffected = ps.executeUpdate();
+            
+            // Update image if provided
+            if (rowsAffected > 0 && imageBytes != null) {
+                updateProductImageBlob(productId, imageBytes, null);
+            }
+            
             return rowsAffected > 0;
         } catch (Exception e) {
             throw new RuntimeException("Failed to update product: " + e.getMessage(), e);

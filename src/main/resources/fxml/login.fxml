@@ -39,8 +39,6 @@
         <Button fx:id="loginButton" text="Login" onAction="#handleLogin" styleClass="btn-primary" maxWidth="Infinity"/>
 
         <HBox alignment="CENTER" spacing="12">
-            <Hyperlink text="Forgot password?" styleClass="link"/>
-            <Label text="•" styleClass="muted"/>
             <Hyperlink text="Register" onAction="#handleRegister" styleClass="link"/>
             <Label text="•" styleClass="muted"/>
             <Hyperlink text="Exit" onAction="#handleExit" styleClass="link"/>

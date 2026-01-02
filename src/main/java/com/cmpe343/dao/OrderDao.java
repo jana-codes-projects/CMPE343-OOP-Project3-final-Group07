@@ -589,6 +589,73 @@ public class OrderDao {
         }
     }
     
+    /**
+     * Calculates the loyalty discount for a customer based on their order history.
+     * 
+     * @param customerId The customer ID
+     * @param cartTotal The cart subtotal before discounts
+     * @return The loyalty discount amount
+     */
+    public double calculateLoyaltyDiscount(int customerId, double cartTotal) {
+        double discountPercent = getLoyaltyDiscountPercent(customerId);
+        return cartTotal * discountPercent;
+    }
+    
+    /**
+     * Gets the loyalty discount percentage for a customer based on their order history.
+     * Tiers:
+     * - VIP (4+ orders/month or 20+ total orders): 10% discount
+     * - Gold (2+ orders/month or 10+ total orders): 5% discount
+     * - Silver (1+ orders/month or 5+ total orders): 2% discount
+     * - Bronze (others): 0% discount
+     * 
+     * @param customerId The customer ID
+     * @return The discount percentage as a decimal (e.g., 0.10 for 10%)
+     */
+    public double getLoyaltyDiscountPercent(int customerId) {
+        String sql = """
+            SELECT 
+                COUNT(o.id) as order_count,
+                MIN(o.order_time) as first_order_date
+            FROM orders o
+            WHERE o.customer_id = ? AND o.status != 'CANCELLED'
+        """;
+        
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, customerId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    int orderCount = rs.getInt("order_count");
+                    Timestamp firstOrderDate = rs.getTimestamp("first_order_date");
+                    
+                    if (orderCount == 0 || firstOrderDate == null) {
+                        return 0.0; // No orders, no discount
+                    }
+                    
+                    // Calculate months since first order
+                    long daysSinceFirst = (System.currentTimeMillis() - firstOrderDate.getTime()) / (1000L * 60 * 60 * 24);
+                    double months = daysSinceFirst / 30.0;
+                    double ordersPerMonth = orderCount / Math.max(months, 0.1); // Avoid division by zero
+                    
+                    // Determine discount based on tier
+                    if (ordersPerMonth >= 4.0 || orderCount >= 20) {
+                        return 0.10; // VIP: 10% discount
+                    } else if (ordersPerMonth >= 2.0 || orderCount >= 10) {
+                        return 0.05; // Gold: 5% discount
+                    } else if (ordersPerMonth >= 1.0 || orderCount >= 5) {
+                        return 0.02; // Silver: 2% discount
+                    } else {
+                        return 0.0; // Bronze: no discount
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 0.0;
+    }
+    
     private static double round2(double v) {
         return Math.round(v * 100.0) / 100.0;
     }

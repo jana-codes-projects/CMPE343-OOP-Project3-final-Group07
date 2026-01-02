@@ -62,27 +62,74 @@
     </HBox>
 
     <!-- CONTENT -->
-    <ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-background: transparent;" VBox.vgrow="ALWAYS">
-        <VBox spacing="32" style="-fx-padding: 32;">
-            
-            <!-- Vegetables -->
-            <VBox spacing="16">
-                 <HBox spacing="12" alignment="CENTER_LEFT" onMouseClicked="#toggleVegetables" style="-fx-cursor: hand;">
-                     <Label text="▼" fx:id="vegetablesToggle" style="-fx-text-fill: #10b981; -fx-font-size: 14px;"/>
-                     <Label text="Vegetables" styleClass="section-title"/>
-                 </HBox>
-                 <FlowPane fx:id="vegetablesGrid" hgap="24" vgap="24" prefWrapLength="1000"/>
-            </VBox>
+    <StackPane VBox.vgrow="ALWAYS">
+        <ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-background: transparent;" StackPane.alignment="TOP_LEFT">
+            <VBox spacing="32" style="-fx-padding: 32;">
+                
+                <!-- Vegetables -->
+                <VBox spacing="16">
+                     <HBox spacing="12" alignment="CENTER_LEFT" onMouseClicked="#toggleVegetables" style="-fx-cursor: hand;">
+                         <Label text="▼" fx:id="vegetablesToggle" style="-fx-text-fill: #10b981; -fx-font-size: 14px;"/>
+                         <Label text="Vegetables" styleClass="section-title"/>
+                     </HBox>
+                     <FlowPane fx:id="vegetablesGrid" hgap="24" vgap="24" prefWrapLength="1000"/>
+                </VBox>
 
-            <!-- Fruits -->
-            <VBox spacing="16">
-                 <HBox spacing="12" alignment="CENTER_LEFT" onMouseClicked="#toggleFruits" style="-fx-cursor: hand;">
-                     <Label text="▼" fx:id="fruitsToggle" style="-fx-text-fill: #10b981; -fx-font-size: 14px;"/>
-                     <Label text="Fruits" styleClass="section-title" style="-fx-border-color: #10b981;"/>
-                 </HBox>
-                 <FlowPane fx:id="fruitsGrid" hgap="24" vgap="24" prefWrapLength="1000"/>
+                <!-- Fruits -->
+                <VBox spacing="16">
+                     <HBox spacing="12" alignment="CENTER_LEFT" onMouseClicked="#toggleFruits" style="-fx-cursor: hand;">
+                         <Label text="▼" fx:id="fruitsToggle" style="-fx-text-fill: #10b981; -fx-font-size: 14px;"/>
+                         <Label text="Fruits" styleClass="section-title" style="-fx-border-color: #10b981;"/>
+                     </HBox>
+                     <FlowPane fx:id="fruitsGrid" hgap="24" vgap="24" prefWrapLength="1000"/>
+                </VBox>
+                
             </VBox>
-            
+        </ScrollPane>
+        
+        <!-- CHAT WIDGET - Must be direct child of StackPane to be on top -->
+        <VBox fx:id="chatContainer" visible="false" managed="false" maxWidth="380" maxHeight="550"
+              StackPane.alignment="BOTTOM_RIGHT" styleClass="chat-window" mouseTransparent="false">
+            <StackPane.margin>
+                <Insets bottom="32" right="32"/>
+            </StackPane.margin>
+
+            <HBox alignment="CENTER_LEFT" spacing="10" styleClass="chat-header">
+                <Label text="Live Support" styleClass="chat-title"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button onAction="#toggleChat" styleClass="btn-ghost">
+                    <graphic>
+                        <javafx.scene.shape.SVGPath content="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
+                                 styleClass="icon-muted"/>
+                    </graphic>
+                </Button>
+            </HBox>
+
+            <ScrollPane fx:id="chatScroll" fitToWidth="true" VBox.vgrow="ALWAYS" styleClass="scroll-pane">
+                <VBox fx:id="chatMessagesBox" spacing="10" style="-fx-padding: 14;"/>
+            </ScrollPane>
+
+            <HBox spacing="10" styleClass="chat-bottom">
+                <TextField fx:id="chatInput" promptText="Type a message..." HBox.hgrow="ALWAYS"
+                           styleClass="chat-input" onAction="#handleSendChatMessage"/>
+                <Button onAction="#handleSendChatMessage" styleClass="btn-primary">
+                    <graphic>
+                        <javafx.scene.shape.SVGPath content="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"
+                                 styleClass="icon-white"/>
+                    </graphic>
+                </Button>
+            </HBox>
         </VBox>
-    </ScrollPane>
+
+        <!-- Chat FAB - Must be direct child of StackPane to be on top -->
+        <Button onAction="#toggleChat" styleClass="chat-fab" StackPane.alignment="BOTTOM_RIGHT">
+            <StackPane.margin>
+                <Insets bottom="32" right="32"/>
+            </StackPane.margin>
+            <graphic>
+                <javafx.scene.shape.SVGPath content="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"
+                         styleClass="icon-white"/>
+            </graphic>
+        </Button>
+    </StackPane>
 </VBox>

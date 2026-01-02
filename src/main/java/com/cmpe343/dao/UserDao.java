@@ -225,4 +225,65 @@ public class UserDao {
         }
         return false;
     }
+    
+    /**
+     * Creates a new carrier user.
+     * 
+     * @param username The username
+     * @param password The plain text password (will be hashed)
+     * @param phone The phone number
+     * @param address The address
+     * @return The created user ID, or -1 if creation fails (e.g., username already exists)
+     */
+    public int createCarrier(String username, String password, String phone, String address) {
+        String sql = """
+            INSERT INTO users (username, password_hash, role, phone, address, is_active)
+            VALUES (?, SHA2(?, 256), 'carrier', ?, ?, 1)
+        """;
+        
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, username);
+            ps.setString(2, password);
+            ps.setString(3, phone);
+            ps.setString(4, address);
+            
+            int rowsAffected = ps.executeUpdate();
+            if (rowsAffected > 0) {
+                try (ResultSet rs = ps.getGeneratedKeys()) {
+                    if (rs.next()) {
+                        return rs.getInt(1);
+                    }
+                }
+            }
+        } catch (java.sql.SQLIntegrityConstraintViolationException e) {
+            // Username already exists
+            throw new RuntimeException("Username already exists", e);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("Failed to create carrier: " + e.getMessage(), e);
+        }
+        return -1;
+    }
+    
+    /**
+     * Updates the wallet balance for a user.
+     * 
+     * @param userId The user ID
+     * @param amount The amount to add (positive) or subtract (negative) from the wallet
+     * @return true if update was successful, false otherwise
+     */
+    public boolean updateWalletBalance(int userId, double amount) {
+        String sql = "UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?";
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setDouble(1, amount);
+            ps.setInt(2, userId);
+            int rowsAffected = ps.executeUpdate();
+            return rowsAffected > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
 }

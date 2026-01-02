@@ -88,13 +88,22 @@ public class CartDao {
     }
     
     private double getProductPrice(int productId) {
-        String sql = "SELECT price FROM products WHERE id = ?";
+        // Get price and threshold to apply threshold pricing (double price if stock <= threshold)
+        String sql = "SELECT price, stock_kg, threshold_kg FROM products WHERE id = ?";
         try (Connection c = Db.getConnection();
                 PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setInt(1, productId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    return rs.getDouble("price");
+                    double price = rs.getDouble("price");
+                    double stockKg = rs.getDouble("stock_kg");
+                    double thresholdKg = rs.getDouble("threshold_kg");
+                    
+                    // Apply threshold pricing: double price if stock is at or below threshold
+                    if (stockKg <= thresholdKg) {
+                        return price * 2.0;
+                    }
+                    return price;
                 }
             }
         } catch (Exception e) {

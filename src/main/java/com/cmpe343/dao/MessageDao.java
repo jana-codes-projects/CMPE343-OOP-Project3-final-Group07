@@ -286,4 +286,70 @@ public class MessageDao {
         }
         return null;
     }
+    
+    /**
+     * Gets messages between owner and a customer for chat widget.
+     * Returns customer messages with owner replies.
+     * 
+     * @param ownerId The owner ID (not used in current implementation but kept for compatibility)
+     * @param customerId The customer ID
+     * @return List of messages in chronological order
+     */
+    public List<Message> getMessagesBetween(int ownerId, int customerId) {
+        List<Message> list = new ArrayList<>();
+        // Get customer messages ordered by creation time
+        String sql = """
+            SELECT m.id, u.username as sender, m.text_clob as content, 
+                   m.created_at, (m.replied_at IS NOT NULL) as is_read,
+                   m.reply_text, m.replied_at
+            FROM messages m
+            JOIN users u ON m.customer_id = u.id
+            WHERE m.customer_id = ?
+            ORDER BY m.created_at ASC
+        """;
+        
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, customerId);
+            
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    java.sql.Timestamp timestamp = rs.getTimestamp("created_at");
+                    LocalDateTime messageTime = timestamp != null 
+                        ? timestamp.toLocalDateTime() 
+                        : LocalDateTime.now();
+                    
+                    // Customer message
+                    Message customerMsg = new Message(
+                        rs.getInt("id"),
+                        rs.getString("sender"),
+                        rs.getString("content"),
+                        messageTime,
+                        rs.getBoolean("is_read")
+                    );
+                    list.add(customerMsg);
+                    
+                    // Add owner reply if exists
+                    String replyText = rs.getString("reply_text");
+                    if (replyText != null && !replyText.trim().isEmpty()) {
+                        java.sql.Timestamp replyTimestamp = rs.getTimestamp("replied_at");
+                        LocalDateTime replyTime = replyTimestamp != null 
+                            ? replyTimestamp.toLocalDateTime() 
+                            : messageTime.plusMinutes(1);
+                        Message replyMsg = new Message(
+                            -rs.getInt("id"), // Negative ID to distinguish replies
+                            "Owner",
+                            replyText,
+                            replyTime,
+                            true
+                        );
+                        list.add(replyMsg);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
 }

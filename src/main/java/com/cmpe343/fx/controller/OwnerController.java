@@ -929,8 +929,148 @@ public class OwnerController {
             meta.getChildren().add(createDetailRow("Validity", expiryStatus));
         }
         
-        card.getChildren().addAll(header, meta);
+        // Add Edit button
+        HBox actions = new HBox(10);
+        actions.setAlignment(Pos.CENTER_RIGHT);
+        Button editBtn = new Button("Edit Coupon");
+        editBtn.getStyleClass().add("btn-primary");
+        editBtn.setOnAction(e -> handleEditCoupon(coupon));
+        actions.getChildren().add(editBtn);
+        
+        card.getChildren().addAll(header, meta, actions);
         couponDetailContainer.getChildren().add(card);
+    }
+    
+    private void handleEditCoupon(Coupon coupon) {
+        // Get the full coupon (including inactive/expired) for editing
+        Coupon fullCoupon = couponDAO.getCouponByIdForEdit(coupon.getId());
+        if (fullCoupon == null) {
+            showError("Coupon not found.");
+            return;
+        }
+        
+        Dialog<Coupon> dialog = new Dialog<>();
+        dialog.setTitle("Edit Coupon");
+        dialog.setHeaderText("Edit coupon: " + fullCoupon.getCode());
+        dialog.setResizable(true);
+
+        ButtonType saveBtnType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(saveBtnType, ButtonType.CANCEL);
+
+        // Create form fields
+        TextField codeField = new TextField();
+        codeField.setPromptText("Coupon Code");
+        
+        ComboBox<String> kindCombo = new ComboBox<>();
+        kindCombo.getItems().addAll("AMOUNT", "PERCENT");
+        
+        TextField valueField = new TextField();
+        valueField.setPromptText("Discount Value");
+
+        TextField minCartField = new TextField();
+        minCartField.setPromptText("Minimum Cart (TL)");
+        
+        DatePicker expiryPicker = new DatePicker();
+        
+        CheckBox activeCheck = new CheckBox("Active");
+
+        // Populate fields with existing values
+        codeField.setText(fullCoupon.getCode());
+        kindCombo.setValue(fullCoupon.getKind().name());
+        valueField.setText(String.valueOf(fullCoupon.getValue()));
+        minCartField.setText(String.valueOf(fullCoupon.getMinCart()));
+        if (fullCoupon.getExpiresAt() != null) {
+            expiryPicker.setValue(fullCoupon.getExpiresAt().toLocalDate());
+        }
+        activeCheck.setSelected(fullCoupon.isActive());
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new javafx.geometry.Insets(20, 150, 10, 10));
+        
+        grid.add(new Label("Code:"), 0, 0);
+        grid.add(codeField, 1, 0);
+        grid.add(new Label("Type:"), 0, 1);
+        grid.add(kindCombo, 1, 1);
+        grid.add(new Label("Value:"), 0, 2);
+        grid.add(valueField, 1, 2);
+        grid.add(new Label("Min Cart:"), 0, 3);
+        grid.add(minCartField, 1, 3);
+        grid.add(new Label("Expires:"), 0, 4);
+        grid.add(expiryPicker, 1, 4);
+        grid.add(activeCheck, 1, 5);
+        
+        codeField.getStyleClass().add("field");
+        kindCombo.setStyle("-fx-background-color: rgba(30, 41, 59, 0.6); -fx-text-fill: white; -fx-background-radius: 8; -fx-border-color: #334155; -fx-border-radius: 8;");
+        valueField.getStyleClass().add("field");
+        minCartField.getStyleClass().add("field");
+        
+        dialog.getDialogPane().setContent(grid);
+        
+        dialog.setResultConverter(buttonType -> {
+            if (buttonType == saveBtnType) {
+                try {
+                    String code = codeField.getText().trim().toUpperCase();
+                    String kindStr = kindCombo.getValue();
+                    double value = Double.parseDouble(valueField.getText().trim());
+                    double minCart = Double.parseDouble(minCartField.getText().trim());
+                    LocalDate expiry = expiryPicker.getValue();
+                    boolean active = activeCheck.isSelected();
+
+                    if (code.isEmpty()) {
+                        showError("Coupon code cannot be empty.");
+                        return null;
+                    }
+
+                    if (expiry == null) {
+                        showError("Please select an expiry date.");
+                        return null;
+                    }
+
+                    if (value <= 0) {
+                        showError("Discount value must be greater than 0.");
+                        return null;
+                    }
+                    
+                    if (minCart < 0) {
+                        showError("Minimum cart value must be non-negative.");
+                        return null;
+                    }
+                    
+                    if ("PERCENT".equals(kindStr) && value > 100) {
+                        showError("Percentage discount cannot exceed 100%.");
+                        return null;
+                    }
+
+                    // Check if code already exists (excluding current coupon)
+                    Coupon existingCoupon = couponDAO.getCouponByCodeForEdit(code);
+                    if (existingCoupon != null && existingCoupon.getId() != fullCoupon.getId()) {
+                        showError("A coupon with this code already exists.");
+                        return null;
+                    }
+
+                    Coupon.CouponKind kind = Coupon.CouponKind.valueOf(kindStr);
+                    LocalDateTime expiresAt = expiry.atStartOfDay();
+
+                    boolean success = couponDAO.updateCoupon(fullCoupon.getId(), code, kind, value, minCart, expiresAt, active);
+                    if (success) {
+                        showSuccess("Coupon updated successfully!");
+                        loadCoupons();
+                        return new Coupon(fullCoupon.getId(), code, kind, value, minCart, active, expiresAt);
+                    } else {
+                        showError("Failed to update coupon.");
+                    }
+                } catch (NumberFormatException e) {
+                    showError("Please enter valid numbers for value and minimum cart.");
+                } catch (Exception e) {
+                    showError("Failed to update coupon: " + e.getMessage());
+                }
+            }
+            return null;
+        });
+
+        dialog.showAndWait();
     }
 
     @FXML

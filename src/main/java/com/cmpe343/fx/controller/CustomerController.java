@@ -44,10 +44,22 @@ public class CustomerController {
     private final ProductDao productDao = new ProductDao();
     private final CartDao cartDao = new CartDao();
     private final com.cmpe343.dao.InvoiceDAO invoiceDAO = new com.cmpe343.dao.InvoiceDAO();
+    private final com.cmpe343.dao.MessageDao messageDao = new com.cmpe343.dao.MessageDao();
+    private final UserDao userDao = new UserDao();
 
     private static boolean imagesPopulated = false; // Flag to ensure images are only populated once
     private FilteredList<Product> filteredProducts;
     private int currentCustomerId;
+    
+    // Chat widget fields
+    @FXML
+    private VBox chatContainer;
+    @FXML
+    private VBox chatMessagesBox;
+    @FXML
+    private TextField chatInput;
+    @FXML
+    private ScrollPane chatScroll;
 
     @FXML
     public void initialize() {
@@ -140,7 +152,12 @@ public class CustomerController {
         Label nameLbl = new Label(p.getName());
         nameLbl.getStyleClass().add("product-title");
 
-        Label priceLbl = new Label(p.getPrice() + " ₺ / kg");
+        // Calculate price with threshold pricing (double if stock <= threshold)
+        double displayPrice = p.getPrice();
+        if (p.getStockKg() <= p.getThresholdKg()) {
+            displayPrice = p.getPrice() * 2.0;
+        }
+        Label priceLbl = new Label(String.format("%.2f ₺ / kg", displayPrice));
         priceLbl.getStyleClass().add("product-price");
 
         // Calculate available stock (current stock - items in cart)
@@ -861,6 +878,130 @@ public class CustomerController {
 
     private void toast(String msg, ToastService.Type type) {
         ToastService.show(searchField.getScene(), msg, type);
+    }
+    
+    // ==================== CHAT WIDGET ====================
+    
+    @FXML
+    private void toggleChat() {
+        boolean visible = !chatContainer.isVisible();
+        chatContainer.setVisible(visible);
+        chatContainer.setManaged(visible);
+        chatContainer.setMouseTransparent(!visible);
+        if (visible) {
+            // Ensure chat container is on top of all other elements
+            Platform.runLater(() -> {
+                if (chatContainer.getParent() != null && chatContainer.getParent() instanceof StackPane) {
+                    StackPane parent = (StackPane) chatContainer.getParent();
+                    // Remove and re-add to ensure it's on top
+                    parent.getChildren().remove(chatContainer);
+                    parent.getChildren().add(chatContainer);
+                    // Also use toFront() to ensure z-order
+                    chatContainer.toFront();
+                }
+                loadChatWidgetMessages();
+                Platform.runLater(() -> {
+                    if (chatInput != null) {
+                        chatInput.requestFocus();
+                    }
+                    // Double check z-order after layout
+                    if (chatContainer.getParent() != null) {
+                        chatContainer.toFront();
+                    }
+                });
+            });
+        }
+    }
+
+    @FXML
+    private void handleSendChatMessage() {
+        String text = chatInput.getText().trim();
+        if (text.isEmpty())
+            return;
+
+        try {
+            int ownerId = userDao.getOwnerId();
+            if (ownerId == -1) {
+                toast("Owner not found", ToastService.Type.ERROR);
+                return;
+            }
+
+            int msgId = messageDao.createMessage(currentCustomerId, ownerId, text);
+            if (msgId > 0) {
+                chatInput.clear();
+                loadChatWidgetMessages();
+            } else {
+                toast("Failed to send", ToastService.Type.ERROR);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            toast("Error sending message", ToastService.Type.ERROR);
+        }
+    }
+
+    private void loadChatWidgetMessages() {
+        if (chatMessagesBox == null) return;
+        chatMessagesBox.getChildren().clear();
+        
+        try {
+            int ownerId = userDao.getOwnerId();
+            java.util.List<com.cmpe343.model.Message> messages = messageDao.getMessagesBetween(ownerId, currentCustomerId);
+
+            for (com.cmpe343.model.Message msg : messages) {
+                chatMessagesBox.getChildren().add(createWidgetMessage(msg));
+            }
+            
+            // Scroll to bottom logic:
+            Platform.runLater(() -> {
+                chatMessagesBox.applyCss();
+                chatMessagesBox.layout();
+                if (chatScroll != null) {
+                    chatScroll.applyCss();
+                    chatScroll.layout();
+                    chatScroll.setVvalue(1.0);
+                }
+
+                // Double check to ensure scroll
+                Platform.runLater(() -> {
+                    if (chatScroll != null) {
+                        chatScroll.setVvalue(1.0);
+                    }
+                    // Ensure chat container is still on top
+                    if (chatContainer.getParent() != null) {
+                        chatContainer.toFront();
+                    }
+                });
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private Node createWidgetMessage(com.cmpe343.model.Message msg) {
+        VBox bubble = new VBox(4);
+        bubble.setMaxWidth(260);
+
+        // Determine if message is from customer (me) or owner
+        // Negative ID indicates owner reply, sender "Owner" indicates owner
+        boolean isMe = msg.getId() > 0 && !"Owner".equals(msg.getSender());
+
+        String bg = isMe ? "#3b82f6" : "#475569"; // Blue for me, Gray for owner
+        bubble.setStyle("-fx-background-color: " + bg + "; -fx-background-radius: 12; -fx-padding: 8 12;");
+
+        Label content = new Label(msg.getContent());
+        content.setWrapText(true);
+        content.setStyle("-fx-text-fill: white; -fx-font-size: 13px;");
+
+        Label date = new Label(msg.getTimestamp().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")));
+        date.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px; opacity: 0.8;");
+        date.setAlignment(Pos.BOTTOM_RIGHT);
+
+        bubble.getChildren().addAll(content, date);
+
+        HBox row = new HBox(bubble);
+        row.setAlignment(isMe ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
+
+        return row;
     }
     
     /**
