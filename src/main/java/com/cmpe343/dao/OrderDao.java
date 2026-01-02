@@ -26,17 +26,21 @@ public class OrderDao {
         Timestamp nowTs = Timestamp.valueOf(LocalDateTime.now());
         Timestamp requestedTs = Timestamp.valueOf(requestedDelivery);
 
-        // Calculate original subtotal (before coupon)
+        // Calculate original subtotal (before any discounts)
         // Round each line total before summing to match order_items precision
         double originalSubtotal = items.stream()
             .mapToDouble(item -> round2(item.getLineTotal()))
             .sum();
         
-        // Apply coupon discount if provided
+        // Calculate loyalty discount first (based on customer's order history)
+        double loyaltyDiscount = calculateLoyaltyDiscount(customerId, originalSubtotal);
+        double subtotalAfterLoyalty = Math.max(0, originalSubtotal - loyaltyDiscount);
+        
+        // Apply coupon discount if provided (applied after loyalty discount)
         // Validate coupon at order placement time to prevent race conditions
         double couponDiscount = 0.0;
         if (couponId != null) {
-            Double discount = getCouponDiscount(couponId, originalSubtotal);
+            Double discount = getCouponDiscount(couponId, subtotalAfterLoyalty);
             if (discount == null) {
                 // Coupon is invalid (expired/deactivated/not found/min cart not met) - throw exception to inform user
                 throw new IllegalArgumentException("The selected coupon is no longer valid. Please remove it and try again.");
@@ -44,14 +48,14 @@ public class OrderDao {
             couponDiscount = discount; // discount can be 0.0 for valid coupons with zero discount
         }
         
-        // Calculate post-coupon subtotal (this is what VAT is calculated on)
-        double totalAfterCoupon = Math.max(0, originalSubtotal - couponDiscount);
-        double vat = round2(totalAfterCoupon * VAT_RATE);
-        double totalAfterTax = round2(totalAfterCoupon + vat);
+        // Calculate final subtotal after all discounts (this is what VAT is calculated on)
+        double totalAfterDiscounts = Math.max(0, subtotalAfterLoyalty - couponDiscount);
+        double vat = round2(totalAfterDiscounts * VAT_RATE);
+        double totalAfterTax = round2(totalAfterDiscounts + vat);
         
-        // Store the post-coupon subtotal in totalBeforeTax (since VAT is calculated on this)
+        // Store the post-discount subtotal in totalBeforeTax (since VAT is calculated on this)
         // This ensures consistency: totalBeforeTax + VAT = totalAfterTax
-        double totalBeforeTax = totalAfterCoupon;
+        double totalBeforeTax = totalAfterDiscounts;
 
         String insertOrder = """
                     INSERT INTO orders
@@ -59,7 +63,7 @@ public class OrderDao {
                        total_before_tax, vat, total_after_tax, coupon_id, loyalty_discount)
                     VALUES
                       (?, NULL, 'CREATED', ?, ?, NULL,
-                       ?, ?, ?, ?, 0)
+                       ?, ?, ?, ?, ?)
                 """;
 
         // ✅ SENİN TABLOYA GÖRE:
@@ -94,6 +98,8 @@ public class OrderDao {
                 } else {
                     ps.setNull(7, Types.INTEGER);
                 }
+                // Set loyalty_discount (position 8)
+                ps.setDouble(8, round2(loyaltyDiscount));
 
                 ps.executeUpdate();
 
@@ -305,9 +311,11 @@ public class OrderDao {
     }
     
     public double getCouponDiscountForOrder(int orderId) {
-        // Get the order's total_before_tax to calculate percentage discount correctly
+        // Get the order's total_before_tax, loyalty_discount, and coupon info
+        // total_before_tax is stored AFTER both discounts, so for percentage coupons
+        // we need to reverse-engineer the base amount before coupon discount
         String sql = """
-            SELECT c.kind, c.value, o.total_before_tax
+            SELECT c.kind, c.value, o.total_before_tax, o.loyalty_discount
             FROM orders o
             JOIN coupons c ON o.coupon_id = c.id
             WHERE o.id = ?
@@ -322,9 +330,26 @@ public class OrderDao {
                     double totalBeforeTax = rs.getDouble("total_before_tax");
                     
                     if ("AMOUNT".equals(kind)) {
-                        return Math.min(value, totalBeforeTax);
+                        // For AMOUNT coupons, the discount is a fixed value.
+                        // Since total_before_tax is stored after the discount was applied,
+                        // we can't perfectly reconstruct if the discount was capped.
+                        // However, the coupon value represents what was intended to be applied.
+                        // We'll return the coupon value, as it was applied at order creation time.
+                        return value;
                     } else if ("PERCENT".equals(kind)) {
-                        return totalBeforeTax * (value / 100.0);
+                        // For percentage coupons, total_before_tax = subtotalAfterLoyalty * (1 - percent/100)
+                        // So: subtotalAfterLoyalty = total_before_tax / (1 - percent/100)
+                        // And coupon discount = subtotalAfterLoyalty * (percent/100)
+                        // Safety check: prevent division by zero or negative denominator
+                        double denominator = 1.0 - value / 100.0;
+                        if (denominator <= 0 || value >= 100 || value <= 0) {
+                            // Invalid coupon value - return 0 to prevent crash
+                            // This should not happen if validation is in place, but defensive programming
+                            System.err.println("Warning: Invalid percentage coupon value (" + value + "%) for order " + orderId + ". Returning 0 discount.");
+                            return 0.0;
+                        }
+                        double subtotalAfterLoyalty = totalBeforeTax / denominator;
+                        return subtotalAfterLoyalty * (value / 100.0);
                     }
                 }
             }
@@ -390,6 +415,25 @@ public class OrderDao {
             return updated > 0;
         } catch (Exception e) {
             System.err.println("Error assigning order to carrier: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    public boolean unassignOrderFromCarrier(int orderId, int carrierId) {
+        String sql = """
+            UPDATE orders 
+            SET carrier_id = NULL, status = 'CREATED' 
+            WHERE id = ? AND status = 'ASSIGNED' AND carrier_id = ?
+        """;
+        
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, orderId);
+            ps.setInt(2, carrierId);
+            int updated = ps.executeUpdate();
+            return updated > 0;
+        } catch (Exception e) {
+            System.err.println("Error unassigning order from carrier: " + e.getMessage());
             return false;
         }
     }
@@ -493,6 +537,173 @@ public class OrderDao {
             e.printStackTrace();
         }
         return stats;
+    }
+    
+    /**
+     * Cancels an order, restocks products, and updates order status.
+     * This method:
+     * 1. Updates the order status to CANCELLED (only if order is CREATED or ASSIGNED)
+     * 2. Restocks all products from the order items
+     * 3. Uses a transaction to ensure data consistency
+     * 
+     * Note: Refunds are typically handled externally through payment processors.
+     * This method only handles the inventory restocking and status update.
+     * 
+     * @param orderId The ID of the order to cancel
+     * @return true if the order was successfully cancelled, false otherwise
+     * @throws RuntimeException if the order cannot be cancelled (e.g., already DELIVERED or CANCELLED)
+     */
+    public boolean cancelOrder(int orderId) {
+        // First, get the order to check its status and items
+        com.cmpe343.model.Order order = null;
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement("SELECT * FROM orders WHERE id = ?")) {
+            ps.setInt(1, orderId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    order = mapOrder(rs);
+                } else {
+                    return false; // Order not found
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error fetching order: " + e.getMessage());
+            return false;
+        }
+        
+        // Check if order can be cancelled (only CREATED or ASSIGNED orders can be cancelled)
+        if (order.getStatus() == com.cmpe343.model.Order.OrderStatus.DELIVERED) {
+            throw new RuntimeException("Cannot cancel a delivered order.");
+        }
+        if (order.getStatus() == com.cmpe343.model.Order.OrderStatus.CANCELLED) {
+            throw new RuntimeException("Order is already cancelled.");
+        }
+        
+        // Load order items
+        List<com.cmpe343.model.CartItem> items = getOrderItems(orderId);
+        if (items == null || items.isEmpty()) {
+            throw new RuntimeException("Order has no items to restock.");
+        }
+        
+        String updateOrderStatus = """
+            UPDATE orders 
+            SET status = 'CANCELLED' 
+            WHERE id = ? AND status IN ('CREATED', 'ASSIGNED')
+        """;
+        
+        String restockProduct = """
+            UPDATE products
+            SET stock_kg = stock_kg + ?
+            WHERE id = ?
+        """;
+        
+        try (Connection c = Db.getConnection()) {
+            c.setAutoCommit(false);
+            
+            try {
+                // 1) Update order status
+                try (PreparedStatement ps = c.prepareStatement(updateOrderStatus)) {
+                    ps.setInt(1, orderId);
+                    int updated = ps.executeUpdate();
+                    if (updated == 0) {
+                        c.rollback();
+                        throw new RuntimeException("Could not update order status. Order may have already been cancelled or delivered.");
+                    }
+                }
+                
+                // 2) Restock all products
+                for (com.cmpe343.model.CartItem item : items) {
+                    try (PreparedStatement ps = c.prepareStatement(restockProduct)) {
+                        ps.setDouble(1, item.getQuantityKg());
+                        ps.setInt(2, item.getProduct().getId());
+                        ps.executeUpdate();
+                    }
+                }
+                
+                c.commit();
+                return true;
+                
+            } catch (Exception e) {
+                c.rollback();
+                throw new RuntimeException("Could not cancel order: " + e.getMessage(), e);
+            }
+        } catch (Exception e) {
+            System.err.println("Error cancelling order: " + e.getMessage());
+            throw new RuntimeException("Could not cancel order: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Calculates the loyalty discount for a customer based on their order history.
+     * 
+     * @param customerId The customer ID
+     * @param cartTotal The cart subtotal before discounts
+     * @return The loyalty discount amount
+     */
+    public double calculateLoyaltyDiscount(int customerId, double cartTotal) {
+        double discountPercent = getLoyaltyDiscountPercent(customerId);
+        return cartTotal * discountPercent;
+    }
+    
+    /**
+     * Gets the loyalty discount percentage for a customer based on their order history.
+     * Tiers:
+     * - VIP (4+ orders/month or 20+ total orders): 10% discount
+     * - Gold (2+ orders/month or 10+ total orders): 5% discount
+     * - Silver (1+ orders/month or 5+ total orders): 2% discount
+     * - Bronze (others): 0% discount
+     * 
+     * @param customerId The customer ID
+     * @return The discount percentage as a decimal (e.g., 0.10 for 10%)
+     */
+    public double getLoyaltyDiscountPercent(int customerId) {
+        String sql = """
+            SELECT 
+                COUNT(o.id) as order_count,
+                MIN(o.order_time) as first_order_date
+            FROM orders o
+            WHERE o.customer_id = ? AND o.status != 'CANCELLED'
+        """;
+        
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, customerId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    int orderCount = rs.getInt("order_count");
+                    Timestamp firstOrderDate = rs.getTimestamp("first_order_date");
+                    
+                    if (orderCount == 0 || firstOrderDate == null) {
+                        return 0.0; // No orders, no discount
+                    }
+                    
+                    // Calculate months since first order
+                    long daysSinceFirst = (System.currentTimeMillis() - firstOrderDate.getTime()) / (1000L * 60 * 60 * 24);
+                    
+                    // Handle same-day orders: treat as at least 1 month to avoid inflated metrics
+                    if (daysSinceFirst == 0) {
+                        daysSinceFirst = 30; // Treat as 1 month minimum
+                    }
+                    
+                    double months = Math.max(daysSinceFirst / 30.0, 1.0); // At least 1 month to avoid division issues
+                    double ordersPerMonth = orderCount / months;
+                    
+                    // Determine discount based on tier
+                    if (ordersPerMonth >= 4.0 || orderCount >= 20) {
+                        return 0.10; // VIP: 10% discount
+                    } else if (ordersPerMonth >= 2.0 || orderCount >= 10) {
+                        return 0.05; // Gold: 5% discount
+                    } else if (ordersPerMonth >= 1.0 || orderCount >= 5) {
+                        return 0.02; // Silver: 2% discount
+                    } else {
+                        return 0.0; // Bronze: no discount
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 0.0;
     }
     
     private static double round2(double v) {

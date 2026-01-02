@@ -7,18 +7,24 @@ public class User {
     private String phone;
     private String address;
     private boolean active;
+    private double walletBalance = 0.0;
 
     public User(int id, String username, String role) {
-        this(id, username, role, null, null, true);
+        this(id, username, role, null, null, true, 0.0);
     }
 
     public User(int id, String username, String role, String phone, String address, boolean active) {
+        this(id, username, role, phone, address, active, 0.0);
+    }
+    
+    public User(int id, String username, String role, String phone, String address, boolean active, double walletBalance) {
         this.id = id;
         this.username = username;
         this.role = role;
         this.phone = phone;
         this.address = address;
         this.active = active;
+        this.walletBalance = walletBalance;
     }
 
     public int getId() {
@@ -47,5 +53,13 @@ public class User {
 
     public void setActive(boolean active) {
         this.active = active;
+    }
+    
+    public double getWalletBalance() {
+        return walletBalance;
+    }
+    
+    public void setWalletBalance(double walletBalance) {
+        this.walletBalance = walletBalance;
     }
 }

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml" fx:controller="com.example.demo.controllers.ReportsController">
+   <top>
+      <HBox spacing="10.0" style="-fx-padding: 10;">
+         <Label text="Sales Reports &amp; Analytics" style="-fx-font-size: 18px; -fx-font-weight: bold;"/>
+         <Region HBox.hgrow="ALWAYS"/>
+         <Button fx:id="closeButton" text="Close" onAction="#handleClose"/>
+      </HBox>
+   </top>
+   <center>
+      <ScrollPane fitToWidth="true" fitToHeight="true">
+         <VBox fx:id="reportsContainer" spacing="20.0" style="-fx-padding: 20;">
+            <!-- Reports and charts will be loaded dynamically -->
+         </VBox>
+      </ScrollPane>
+   </center>
+</BorderPane>
+

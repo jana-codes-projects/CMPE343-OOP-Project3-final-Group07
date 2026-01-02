@@ -142,10 +142,10 @@ public class CartController {
         // Reuse the ProductDao instance instead of creating a new one for each cart item
         try {
             javafx.scene.image.Image image = null;
-            //byte[] imageBytes = productDao.getProductImageBlob(item.getProduct().getId());
-//            if (imageBytes != null) {
-//                image = new javafx.scene.image.Image(new java.io.ByteArrayInputStream(imageBytes));
-//            }
+            byte[] imageBytes = productDao.getProductImageBlob(item.getProduct().getId());
+            if (imageBytes != null && imageBytes.length > 0) {
+                image = new javafx.scene.image.Image(new java.io.ByteArrayInputStream(imageBytes));
+            }
             
             if (image != null) {
                 javafx.scene.image.ImageView iv = new javafx.scene.image.ImageView(image);
@@ -217,11 +217,17 @@ public class CartController {
         double subtotal = currentCartItems.stream()
             .mapToDouble(item -> Math.round(item.getLineTotal() * 100.0) / 100.0)
             .sum();
-        double discount = 0.0;
+
+        // Calculate LOYALTY discount first (based on customer's order history)
+        double loyaltyDiscount = orderDao.calculateLoyaltyDiscount(com.cmpe343.fx.Session.getUser().getId(), subtotal);
+        double subtotalAfterLoyalty = Math.max(0, subtotal - loyaltyDiscount);
+
+        // Calculate coupon discount (applied after loyalty)
+        double couponDiscount = 0.0;
         if (selectedCouponId != null) {
             com.cmpe343.model.Coupon coupon = couponDao.getCouponById(selectedCouponId);
             if (coupon != null) {
-                discount = coupon.calculateDiscount(subtotal);
+                couponDiscount = coupon.calculateDiscount(subtotalAfterLoyalty);
             } else {
                 // Coupon became invalid - clear selection
                 selectedCouponId = null;
@@ -229,18 +235,22 @@ public class CartController {
                 couponDiscountLabel.setText("");
             }
         }
-        double totalAfterDiscount = Math.max(0, subtotal - discount);
+        double totalAfterDiscount = Math.max(0, subtotalAfterLoyalty - couponDiscount);
         double vat = Math.round((totalAfterDiscount * 0.20) * 100.0) / 100.0;
         double finalTotal = totalAfterDiscount + vat;
-        
-        // Display total with breakdown if discount is applied
-        if (discount > 0) {
-            totalLabel.setText(String.format("Subtotal: %.2f ₺ | Discount: -%.2f ₺ | VAT: %.2f ₺ | Total: %.2f ₺", 
-                subtotal, discount, vat, finalTotal));
-        } else {
-            totalLabel.setText(String.format("Subtotal: %.2f ₺ | VAT: %.2f ₺ | Total: %.2f ₺", 
-                subtotal, vat, finalTotal));
+
+        // Display total with breakdown
+        StringBuilder sb = new StringBuilder();
+        sb.append(String.format("Subtotal: %.2f ₺", subtotal));
+        if (loyaltyDiscount > 0) {
+            double percent = orderDao.getLoyaltyDiscountPercent(com.cmpe343.fx.Session.getUser().getId()) * 100;
+            sb.append(String.format(" | Loyalty (%.0f%%): -%.2f ₺", percent, loyaltyDiscount));
         }
+        if (couponDiscount > 0) {
+            sb.append(String.format(" | Coupon: -%.2f ₺", couponDiscount));
+        }
+        sb.append(String.format(" | VAT: %.2f ₺ | Total: %.2f ₺", vat, finalTotal));
+        totalLabel.setText(sb.toString());
     }
 
     @FXML
@@ -281,6 +291,10 @@ public class CartController {
 
             // Create Order
             // Validate coupon one more time before placing order to catch race conditions
+            // This validation must match OrderDao.getCouponDiscount() logic:
+            // 1. Check if coupon exists and is active/not expired
+            // 2. Calculate subtotal after loyalty discount (same as OrderDao.createOrder does)
+            // 3. Validate that subtotalAfterLoyalty meets the coupon's min_cart requirement
             if (selectedCouponId != null) {
                 com.cmpe343.model.Coupon coupon = couponDao.getCouponById(selectedCouponId);
                 if (coupon == null) {
@@ -290,6 +304,26 @@ public class CartController {
                     couponComboBox.setValue("No Coupon");
                     couponDiscountLabel.setText("");
                     updateTotal();
+                    return;
+                }
+                
+                // Calculate subtotal (same logic as updateTotal and OrderDao.createOrder)
+                double subtotal = currentCartItems.stream()
+                    .mapToDouble(item -> Math.round(item.getLineTotal() * 100.0) / 100.0)
+                    .sum();
+                
+                // Calculate loyalty discount first (same as OrderDao.createOrder)
+                double loyaltyDiscount = orderDao.calculateLoyaltyDiscount(Session.getUser().getId(), subtotal);
+                double subtotalAfterLoyalty = Math.max(0, subtotal - loyaltyDiscount);
+                
+                // Validate that subtotalAfterLoyalty meets the coupon's min_cart requirement
+                // This matches the validation in OrderDao.getCouponDiscount()
+                if (subtotalAfterLoyalty < coupon.getMinCart()) {
+                    ToastService.show(cartItemsContainer.getScene(), 
+                        String.format("Cart total (after loyalty discount) %.2f ₺ does not meet coupon minimum requirement of %.2f ₺. Please add more items or remove the coupon.", 
+                            subtotalAfterLoyalty, coupon.getMinCart()), 
+                        ToastService.Type.ERROR,
+                        ToastService.Position.BOTTOM_CENTER, Duration.seconds(4));
                     return;
                 }
             }

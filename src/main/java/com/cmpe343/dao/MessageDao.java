@@ -12,6 +12,43 @@ import java.util.List;
 
 public class MessageDao {
     
+    public static class Conversation {
+        private int userId;
+        private String username;
+        private String lastMessage;
+        private LocalDateTime lastTimestamp;
+        private boolean hasUnread;
+
+        public Conversation(int userId, String username, String lastMessage, LocalDateTime lastTimestamp,
+                boolean hasUnread) {
+            this.userId = userId;
+            this.username = username;
+            this.lastMessage = lastMessage;
+            this.lastTimestamp = lastTimestamp;
+            this.hasUnread = hasUnread;
+        }
+
+        public int getUserId() {
+            return userId;
+        }
+
+        public String getUsername() {
+            return username;
+        }
+
+        public String getLastMessage() {
+            return lastMessage;
+        }
+
+        public LocalDateTime getLastTimestamp() {
+            return lastTimestamp;
+        }
+
+        public boolean hasUnread() {
+            return hasUnread;
+        }
+    }
+    
     public List<Message> getAllMessages() {
         List<Message> list = new ArrayList<>();
         // Use correct schema columns: join with users to get sender name, use text_clob, created_at, replied_at
@@ -132,14 +169,20 @@ public class MessageDao {
     }
     
     /**
-     * Creates a new message from a customer to the owner.
+     * Creates a new message.
      * 
-     * @param customerId The ID of the customer sending the message
-     * @param ownerId The ID of the owner receiving the message
-     * @param text The message text
+     * @param customerId The ID of the customer (or carrier)
+     * @param ownerId    The ID of the owner
+     * @param senderId   The ID of the actual sender (customer/carrier or owner)
+     * @param text       The message text
      * @return The created message ID, or -1 if creation fails
      */
-    public int createMessage(int customerId, int ownerId, String text) {
+    public int createMessage(int customerId, int ownerId, int senderId, String text) {
+        // Note: sender_id column doesn't exist in schema
+        // Schema only supports: customer messages (text_clob) and owner replies (reply_text)
+        // If senderId == ownerId, we need to use reply_text on existing message
+        // For now, only support customer messages (senderId == customerId)
+        // Owner messages should use replyToMessage() instead
         String sql = """
             INSERT INTO messages (customer_id, owner_id, text_clob)
             VALUES (?, ?, ?)
@@ -285,5 +328,119 @@ public class MessageDao {
             e.printStackTrace();
         }
         return null;
+    }
+    
+    /**
+     * Gets a list of conversations for the owner (unique users who have messaged).
+     * 
+     * @param ownerId The owner's ID
+     * @return List of conversation summaries
+     */
+    public List<Conversation> getConversationsForOwner(int ownerId) {
+        List<Conversation> list = new ArrayList<>();
+        // Group by customer_id to get unique conversations
+        // We want the latest message/status for each customer
+        String sql = """
+                    SELECT m.customer_id, u.username,
+                           MAX(m.created_at) as last_time,
+                           (SELECT text_clob FROM messages m2 WHERE m2.customer_id = m.customer_id AND m2.owner_id = ? ORDER BY m2.created_at DESC LIMIT 1) as last_msg,
+                           SUM(CASE WHEN m.replied_at IS NULL THEN 1 ELSE 0 END) as unread_count
+                    FROM messages m
+                    JOIN users u ON m.customer_id = u.id
+                    WHERE m.owner_id = ?
+                    GROUP BY m.customer_id, u.username
+                    ORDER BY last_time DESC
+                """;
+
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, ownerId); // For subquery
+            ps.setInt(2, ownerId); // For WHERE clause
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    java.sql.Timestamp timestamp = rs.getTimestamp("last_time");
+                    LocalDateTime time = timestamp != null ? timestamp.toLocalDateTime() : LocalDateTime.now();
+                    list.add(new Conversation(
+                            rs.getInt("customer_id"),
+                            rs.getString("username"),
+                            rs.getString("last_msg"),
+                            time,
+                            rs.getInt("unread_count") > 0));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    /**
+     * Gets the full chat history between an owner and a specific user.
+     * 
+     * @param ownerId     The ID of the owner
+     * @param otherUserId The ID of the other user (customer/carrier)
+     * @return List of messages in chronological order
+     */
+    public List<Message> getMessagesBetween(int ownerId, int otherUserId) {
+        List<Message> list = new ArrayList<>();
+        String sql = """
+                    SELECT m.id, u.username as sender, m.text_clob as content,
+                           m.created_at, (m.replied_at IS NOT NULL) as is_read,
+                           m.reply_text, m.replied_at, m.customer_id
+                    FROM messages m
+                    JOIN users u ON m.customer_id = u.id
+                    WHERE m.customer_id = ? AND m.owner_id = ?
+                    ORDER BY m.created_at ASC
+                """;
+
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, otherUserId);
+            ps.setInt(2, ownerId);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    java.sql.Timestamp timestamp = rs.getTimestamp("created_at");
+                    LocalDateTime messageTime = timestamp != null ? timestamp.toLocalDateTime() : LocalDateTime.now();
+
+                    // Customer message (since sender_id doesn't exist, all rows are customer messages)
+                    int senderId = rs.getInt("customer_id");
+                    String senderName = rs.getString("sender");
+
+                    Message msg = new Message(
+                            rs.getInt("id"),
+                            senderId,
+                            senderName,
+                            rs.getString("content"),
+                            messageTime,
+                            rs.getBoolean("is_read"));
+
+                    list.add(msg);
+
+                    // Handle owner reply (reply_text exists, add it as a separate message)
+                    String reply = rs.getString("reply_text");
+                    if (reply != null && !reply.isEmpty()) {
+                        java.sql.Timestamp repliedAt = rs.getTimestamp("replied_at");
+                        LocalDateTime replyTime = repliedAt != null ? repliedAt.toLocalDateTime() : messageTime.plusMinutes(1);
+                        // Use a unique positive ID for replies: messageId + large offset
+                        // This avoids negative IDs while maintaining uniqueness
+                        int messageId = rs.getInt("id");
+                        int replyId = messageId + 100000000; // Large offset to ensure uniqueness
+                        Message replyMsg = new Message(
+                                replyId,
+                                ownerId,
+                                "Owner",
+                                reply,
+                                replyTime,
+                                true);
+                        list.add(replyMsg);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
     }
 }
