@@ -48,7 +48,7 @@ public class UserDao {
 
     public List<User> getAllCarriers() {
         List<User> list = new ArrayList<>();
-        String sql = "SELECT id, username, role, phone, address, is_active, wallet_balance FROM users WHERE role = 'CARRIER'";
+        String sql = "SELECT id, username, role, phone, address, is_active, wallet_balance FROM users WHERE role = 'carrier'";
 
         try (Connection c = Db.getConnection();
                 PreparedStatement ps = c.prepareStatement(sql);

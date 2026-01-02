@@ -19,7 +19,7 @@
    </top>
    
    <center>
-      <TabPane closable="false">
+      <TabPane>
          <tabs>
             <Tab text="Active Orders" closable="false">
                <SplitPane dividerPositions="0.4" style="-fx-background-color: transparent;">
