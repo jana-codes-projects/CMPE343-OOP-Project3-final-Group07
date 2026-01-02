@@ -126,7 +126,7 @@ public class OrderDao {
     public List<CartItem> getOrderItems(int orderId) {
         List<CartItem> list = new java.util.ArrayList<>();
         String sql = """
-                    SELECT oi.*, p.id as p_id, p.name, p.type, p.price, p.stock_kg, p.threshold_kg, p.image_blob, p.active
+                    SELECT oi.*, p.id as p_id, p.name, p.type, p.price, p.stock_kg, p.threshold_kg, p.image_blob, p.is_active
                     FROM order_items oi
                     JOIN products p ON oi.product_id = p.id
                     WHERE oi.order_id = ?
@@ -147,7 +147,7 @@ public class OrderDao {
                             rs.getDouble("stock_kg"),
                             rs.getDouble("threshold_kg"),
                             rs.getBytes("image_blob"));
-                    p.setActive(rs.getBoolean("active"));
+                    p.setActive(rs.getBoolean("is_active"));
 
                     // Create cart item
                     // Note: In CartItem logic, we usually set current price.

@@ -4,18 +4,12 @@ import com.cmpe343.dao.OrderDao;
 import com.cmpe343.dao.CartDao;
 import com.cmpe343.fx.Session;
 import com.cmpe343.model.Order;
-import com.cmpe343.model.CartItem;
-import com.cmpe343.fx.util.ToastService;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
 import javafx.geometry.Pos;
-import javafx.scene.Scene;
-import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.shape.SVGPath;
-import javafx.stage.Stage;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -129,21 +123,22 @@ public class OrdersController {
         }
     }
 
-    private HBox createOrderRow(Order order) {
-        HBox row = new HBox(16);
-        row.getStyleClass().addAll("card", "cart-item");
-        row.setAlignment(Pos.CENTER_LEFT);
-        row.setStyle("-fx-padding: 16; -fx-cursor: hand;"); // Hand cursor to indicate clickability
+    private VBox createOrderRow(Order order) {
+        // Main container for the row (Header + Details)
+        VBox rowContainer = new VBox(0);
+        rowContainer.getStyleClass().addAll("card", "cart-item");
+        rowContainer.setStyle("-fx-padding: 0; -fx-background-color: rgba(30, 41, 59, 0.5);");
 
-        // Click to view details
-        row.setOnMouseClicked(e -> handleViewDetails(order));
+        // 1. Header (Always visible summary)
+        HBox header = new HBox(16);
+        header.setAlignment(Pos.CENTER_LEFT);
+        header.setStyle("-fx-padding: 16; -fx-cursor: hand;");
 
-        // 1. Icon / Status Indicator
+        // Icon / Status Indicator
         StackPane iconContainer = new StackPane();
         iconContainer.setStyle(
                 "-fx-background-color: rgba(99, 102, 241, 0.1); -fx-background-radius: 8; -fx-min-width: 48; -fx-min-height: 48;");
         SVGPath icon = new SVGPath();
-
         if (order.getStatus() == Order.OrderStatus.DELIVERED) {
             icon.setContent("M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z");
             icon.setFill(javafx.scene.paint.Color.web("#10b981"));
@@ -156,23 +151,20 @@ public class OrdersController {
         }
         iconContainer.getChildren().add(icon);
 
-        // 2. Order Info
+        // Order Info
         VBox info = new VBox(4);
         info.setAlignment(Pos.CENTER_LEFT);
-
         Label ref = new Label("Order #" + order.getId());
         ref.setStyle("-fx-font-weight: bold; -fx-font-size: 16px; -fx-text-fill: white;");
-
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm");
         Label date = new Label(order.getOrderTime().format(dtf));
         date.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 13px;");
-
         info.getChildren().addAll(ref, date);
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        // 3. Status Badge
+        // Status Badge
         Label statusBadge = new Label(order.getStatus().name());
         statusBadge.getStyleClass().add("badge");
         if (order.getStatus() == Order.OrderStatus.DELIVERED) {
@@ -183,83 +175,79 @@ public class OrdersController {
             statusBadge.setStyle("-fx-background-color: rgba(59, 130, 246, 0.2); -fx-text-fill: #60a5fa;");
         }
 
-        // 4. Total Price
+        // Total Price
         Label total = new Label(String.format("%.2f ₺", order.getTotalAfterTax()));
         total.setStyle(
                 "-fx-font-weight: bold; -fx-text-fill: white; -fx-font-size: 16px; -fx-min-width: 100; -fx-alignment: center-right;");
 
-        row.getChildren().addAll(iconContainer, info, spacer, statusBadge, total);
-        return row;
+        // Chevron for expand indication
+        SVGPath chevron = new SVGPath();
+        chevron.setContent("M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z");
+        chevron.setFill(javafx.scene.paint.Color.web("#94a3b8"));
+
+        header.getChildren().addAll(iconContainer, info, spacer, statusBadge, total, chevron);
+
+        // 2. Details (Hidden by default)
+        VBox detailsBox = new VBox(0);
+        detailsBox.setVisible(false);
+        detailsBox.setManaged(false);
+        detailsBox.setStyle("-fx-background-color: rgba(15, 23, 42, 0.5); -fx-padding: 0;");
+
+        // Toggle logic
+        header.setOnMouseClicked(e -> {
+            boolean isExpanded = !detailsBox.isVisible();
+            detailsBox.setVisible(isExpanded);
+            detailsBox.setManaged(isExpanded);
+
+            // Rotate chevron
+            chevron.setRotate(isExpanded ? 180 : 0);
+
+            if (isExpanded && detailsBox.getChildren().isEmpty()) {
+                // Load details lazily
+                loadOrderDetails(order.getId(), detailsBox);
+            }
+        });
+
+        rowContainer.getChildren().addAll(header, detailsBox);
+        return rowContainer;
     }
 
-    private void handleViewDetails(Order order) {
-        Dialog<Void> dialog = new Dialog<>();
-        dialog.setTitle("Order Details #" + order.getId());
-        dialog.setHeaderText("Order Items");
+    private void loadOrderDetails(int orderId, VBox container) {
+        // Show loading or just fetch
+        List<CartItem> items = orderDao.getOrderItems(orderId);
 
-        // CSS
-        DialogPane pane = dialog.getDialogPane();
-        pane.getStylesheets().addAll(ordersContainer.getScene().getStylesheets());
-        pane.getStyleClass().add("dialog-pane");
-        pane.setMinWidth(500);
-        pane.setMinHeight(400);
+        VBox content = new VBox(8);
+        content.setStyle("-fx-padding: 16;");
 
-        VBox content = new VBox(12);
-        content.setStyle("-fx-padding: 20; -fx-background-color: #0f172a;");
-
-        // Items list - Using CartItem as returned by DAO
-        List<CartItem> items = orderDao.getOrderItems(order.getId());
-
-        ScrollPane scroll = new ScrollPane();
-        VBox itemsBox = new VBox(8);
-        itemsBox.setStyle("-fx-padding: 0 10 0 0;");
+        Label itemsTitle = new Label("Items in this order:");
+        itemsTitle.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 12px; -fx-padding: 0 0 8 0;");
+        content.getChildren().add(itemsTitle);
 
         for (CartItem item : items) {
             HBox itemRow = new HBox(12);
-            itemRow.setStyle("-fx-background-color: rgba(30, 41, 59, 0.5); -fx-padding: 12; -fx-background-radius: 8;");
+            itemRow.setStyle("-fx-padding: 8; -fx-border-color: rgba(255,255,255,0.05); -fx-border-width: 0 0 1 0;");
             itemRow.setAlignment(Pos.CENTER_LEFT);
 
             VBox itemInfo = new VBox(2);
-            // Product Name
             Label name = new Label(item.getProduct().getName());
-            name.setStyle("-fx-font-weight: bold; -fx-text-fill: white;");
+            name.setStyle("-fx-font-weight: bold; -fx-text-fill: white; -fx-font-size: 14px;");
 
-            // Qty and Unit Price
             Label qty = new Label(String.format("%.2f kg x %.2f ₺", item.getQuantityKg(), item.getUnitPrice()));
-            qty.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 12px;");
+            qty.setStyle("-fx-text-fill: #64748b; -fx-font-size: 12px;");
 
             itemInfo.getChildren().addAll(name, qty);
 
             Region sp = new Region();
             HBox.setHgrow(sp, Priority.ALWAYS);
 
-            // Subtotal
             Label subtotal = new Label(String.format("%.2f ₺", item.getLineTotal()));
-            subtotal.setStyle("-fx-text-fill: #10b981; -fx-font-weight: bold;");
+            subtotal.setStyle("-fx-text-fill: #cbd5e1; -fx-font-weight: bold;");
 
             itemRow.getChildren().addAll(itemInfo, sp, subtotal);
-            itemsBox.getChildren().add(itemRow);
+            content.getChildren().add(itemRow);
         }
 
-        scroll.setContent(itemsBox);
-        scroll.setFitToWidth(true);
-        VBox.setVgrow(scroll, Priority.ALWAYS);
-
-        Button closeBtn = new Button("Close");
-        closeBtn.getStyleClass().add("btn-outline");
-        closeBtn.setOnAction(e -> dialog.setResult(null));
-        closeBtn.setMaxWidth(Double.MAX_VALUE);
-
-        content.getChildren().addAll(scroll, closeBtn);
-
-        pane.setContent(content);
-        // Remove default buttons
-        pane.getButtonTypes().add(ButtonType.CLOSE);
-        Node closeNode = pane.lookupButton(ButtonType.CLOSE);
-        if (closeNode != null)
-            closeNode.setVisible(false);
-
-        dialog.showAndWait();
+        container.getChildren().add(content);
     }
 
     @FXML
