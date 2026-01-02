@@ -71,3 +71,120 @@
     -fx-background-color: rgba(239, 68, 68, 0.2);
     -fx-text-fill: #fca5a5;
 }
+
+
+/* --- Modern DatePicker Styling --- */
+
+.date-picker {
+    -fx-background-color: rgba(30, 41, 59, 0.6);
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: #334155;
+    -fx-padding: 2;
+}
+
+.date-picker:focused {
+    -fx-border-color: #6366f1;
+    -fx-effect: dropshadow(gaussian, rgba(99, 102, 241, 0.25), 10, 0, 0, 0);
+}
+
+.date-picker > .text-field {
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+    -fx-font-family: "Inter", sans-serif;
+    -fx-font-size: 14px;
+}
+
+.date-picker > .arrow-button {
+    -fx-background-color: transparent;
+    -fx-cursor: hand;
+    -fx-padding: 8;
+}
+
+.date-picker > .arrow-button > .arrow {
+    -fx-background-color: #94a3b8;
+    -fx-padding: 4; /* Size of arrow */
+}
+
+.date-picker > .arrow-button:hover > .arrow {
+    -fx-background-color: white;
+}
+
+/* The popup calendar */
+.date-picker-popup {
+    -fx-background-color: #1e293b;
+    -fx-border-color: #334155;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.4), 20, 0, 0, 4);
+    -fx-font-family: "Inter", sans-serif;
+}
+
+.date-picker-popup .month-year-pane {
+    -fx-background-color: #1e293b;
+    -fx-padding: 10;
+}
+
+.date-picker-popup .month-year-pane .label {
+    -fx-text-fill: white;
+    -fx-font-weight: 700;
+    -fx-font-size: 14px;
+}
+
+.date-picker-popup .spinner .button .left-arrow,
+.date-picker-popup .spinner .button .right-arrow {
+    -fx-background-color: #94a3b8;
+}
+
+.date-picker-popup .spinner .button:hover .left-arrow,
+.date-picker-popup .spinner .button:hover .right-arrow {
+    -fx-background-color: white;
+}
+
+/* Day cells */
+.date-picker-popup .calendar-grid {
+    -fx-background-color: #1e293b;
+    -fx-padding: 5;
+}
+
+.date-picker-popup .day-name-cell {
+    -fx-text-fill: #94a3b8;
+    -fx-font-size: 11px;
+    -fx-font-weight: 600;
+}
+
+.date-picker-popup .week-number-cell {
+    -fx-text-fill: #475569;
+}
+
+.date-picker-popup .day-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #cbd5e1;
+    -fx-border-color: transparent;
+    -fx-cell-size: 30px;
+    -fx-font-size: 13px;
+}
+
+.date-picker-popup .day-cell:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.1);
+    -fx-background-radius: 4;
+}
+
+.date-picker-popup .selected {
+    -fx-background-color: #6366f1;
+    -fx-text-fill: white;
+    -fx-font-weight: 700;
+    -fx-background-radius: 4;
+}
+
+.date-picker-popup .today {
+    -fx-text-fill: #6366f1;
+    -fx-font-weight: 700;
+    -fx-border-color: #6366f1;
+    -fx-border-radius: 4;
+}
+
+/* Disabled/other month days */
+.date-picker-popup .day-cell:disabled,
+.date-picker-popup .other-month {
+    -fx-opacity: 0.3;
+}
