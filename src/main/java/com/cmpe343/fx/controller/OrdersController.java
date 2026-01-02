@@ -1,5 +1,6 @@
 package com.cmpe343.fx.controller;
 
+import com.cmpe343.fx.util.ToastService;
 import com.cmpe343.dao.OrderDao;
 import com.cmpe343.dao.CartDao;
 import com.cmpe343.fx.Session;
@@ -189,7 +190,46 @@ public class OrdersController {
         chevron.setContent("M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z");
         chevron.setFill(javafx.scene.paint.Color.web("#94a3b8"));
 
-        header.getChildren().addAll(iconContainer, info, spacer, statusBadge, total, chevron);
+        // Cancel Button
+        Button cancelBtn = new Button("Cancel");
+        cancelBtn.getStyleClass().add("btn-outline-small");
+        cancelBtn.setStyle("-fx-text-fill: #ef4444; -fx-border-color: #ef4444; -fx-padding: 4 12;");
+        cancelBtn.setVisible(
+                order.getStatus() != Order.OrderStatus.DELIVERED && order.getStatus() != Order.OrderStatus.CANCELLED);
+        cancelBtn.setManaged(cancelBtn.isVisible());
+
+        cancelBtn.setOnAction(e -> {
+            e.consume(); // Prevent row expand
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+            alert.setTitle("Cancel Order");
+            alert.setHeaderText("Are you sure you want to cancel Order #" + order.getId() + "?");
+            alert.setContentText("This action cannot be undone.");
+            alert.initOwner(ordersContainer.getScene().getWindow());
+
+            alert.showAndWait().ifPresent(response -> {
+                if (response == ButtonType.OK) {
+                    if (orderDao.cancelOrder(order.getId())) {
+                        loadOrders(); // Refresh list
+                        ToastService.show(ordersContainer.getScene(), "Order #" + order.getId() + " cancelled.",
+                                ToastService.Type.SUCCESS);
+                    } else {
+                        ToastService.show(ordersContainer.getScene(), "Failed to cancel order.",
+                                ToastService.Type.ERROR);
+                    }
+                }
+            });
+        });
+
+        // Reorder Button
+        Button reorderBtn = new Button("Reorder");
+        reorderBtn.getStyleClass().add("btn-outline-small");
+        reorderBtn.setStyle("-fx-text-fill: #6366f1; -fx-border-color: #6366f1; -fx-padding: 4 12;");
+        reorderBtn.setOnAction(e -> {
+            e.consume();
+            handleReorder(order.getId());
+        });
+
+        header.getChildren().addAll(iconContainer, info, spacer, statusBadge, total, reorderBtn, cancelBtn, chevron);
 
         // 2. Details (Hidden by default)
         VBox detailsBox = new VBox(0);
@@ -273,6 +313,10 @@ public class OrdersController {
 
     @FXML
     private void handleOpenCart() {
+        navigateToCart();
+    }
+
+    private Scene navigateToCart() {
         try {
             Stage stage = (Stage) ordersContainer.getScene().getWindow();
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/cart.fxml"));
@@ -281,14 +325,86 @@ public class OrdersController {
                 scene.getStylesheets().addAll(stage.getScene().getStylesheets());
             stage.setScene(scene);
             stage.centerOnScreen();
+            return scene;
         } catch (Exception e) {
             e.printStackTrace();
+            return null;
         }
     }
 
     @FXML
     private void handleOpenOrders() {
         loadOrders(); // Refresh
+    }
+
+    private void handleReorder(int orderId) {
+        List<CartItem> items = orderDao.getOrderItems(orderId);
+        int userId = Session.getUser().getId();
+        int addedCount = 0;
+        List<String> warnings = new java.util.ArrayList<>();
+
+        for (CartItem item : items) {
+            double stock = item.getProduct().getStockKg();
+            double quantityNeeded = item.getQuantityKg();
+
+            if (stock <= 0) {
+                warnings.add(item.getProduct().getName() + " is out of stock.");
+                continue;
+            }
+
+            double quantityToAdd;
+            if (stock >= quantityNeeded) {
+                quantityToAdd = quantityNeeded;
+            } else {
+                quantityToAdd = stock;
+                warnings.add(item.getProduct().getName() + " has only " + stock + "kg available (added partial).");
+            }
+
+            try {
+                cartDao.addToCart(userId, item.getProduct().getId(), quantityToAdd);
+                addedCount++;
+            } catch (Exception e) {
+                e.printStackTrace();
+                warnings.add("Failed to add " + item.getProduct().getName());
+            }
+        }
+
+        updateCartBadge();
+
+        Scene targetSceneForWarnings = ordersContainer.getScene(); // Default to current scene
+
+        if (addedCount > 0) {
+            // Navigate first, THEN show toast on the NEW scene
+            Scene cartScene = navigateToCart();
+            if (cartScene != null) {
+                ToastService.show(cartScene, addedCount + " items added to cart.", ToastService.Type.SUCCESS);
+                targetSceneForWarnings = cartScene; // Update target scene for subsequent warnings
+            }
+        } else {
+            // Stay here and show warning
+            if (warnings.isEmpty()) {
+                ToastService.show(ordersContainer.getScene(), "No items added.", ToastService.Type.INFO);
+            }
+        }
+
+        if (!warnings.isEmpty()) {
+            StringBuilder sb = new StringBuilder();
+            if (addedCount == 0)
+                sb.append("Items out of stock/unavailable:\n");
+            else
+                sb.append("Some items unavailable:\n");
+
+            for (int i = 0; i < warnings.size(); i++) {
+                if (i > 3) {
+                    sb.append("...and " + (warnings.size() - i) + " more.");
+                    break;
+                }
+                sb.append("- ").append(warnings.get(i)).append("\n");
+            }
+
+            ToastService.show(targetSceneForWarnings, sb.toString().trim(), ToastService.Type.WARNING,
+                    ToastService.Position.BOTTOM_RIGHT, javafx.util.Duration.seconds(4));
+        }
     }
 
     @FXML

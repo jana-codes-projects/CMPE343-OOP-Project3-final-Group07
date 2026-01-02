@@ -277,6 +277,41 @@ public class OrderDao {
         return list;
     }
 
+    public boolean cancelOrder(int orderId) {
+        String updateStatus = "UPDATE orders SET status = 'CANCELLED' WHERE id = ? AND status != 'DELIVERED' AND status != 'CANCELLED'";
+        String restoreStock = """
+                    UPDATE products p
+                    JOIN order_items oi ON p.id = oi.product_id
+                    SET p.stock_kg = p.stock_kg + oi.kg
+                    WHERE oi.order_id = ?
+                """;
+
+        try (Connection c = Db.getConnection()) {
+            c.setAutoCommit(false);
+            try (PreparedStatement ps = c.prepareStatement(updateStatus)) {
+                ps.setInt(1, orderId);
+                int updated = ps.executeUpdate();
+                if (updated > 0) {
+                    try (PreparedStatement ps2 = c.prepareStatement(restoreStock)) {
+                        ps2.setInt(1, orderId);
+                        ps2.executeUpdate();
+                    }
+                    c.commit();
+                    return true;
+                } else {
+                    c.rollback();
+                    return false;
+                }
+            } catch (Exception e) {
+                c.rollback();
+                throw e;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
     public boolean markOrderDelivered(int orderId, LocalDateTime time) {
         String sql = "UPDATE orders SET status = 'DELIVERED', delivered_time = ? WHERE id = ?";
         try (Connection c = Db.getConnection();
