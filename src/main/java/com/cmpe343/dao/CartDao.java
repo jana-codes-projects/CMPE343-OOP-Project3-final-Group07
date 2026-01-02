@@ -47,42 +47,29 @@ public class CartDao {
         // Get current product price (with threshold pricing applied) to store it
         double currentPrice = getProductPrice(productId);
         
-        // Upsert logic: If exists, add to current quantity and update price to current price
-        String checkSql = "SELECT quantity_kg FROM cart_items WHERE user_id=? AND product_id=?";
-        String insertSql = "INSERT INTO cart_items (user_id, product_id, quantity_kg, unit_price_applied) VALUES (?, ?, ?, ?)";
-        String updateSql = "UPDATE cart_items SET quantity_kg = quantity_kg + ?, unit_price_applied = ? WHERE user_id=? AND product_id=?";
+        // Use atomic INSERT ... ON DUPLICATE KEY UPDATE to prevent race conditions
+        // This ensures that concurrent threads won't cause UNIQUE constraint violations
+        // Note: unit_price_applied is NOT updated on duplicate - it preserves the original
+        // price from when the item was first added to the cart (as per requirement:
+        // "Price at time of adding to cart")
+        String upsertSql = """
+            INSERT INTO cart_items (user_id, product_id, quantity_kg, unit_price_applied)
+            VALUES (?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+                quantity_kg = quantity_kg + ?
+        """;
 
-        try (Connection c = Db.getConnection()) {
-            // Check existence
-            boolean exists = false;
-            try (PreparedStatement ps = c.prepareStatement(checkSql)) {
-                ps.setInt(1, userId);
-                ps.setInt(2, productId);
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next())
-                        exists = true;
-                }
-            }
-
-            if (exists) {
-                // Update quantity and price to current price (with threshold pricing if applicable)
-                try (PreparedStatement ps = c.prepareStatement(updateSql)) {
-                    ps.setDouble(1, kg);
-                    ps.setDouble(2, currentPrice);
-                    ps.setInt(3, userId);
-                    ps.setInt(4, productId);
-                    ps.executeUpdate();
-                }
-            } else {
-                // Insert with current price (with threshold pricing if applicable)
-                try (PreparedStatement ps = c.prepareStatement(insertSql)) {
-                    ps.setInt(1, userId);
-                    ps.setInt(2, productId);
-                    ps.setDouble(3, kg);
-                    ps.setDouble(4, currentPrice);
-                    ps.executeUpdate();
-                }
-            }
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement(upsertSql)) {
+            ps.setInt(1, userId);
+            ps.setInt(2, productId);
+            ps.setDouble(3, kg);
+            ps.setDouble(4, currentPrice);
+            ps.setDouble(5, kg); // For ON DUPLICATE KEY UPDATE: quantity_kg = quantity_kg + ?
+            ps.executeUpdate();
+        } catch (java.sql.SQLIntegrityConstraintViolationException e) {
+            // This should not occur with ON DUPLICATE KEY UPDATE, but handle it defensively
+            throw new RuntimeException("Error adding to cart: constraint violation", e);
         } catch (Exception e) {
             throw new RuntimeException("Error adding to cart: " + e.getMessage(), e);
         }

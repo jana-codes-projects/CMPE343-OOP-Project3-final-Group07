@@ -158,6 +158,17 @@ public class CouponDao {
     }
     
     public int createCoupon(String code, Coupon.CouponKind kind, double value, double minCart, LocalDateTime expiresAt, boolean isActive) {
+        // Validate coupon values
+        if (kind == Coupon.CouponKind.PERCENT && (value <= 0 || value >= 100)) {
+            throw new IllegalArgumentException("Percentage coupon value must be greater than 0 and less than 100. Received: " + value);
+        }
+        if (kind == Coupon.CouponKind.AMOUNT && value < 0) {
+            throw new IllegalArgumentException("Amount coupon value cannot be negative. Received: " + value);
+        }
+        if (minCart < 0) {
+            throw new IllegalArgumentException("Minimum cart amount cannot be negative. Received: " + minCart);
+        }
+        
         String sql = """
             INSERT INTO coupons (code, kind, value, min_cart, expires_at, is_active)
             VALUES (?, ?, ?, ?, ?, ?)
@@ -202,6 +213,17 @@ public class CouponDao {
      * @return true if the update was successful, false otherwise
      */
     public boolean updateCoupon(int couponId, String code, Coupon.CouponKind kind, double value, double minCart, LocalDateTime expiresAt, boolean isActive) {
+        // Validate coupon values
+        if (kind == Coupon.CouponKind.PERCENT && (value <= 0 || value >= 100)) {
+            throw new IllegalArgumentException("Percentage coupon value must be greater than 0 and less than 100. Received: " + value);
+        }
+        if (kind == Coupon.CouponKind.AMOUNT && value < 0) {
+            throw new IllegalArgumentException("Amount coupon value cannot be negative. Received: " + value);
+        }
+        if (minCart < 0) {
+            throw new IllegalArgumentException("Minimum cart amount cannot be negative. Received: " + minCart);
+        }
+        
         String sql = """
             UPDATE coupons
             SET code = ?, kind = ?, value = ?, min_cart = ?, expires_at = ?, is_active = ?

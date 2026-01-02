@@ -1808,6 +1808,32 @@ public class OwnerController {
         }
     }
     
+    /**
+     * Validates phone number format.
+     * Accepts formats like: 5321234567, 532 123 45 67, +90 532 123 45 67, etc.
+     * Phone number should contain 10-15 digits after removing formatting characters.
+     * 
+     * @param phoneNumber The phone number to validate
+     * @return true if valid, false otherwise
+     */
+    private boolean isValidPhoneNumber(String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
+            return false;
+        }
+        
+        // Remove common formatting characters (spaces, dashes, parentheses, plus signs, dots)
+        String digitsOnly = phoneNumber.replaceAll("[\\s\\-\\(\\)\\+\\.]", "");
+        
+        // Check if remaining string contains only digits
+        if (!digitsOnly.matches("\\d+")) {
+            return false;
+        }
+        
+        // Check length: should be between 10-15 digits (allows for country codes)
+        int length = digitsOnly.length();
+        return length >= 10 && length <= 15;
+    }
+    
     private void showInfo(String message) {
         if (logoutButton != null && logoutButton.getScene() != null) {
             ToastService.show(logoutButton.getScene(), message, ToastService.Type.INFO);
@@ -1915,6 +1941,12 @@ public class OwnerController {
                     // Creating new carrier
                     if (userDAO.usernameExists(username)) {
                         showError("Username already exists. Please choose a different username.");
+                        return;
+                    }
+                    
+                    // Validate phone number if provided
+                    if (phone != null && !phone.isEmpty() && !isValidPhoneNumber(phone)) {
+                        showError("Invalid phone number format. Please enter a valid phone number (e.g., 532 123 45 67 or +90 532 123 45 67).");
                         return;
                     }
                     

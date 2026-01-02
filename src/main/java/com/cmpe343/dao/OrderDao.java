@@ -340,7 +340,15 @@ public class OrderDao {
                         // For percentage coupons, total_before_tax = subtotalAfterLoyalty * (1 - percent/100)
                         // So: subtotalAfterLoyalty = total_before_tax / (1 - percent/100)
                         // And coupon discount = subtotalAfterLoyalty * (percent/100)
-                        double subtotalAfterLoyalty = totalBeforeTax / (1.0 - value / 100.0);
+                        // Safety check: prevent division by zero or negative denominator
+                        double denominator = 1.0 - value / 100.0;
+                        if (denominator <= 0 || value >= 100 || value <= 0) {
+                            // Invalid coupon value - return 0 to prevent crash
+                            // This should not happen if validation is in place, but defensive programming
+                            System.err.println("Warning: Invalid percentage coupon value (" + value + "%) for order " + orderId + ". Returning 0 discount.");
+                            return 0.0;
+                        }
+                        double subtotalAfterLoyalty = totalBeforeTax / denominator;
                         return subtotalAfterLoyalty * (value / 100.0);
                     }
                 }

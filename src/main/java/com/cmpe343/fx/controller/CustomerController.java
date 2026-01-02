@@ -539,6 +539,10 @@ public class CustomerController {
             }
 
             // Validate coupon one more time before placing order
+            // This validation must match OrderDao.getCouponDiscount() logic:
+            // 1. Check if coupon exists and is active/not expired
+            // 2. Calculate subtotal after loyalty discount (same as OrderDao.createOrder does)
+            // 3. Validate that subtotalAfterLoyalty meets the coupon's min_cart requirement
             if (selectedCouponId != null) {
                 com.cmpe343.model.Coupon coupon = couponDao.getCouponById(selectedCouponId);
                 if (coupon == null) {
@@ -547,6 +551,23 @@ public class CustomerController {
                     couponComboBox.setValue("No Coupon");
                     couponDiscountLabel.setText("");
                     updateTotal();
+                    return;
+                }
+                
+                // Calculate subtotal (same logic as updateTotal and OrderDao.createOrder)
+                double subtotal = currentCartItems.stream()
+                    .mapToDouble(item -> Math.round(item.getLineTotal() * 100.0) / 100.0)
+                    .sum();
+                
+                // Calculate loyalty discount first (same as OrderDao.createOrder)
+                double loyaltyDiscount = orderDao.calculateLoyaltyDiscount(Session.getUser().getId(), subtotal);
+                double subtotalAfterLoyalty = Math.max(0, subtotal - loyaltyDiscount);
+                
+                // Validate that subtotalAfterLoyalty meets the coupon's min_cart requirement
+                // This matches the validation in OrderDao.getCouponDiscount()
+                if (subtotalAfterLoyalty < coupon.getMinCart()) {
+                    toast(String.format("Cart total (after loyalty discount) %.2f ₺ does not meet coupon minimum requirement of %.2f ₺. Please add more items or remove the coupon.", 
+                        subtotalAfterLoyalty, coupon.getMinCart()), ToastService.Type.ERROR);
                     return;
                 }
             }
@@ -579,7 +600,7 @@ public class CustomerController {
         if (!Session.isLoggedIn())
             return;
         if (ordersContainer == null) return;
-        userOrders = orderDao.getOrdersByUserId(Session.getUser().getId());
+        userOrders = orderDao.getOrdersForCustomer(Session.getUser().getId());
         renderOrders();
     }
     
@@ -834,117 +855,6 @@ public class CustomerController {
             closeNode.setVisible(false);
 
         dialog.showAndWait();
-    }
-        VBox card = new VBox(12);
-        card.setStyle("-fx-background-color: #1e293b; -fx-background-radius: 8; -fx-padding: 16;");
-        
-        HBox header = new HBox(16);
-        header.setAlignment(Pos.CENTER_LEFT);
-        
-        Label orderId = new Label("Order #" + order.getId());
-        orderId.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: white;");
-        
-        Label status = new Label(order.getStatus().name());
-        status.setStyle("-fx-padding: 4 12; -fx-background-color: #10b981; -fx-background-radius: 4; -fx-text-fill: white;");
-        
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-        
-        Label total = new Label(String.format("%.2f ₺", order.getTotalAfterTax()));
-        total.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: white;");
-        
-        header.getChildren().addAll(orderId, status, spacer, total);
-        
-        Label date = new Label("Ordered: " + order.getOrderTime().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
-        date.setStyle("-fx-text-fill: #94a3b8;");
-        
-        card.getChildren().addAll(header, date);
-        
-        // Add product images section
-        if (order.getItems() != null && !order.getItems().isEmpty()) {
-            Label itemsLabel = new Label("Items:");
-            itemsLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 8 0 4 0;");
-            
-            FlowPane imagesContainer = new FlowPane();
-            imagesContainer.setHgap(8);
-            imagesContainer.setVgap(8);
-            imagesContainer.setStyle("-fx-padding: 4 0;");
-            
-            for (com.cmpe343.model.CartItem item : order.getItems()) {
-                if (item.getProduct() != null) {
-                    try {
-                        byte[] imageBytes = productDao.getProductImageBlob(item.getProduct().getId());
-                        if (imageBytes != null && imageBytes.length > 0) {
-                            javafx.scene.image.Image image = new javafx.scene.image.Image(new java.io.ByteArrayInputStream(imageBytes));
-                            javafx.scene.image.ImageView iv = new javafx.scene.image.ImageView(image);
-                            iv.setFitWidth(50);
-                            iv.setFitHeight(50);
-                            iv.setPreserveRatio(true);
-                            iv.setSmooth(true);
-                            
-                            // Add tooltip with product name and quantity
-                            javafx.scene.control.Tooltip tooltip = new javafx.scene.control.Tooltip(
-                                item.getProduct().getName() + "\n" + String.format("%.2f kg", item.getQuantityKg())
-                            );
-                            javafx.scene.control.Tooltip.install(iv, tooltip);
-                            
-                            imagesContainer.getChildren().add(iv);
-                        }
-                    } catch (Exception e) {
-                        // Skip images that fail to load
-                    }
-                }
-            }
-            
-            if (!imagesContainer.getChildren().isEmpty()) {
-                card.getChildren().add(itemsLabel);
-                card.getChildren().add(imagesContainer);
-            }
-        }
-        
-        // Add action buttons
-        HBox actions = new HBox(8);
-        
-        // Add cancel button for CREATED and ASSIGNED orders
-        if (order.getStatus() == com.cmpe343.model.Order.OrderStatus.CREATED || 
-            order.getStatus() == com.cmpe343.model.Order.OrderStatus.ASSIGNED) {
-            Button cancelBtn = new Button("Cancel Order");
-            cancelBtn.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-padding: 6 12;");
-            cancelBtn.setOnAction(e -> handleCancelOrder(order, ordersContainer));
-            actions.getChildren().add(cancelBtn);
-        }
-        
-        // Add track order button for ASSIGNED orders
-        if (order.getStatus() == com.cmpe343.model.Order.OrderStatus.ASSIGNED) {
-            Button trackBtn = new Button("Track Order");
-            trackBtn.setStyle("-fx-background-color: #f59e0b; -fx-text-fill: white; -fx-padding: 6 12;");
-            trackBtn.setOnAction(e -> openTrackingScreen(order));
-            actions.getChildren().add(trackBtn);
-        }
-        
-        // Add download PDF button if delivered
-        if (order.getStatus() == com.cmpe343.model.Order.OrderStatus.DELIVERED) {
-            Button downloadBtn = new Button("Download Invoice");
-            downloadBtn.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-padding: 6 12;");
-            downloadBtn.setOnAction(e -> downloadInvoice(order));
-            
-            // Check if rating exists
-            com.cmpe343.dao.RatingDao ratingDao = new com.cmpe343.dao.RatingDao();
-            if (!ratingDao.hasRatingForOrder(order.getId(), currentCustomerId)) {
-                Button rateBtn = new Button("Rate Order");
-                rateBtn.setStyle("-fx-background-color: #10b981; -fx-text-fill: white; -fx-padding: 6 12;");
-                rateBtn.setOnAction(e -> showRatingDialog(order));
-                actions.getChildren().add(rateBtn);
-            }
-            
-            actions.getChildren().add(downloadBtn);
-        }
-        
-        if (!actions.getChildren().isEmpty()) {
-            card.getChildren().add(actions);
-        }
-        
-        return card;
     }
     
     private void handleCancelOrder(Order order) {
@@ -1242,7 +1152,7 @@ public class CustomerController {
     }
 
     @FXML
-    private void toggleVegetables() {
+    private void handleToggleVegetables() {
         vegetablesVisible = !vegetablesVisible;
         vegetablesGrid.setVisible(vegetablesVisible);
         vegetablesGrid.setManaged(vegetablesVisible);
@@ -1250,7 +1160,7 @@ public class CustomerController {
     }
     
     @FXML
-    private void toggleFruits() {
+    private void handleToggleFruits() {
         fruitsVisible = !fruitsVisible;
         fruitsGrid.setVisible(fruitsVisible);
         fruitsGrid.setManaged(fruitsVisible);
@@ -1393,6 +1303,13 @@ public class CustomerController {
             stage.setScene(new Scene(loader.load()));
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+    
+    @FXML
+    private void handleClearSearch() {
+        if (searchField != null) {
+            searchField.clear();
         }
     }
     

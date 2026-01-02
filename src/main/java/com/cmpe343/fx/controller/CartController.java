@@ -291,6 +291,10 @@ public class CartController {
 
             // Create Order
             // Validate coupon one more time before placing order to catch race conditions
+            // This validation must match OrderDao.getCouponDiscount() logic:
+            // 1. Check if coupon exists and is active/not expired
+            // 2. Calculate subtotal after loyalty discount (same as OrderDao.createOrder does)
+            // 3. Validate that subtotalAfterLoyalty meets the coupon's min_cart requirement
             if (selectedCouponId != null) {
                 com.cmpe343.model.Coupon coupon = couponDao.getCouponById(selectedCouponId);
                 if (coupon == null) {
@@ -300,6 +304,26 @@ public class CartController {
                     couponComboBox.setValue("No Coupon");
                     couponDiscountLabel.setText("");
                     updateTotal();
+                    return;
+                }
+                
+                // Calculate subtotal (same logic as updateTotal and OrderDao.createOrder)
+                double subtotal = currentCartItems.stream()
+                    .mapToDouble(item -> Math.round(item.getLineTotal() * 100.0) / 100.0)
+                    .sum();
+                
+                // Calculate loyalty discount first (same as OrderDao.createOrder)
+                double loyaltyDiscount = orderDao.calculateLoyaltyDiscount(Session.getUser().getId(), subtotal);
+                double subtotalAfterLoyalty = Math.max(0, subtotal - loyaltyDiscount);
+                
+                // Validate that subtotalAfterLoyalty meets the coupon's min_cart requirement
+                // This matches the validation in OrderDao.getCouponDiscount()
+                if (subtotalAfterLoyalty < coupon.getMinCart()) {
+                    ToastService.show(cartItemsContainer.getScene(), 
+                        String.format("Cart total (after loyalty discount) %.2f ₺ does not meet coupon minimum requirement of %.2f ₺. Please add more items or remove the coupon.", 
+                            subtotalAfterLoyalty, coupon.getMinCart()), 
+                        ToastService.Type.ERROR,
+                        ToastService.Position.BOTTOM_CENTER, Duration.seconds(4));
                     return;
                 }
             }

@@ -10,6 +10,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
@@ -179,6 +180,7 @@ public class LoginController {
 
         // === Country / City ===
         ComboBox<String> countryCombo = new ComboBox<>();
+        ComboBox<String> cityCombo = new ComboBox<>();
         countryCombo.getItems().addAll(COUNTRY_CITIES.keySet());
         countryCombo.setPromptText("Select Country");
         countryCombo.setStyle("-fx-text-fill: white; -fx-prompt-text-fill: #64748b;");
@@ -291,6 +293,13 @@ public class LoginController {
                 toastError("Username already exists. Please choose another.");
                 return;
             }
+            
+            // Validate phone number
+            String phoneNumber = data.get("phone");
+            if (phoneNumber != null && !phoneNumber.isEmpty() && !isValidPhoneNumber(phoneNumber)) {
+                toastError("Invalid phone number format. Please enter a valid phone number (e.g., 532 123 45 67).");
+                return;
+            }
 
             try {
                 int userId = userDao.createCustomer(
@@ -326,6 +335,32 @@ public class LoginController {
         if (score <= 2) return "weak";
         if (score <= 4) return "good";
         return "strong";
+    }
+    
+    /**
+     * Validates phone number format.
+     * Accepts formats like: 5321234567, 532 123 45 67, +90 532 123 45 67, etc.
+     * Phone number should contain 10-15 digits after removing formatting characters.
+     * 
+     * @param phoneNumber The phone number to validate
+     * @return true if valid, false otherwise
+     */
+    private boolean isValidPhoneNumber(String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
+            return false;
+        }
+        
+        // Remove common formatting characters (spaces, dashes, parentheses, plus signs, dots)
+        String digitsOnly = phoneNumber.replaceAll("[\\s\\-\\(\\)\\+\\.]", "");
+        
+        // Check if remaining string contains only digits
+        if (!digitsOnly.matches("\\d+")) {
+            return false;
+        }
+        
+        // Check length: should be between 10-15 digits (allows for country codes)
+        int length = digitsOnly.length();
+        return length >= 10 && length <= 15;
     }
 
     // ---------------- Helpers ----------------
