@@ -109,7 +109,7 @@
                 <VBox spacing="16">
                      <VBox spacing="4">
                         <Label text="Date" styleClass="field-label"/>
-                        <DatePicker fx:id="deliveryDatePicker" promptText="Select Date" style="-fx-base: #1e293b;" maxWidth="Infinity"/>
+                        <DatePicker fx:id="deliveryDatePicker" promptText="Select Date" maxWidth="Infinity"/>
                      </VBox>
                      
                      <VBox spacing="4">
