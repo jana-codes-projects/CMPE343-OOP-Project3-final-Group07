@@ -4,10 +4,12 @@ com\cmpe343\model\Order.class
 com\cmpe343\dao\MessageDao.class
 com\cmpe343\fx\util\ToastService$Type.class
 com\cmpe343\dao\CarrierDao.class
+com\cmpe343\fx\controller\TrackingController.class
 com\cmpe343\model\Rating.class
 com\cmpe343\model\Order$OrderStatus.class
 com\cmpe343\dao\CouponDao.class
 com\cmpe343\dao\CartDao.class
+com\cmpe343\model\CreditCard.class
 com\cmpe343\fx\controller\OwnerController$1.class
 com\cmpe343\model\Product$ProductType.class
 com\cmpe343\fx\controller\LoginController.class
@@ -16,6 +18,7 @@ com\cmpe343\service\AuthService.class
 com\cmpe343\db\Db.class
 com\cmpe343\fx\controller\OwnerController.class
 com\cmpe343\dao\ProductDao.class
+com\cmpe343\dao\InvoiceDAO.class
 com\cmpe343\dao\OrderDao.class
 com\cmpe343\model\CartItem.class
 com\cmpe343\fx\util\ToastService$Position.class
@@ -26,6 +29,7 @@ com\cmpe343\fx\controller\CartController.class
 com\cmpe343\model\Message.class
 com\cmpe343\fx\MainFx.class
 com\cmpe343\App.class
+com\cmpe343\service\ImagePopulationService.class
 com\cmpe343\fx\util\ToastService.class
 com\cmpe343\model\Coupon.class
 com\cmpe343\service\PdfService.class

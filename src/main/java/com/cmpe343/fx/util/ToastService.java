@@ -13,7 +13,7 @@ import javafx.util.Duration;
 
 public class ToastService {
 
-    public enum Type { SUCCESS, ERROR, INFO }
+    public enum Type { SUCCESS, ERROR, WARNING, INFO }
     public enum Position { BOTTOM_CENTER, BOTTOM_RIGHT, TOP_RIGHT }
 
     private static final String OVERLAY_ID = "toastOverlay";
@@ -93,6 +93,7 @@ public class ToastService {
         return switch (type) {
             case SUCCESS -> "toast-success";
             case ERROR   -> "toast-error";
+            case WARNING -> "toast-warning";
             case INFO    -> "toast-info";
         };
     }

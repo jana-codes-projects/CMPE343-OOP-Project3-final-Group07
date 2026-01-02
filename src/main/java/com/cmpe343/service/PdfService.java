@@ -87,7 +87,7 @@ public class PdfService {
             // Header with colored background
             Table headerTable = new Table(UnitValue.createPercentArray(new float[]{1}))
                     .useAllAvailableWidth()
-                    .setBackgroundColor(ColorConstants.DARK_GREEN)
+                    .setBackgroundColor(ColorConstants.GREEN)
                     .setBorder(Border.NO_BORDER);
             
             Paragraph title = new Paragraph("INVOICE")
