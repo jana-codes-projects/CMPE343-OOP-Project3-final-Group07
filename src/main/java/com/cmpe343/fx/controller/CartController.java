@@ -200,9 +200,15 @@ public class CartController {
                 javafx.scene.image.ImageView iv = new javafx.scene.image.ImageView(
                         new javafx.scene.image.Image(
                                 new java.io.ByteArrayInputStream(item.getProduct().getImageBlob())));
-                iv.setFitWidth(50);
-                iv.setFitHeight(50);
-                iv.setPreserveRatio(true);
+                iv.setFitWidth(60);
+                iv.setFitHeight(60);
+                iv.setPreserveRatio(false);
+
+                javafx.scene.shape.Rectangle clip = new javafx.scene.shape.Rectangle(60, 60);
+                clip.setArcWidth(10);
+                clip.setArcHeight(10);
+                iv.setClip(clip);
+
                 imageNode = iv;
             } catch (Exception e) {
                 Label img = new Label(item.getProduct().getName().substring(0, 1).toUpperCase());

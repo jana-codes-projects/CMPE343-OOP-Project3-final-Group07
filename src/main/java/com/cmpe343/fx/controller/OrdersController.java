@@ -273,9 +273,9 @@ public class OrdersController {
 
             // Add Product Image
             javafx.scene.image.ImageView imgView = new javafx.scene.image.ImageView();
-            imgView.setFitWidth(40);
-            imgView.setFitHeight(40);
-            imgView.setPreserveRatio(true);
+            imgView.setFitWidth(50);
+            imgView.setFitHeight(50);
+            imgView.setPreserveRatio(false);
 
             byte[] blob = item.getProduct().getImageBlob();
             if (blob != null && blob.length > 0) {
@@ -289,7 +289,7 @@ public class OrdersController {
             }
 
             // Add a clip for rounded corners (optional but nice)
-            javafx.scene.shape.Rectangle clip = new javafx.scene.shape.Rectangle(40, 40);
+            javafx.scene.shape.Rectangle clip = new javafx.scene.shape.Rectangle(50, 50);
             clip.setArcWidth(10);
             clip.setArcHeight(10);
             imgView.setClip(clip);

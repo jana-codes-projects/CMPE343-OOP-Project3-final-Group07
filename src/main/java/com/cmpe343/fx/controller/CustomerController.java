@@ -168,7 +168,14 @@ public class CustomerController {
                         new javafx.scene.image.Image(new java.io.ByteArrayInputStream(p.getImageBlob())));
                 iv.setFitWidth(100);
                 iv.setFitHeight(100);
-                iv.setPreserveRatio(true);
+                iv.setPreserveRatio(false);
+
+                // Rounded corners
+                javafx.scene.shape.Rectangle clip = new javafx.scene.shape.Rectangle(100, 100);
+                clip.setArcWidth(15);
+                clip.setArcHeight(15);
+                iv.setClip(clip);
+
                 imageNode = iv;
             } catch (Exception e) {
                 Label img = new Label(p.getName().substring(0, 1).toUpperCase());
