@@ -228,7 +228,19 @@ public class OrdersController {
             handleReorder(order.getId());
         });
 
-        header.getChildren().addAll(iconContainer, info, spacer, statusBadge, total, reorderBtn, cancelBtn, chevron);
+        // Invoice Button
+        Button invoiceBtn = new Button("Invoice");
+        invoiceBtn.getStyleClass().add("btn-outline-small");
+        invoiceBtn.setStyle("-fx-text-fill: #10b981; -fx-border-color: #10b981; -fx-padding: 4 12;");
+        invoiceBtn.setVisible(order.getStatus() == Order.OrderStatus.DELIVERED);
+        invoiceBtn.setManaged(invoiceBtn.isVisible());
+        invoiceBtn.setOnAction(e -> {
+            e.consume();
+            handleDownloadInvoice(order);
+        });
+
+        header.getChildren().addAll(iconContainer, info, spacer, statusBadge, total, invoiceBtn, reorderBtn, cancelBtn,
+                chevron);
 
         // 2. Details (Hidden by default)
         VBox detailsBox = new VBox(0);
@@ -426,6 +438,33 @@ public class OrdersController {
 
             ToastService.show(targetSceneForWarnings, sb.toString().trim(), ToastService.Type.WARNING,
                     ToastService.Position.BOTTOM_RIGHT, javafx.util.Duration.seconds(4));
+        }
+    }
+
+    private void handleDownloadInvoice(Order order) {
+        // Need to load full order items for invoice
+        if (order.getItems() == null || order.getItems().isEmpty()) {
+            order.setItems(orderDao.getOrderItems(order.getId()));
+        }
+
+        com.cmpe343.service.PdfService pdfService = new com.cmpe343.service.PdfService();
+        javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
+        fileChooser.setTitle("Save Invoice");
+        fileChooser.setInitialFileName("Invoice_" + order.getId() + ".pdf");
+        fileChooser.getExtensionFilters().add(
+                new javafx.stage.FileChooser.ExtensionFilter("PDF Files", "*.pdf"));
+
+        java.io.File file = fileChooser.showSaveDialog(ordersContainer.getScene().getWindow());
+        if (file != null) {
+            try {
+                byte[] pdfBytes = pdfService.generateInvoiceAsBytes(order);
+                java.nio.file.Files.write(file.toPath(), pdfBytes);
+                ToastService.show(ordersContainer.getScene(), "Invoice Saved!", ToastService.Type.SUCCESS);
+            } catch (Exception e) {
+                e.printStackTrace();
+                ToastService.show(ordersContainer.getScene(), "Failed to save invoice: " + e.getMessage(),
+                        ToastService.Type.ERROR);
+            }
         }
     }
 

@@ -416,4 +416,43 @@ public class OrderDao {
     private static double round2(double v) {
         return Math.round(v * 100.0) / 100.0;
     }
+
+    public double getCouponDiscountForOrder(int orderId) {
+        String sql = """
+                    SELECT c.kind, c.value, c.min_cart_amount, o.total_before_tax
+                    FROM orders o
+                    JOIN coupons c ON o.coupon_id = c.id
+                    WHERE o.id = ?
+                """;
+
+        try (Connection c = Db.getConnection();
+                PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, orderId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    String kind = rs.getString("kind");
+                    double value = rs.getDouble("value");
+                    // We don't strictly need these for calculation if the discount was already
+                    // applied to total_after_tax
+                    // BUT, typically we want to know how much was discounted.
+                    // If the DB doesn't store the discount amount directly, we verify against the
+                    // kind.
+                    // The schema has 'coupon_id', but not 'discount_amount'.
+                    // However, we can calculate it.
+
+                    double totalBefore = rs.getDouble("total_before_tax");
+
+                    if ("PERCENT".equalsIgnoreCase(kind)) {
+                        return round2(totalBefore * (value / 100.0));
+                    } else {
+                        // FIXED
+                        return value;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 0.0;
+    }
 }
